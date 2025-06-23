@@ -47,6 +47,11 @@ export const autorizarControladoria = async (id: number): Promise<AutorizacaoCom
     return response.data
 }
 
+export const reverterControladoria = async (id: number): Promise<AutorizacaoCompra> => {
+    const response = await api.put(`/autorizacao-compra/${id}/reverter-controladoria`)
+    return response.data
+}
+
 export const autorizarDiretoria = async (id: number): Promise<AutorizacaoCompra> => {
     const response = await api.put(`/autorizacao-compra/${id}/autorizar-diretoria`)
     return response.data

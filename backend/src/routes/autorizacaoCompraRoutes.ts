@@ -15,6 +15,12 @@ router.put(
     autorizacaoCompraController.autorizarControladoria,
 )
 router.put(
+    "/:id/reverter-controladoria",
+    verificarAutenticacao,
+    verificarNivel(["06"]),
+    autorizacaoCompraController.reverterControladoria,
+)
+router.put(
     "/:id/autorizar-diretoria",
     verificarAutenticacao,
     verificarNivel(["00"]),
