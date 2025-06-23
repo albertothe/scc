@@ -70,12 +70,12 @@ const AutorizacaoCompraPage: React.FC = () => {
     }, [])
 
     const handleNovo = () => {
-        navigate("/autorizacao-compra/novo")
+        navigate("/controladoria/autorizacao-compra/novo")
     }
 
     const handleEditar = (id: number | undefined) => {
         if (id) {
-            navigate(`/autorizacao-compra/editar/${id}`)
+            navigate(`/controladoria/autorizacao-compra/editar/${id}`)
         }
     }
 
