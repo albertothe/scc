@@ -5,6 +5,7 @@ import promocaoRoutes from "./routes/promocaoRoutes"
 import comissaoRoutes from "./routes/comissaoRoutes"
 import authRoutes from "./routes/authRoutes"
 import vendedorMetaRoutes from "./routes/vendedorMetaRoutes"
+import autorizacaoCompraRoutes from "./routes/autorizacaoCompraRoutes"
 import { corsMiddleware } from "./config/cors"
 
 // Carrega as variáveis de ambiente antes de qualquer outra operação
@@ -23,6 +24,7 @@ app.use("/api/promocoes", promocaoRoutes)
 app.use("/api/comissoes", comissaoRoutes)
 app.use("/api/auth", authRoutes)
 app.use("/api/vendedor-metas", vendedorMetaRoutes)
+app.use("/api/autorizacao-compra", autorizacaoCompraRoutes)
 
 // Rota de teste para verificar se o servidor está funcionando
 app.get("/", (req, res) => {
