@@ -21,13 +21,17 @@ export const criarAutorizacao = async (req: Request, res: Response): Promise<voi
 export const listarAutorizacoes = async (req: Request, res: Response): Promise<void> => {
     try {
         const usuario = req.usuario?.usuario
+        const nivel = req.usuario?.nivel
 
         if (!usuario) {
             res.status(401).json({ error: "Usuário não autenticado" })
             return
         }
 
-        const autorizacoes = await autorizacaoCompraService.listarAutorizacoes(usuario, nivel)
+        const autorizacoes = await autorizacaoCompraService.listarAutorizacoes(
+            usuario,
+            nivel ?? "",
+        )
         res.json(autorizacoes)
     } catch (error) {
         console.error("Erro ao listar autorizações:", error)
