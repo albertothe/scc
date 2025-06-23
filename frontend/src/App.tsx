@@ -27,7 +27,7 @@ function App() {
             <Route
               path="/"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <Home />
                   </Layout>
@@ -37,7 +37,7 @@ function App() {
             <Route
               path="/home"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <Home />
                   </Layout>
@@ -148,7 +148,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <AutorizacaoCompraPage />
                   </Layout>
@@ -158,7 +158,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/novo"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <AutorizacaoCompraFormulario />
                   </Layout>
@@ -168,7 +168,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/editar/:id"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <AutorizacaoCompraFormulario />
                   </Layout>
