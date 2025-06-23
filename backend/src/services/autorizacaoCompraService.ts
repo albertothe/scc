@@ -108,6 +108,28 @@ export class AutorizacaoCompraService {
         return result.rows[0]
     }
 
+    async reverterControladoria(id: number): Promise<AutorizacaoCompra> {
+        const query = `
+      UPDATE scc_autorizacao_compra
+      SET
+        autorizado_controladoria = false,
+        data_autorizacao_controladoria = NULL,
+        usuario_controladoria = NULL
+      WHERE id = $1 AND autorizado_diretoria = false
+      RETURNING *
+    `
+
+        const result = await this.db.query(query, [id])
+
+        if (result.rows.length === 0) {
+            throw new Error(
+                "Autorização não encontrada ou já liberada pela diretoria",
+            )
+        }
+
+        return result.rows[0]
+    }
+
     async obterAutorizacao(id: number): Promise<AutorizacaoCompra | null> {
         const query = `
       SELECT 
@@ -182,19 +204,17 @@ export class AutorizacaoCompraService {
         return result.rows[0]
     }
 
-    async excluirAutorizacao(id: number, usuario: string, nivel: string): Promise<boolean> {
-        let query = "DELETE FROM scc_autorizacao_compra WHERE id = $1"
-        const values: any[] = [id]
+    async excluirAutorizacao(id: number, usuario: string): Promise<boolean> {
+        const query = `
+      DELETE FROM scc_autorizacao_compra
+      WHERE id = $1
+        AND usuario = $2
+        AND autorizado_controladoria = false
+        AND autorizado_diretoria = false
+    `
 
-        // Se não for nível 00 ou 06, só pode excluir as próprias autorizações
-        if (nivel !== "00" && nivel !== "06") {
-            query += " AND usuario = $2"
-            values.push(usuario)
-        }
+        const result = await this.db.query(query, [id, usuario])
 
-        const result = await this.db.query(query, values)
-
-        // Corrigir o problema do rowCount possivelmente null
         return (result.rowCount ?? 0) > 0
     }
 }

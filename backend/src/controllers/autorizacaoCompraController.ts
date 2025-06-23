@@ -21,9 +21,8 @@ export const criarAutorizacao = async (req: Request, res: Response): Promise<voi
 export const listarAutorizacoes = async (req: Request, res: Response): Promise<void> => {
     try {
         const usuario = req.usuario?.usuario
-        const nivel = req.usuario?.nivel
 
-        if (!usuario || !nivel) {
+        if (!usuario) {
             res.status(401).json({ error: "Usuário não autenticado" })
             return
         }
@@ -86,6 +85,27 @@ export const autorizarDiretoria = async (req: Request, res: Response): Promise<v
     }
 }
 
+export const reverterControladoria = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params
+
+        // Somente nível 06 (controladoria) pode reverter
+        if (req.usuario?.nivel !== "06") {
+            res.status(403).json({ error: "Apenas a controladoria pode reverter" })
+            return
+        }
+
+        const autorizacao = await autorizacaoCompraService.reverterControladoria(
+            Number.parseInt(id),
+        )
+        res.json(autorizacao)
+    } catch (error) {
+        console.error("Erro ao reverter autorização:", error)
+        const errorMessage = error instanceof Error ? error.message : "Erro interno do servidor"
+        res.status(500).json({ error: errorMessage })
+    }
+}
+
 export const obterAutorizacao = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params
@@ -107,21 +127,27 @@ export const atualizarAutorizacao = async (req: Request, res: Response): Promise
     try {
         const { id } = req.params
         const usuario = req.usuario?.usuario
-        const nivel = req.usuario?.nivel
 
-        if (!usuario || !nivel) {
+        if (!usuario) {
             res.status(401).json({ error: "Usuário não autenticado" })
             return
         }
 
-        // Verificar se pode editar (só o próprio usuário ou níveis 00/06)
-        if (nivel !== "00" && nivel !== "06") {
-            // Verificar se é o próprio usuário que criou
-            const autorizacaoExistente = await autorizacaoCompraService.obterAutorizacao(Number.parseInt(id))
-            if (!autorizacaoExistente || autorizacaoExistente.usuario !== usuario) {
-                res.status(403).json({ error: "Sem permissão para editar esta autorização" })
-                return
-            }
+        const autorizacaoExistente = await autorizacaoCompraService.obterAutorizacao(Number.parseInt(id))
+
+        if (!autorizacaoExistente) {
+            res.status(404).json({ error: "Autorização não encontrada" })
+            return
+        }
+
+        // Somente o usuário que criou pode editar e apenas se ainda não houve liberação
+        if (
+            autorizacaoExistente.usuario !== usuario ||
+            autorizacaoExistente.autorizado_controladoria ||
+            autorizacaoExistente.autorizado_diretoria
+        ) {
+            res.status(403).json({ error: "Sem permissão para editar esta autorização" })
+            return
         }
 
         const autorizacao = await autorizacaoCompraService.atualizarAutorizacao(Number.parseInt(id), req.body)
@@ -137,14 +163,13 @@ export const excluirAutorizacao = async (req: Request, res: Response): Promise<v
     try {
         const { id } = req.params
         const usuario = req.usuario?.usuario
-        const nivel = req.usuario?.nivel
 
-        if (!usuario || !nivel) {
+        if (!usuario) {
             res.status(401).json({ error: "Usuário não autenticado" })
             return
         }
 
-        const sucesso = await autorizacaoCompraService.excluirAutorizacao(Number.parseInt(id), usuario, nivel)
+        const sucesso = await autorizacaoCompraService.excluirAutorizacao(Number.parseInt(id), usuario)
 
         if (!sucesso) {
             res.status(404).json({ error: "Autorização não encontrada ou sem permissão" })

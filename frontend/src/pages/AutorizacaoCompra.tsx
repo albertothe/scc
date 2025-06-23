@@ -151,11 +151,48 @@ const AutorizacaoCompraPage: React.FC = () => {
         }
     }
 
+    const handleReverterControladoria = async (id: number | undefined) => {
+        if (!id) return
+
+        try {
+            await autorizacaoCompraService.reverterControladoria(id)
+            setSnackbar({
+                open: true,
+                message: "Autorização revertida",
+                severity: "success",
+            })
+            carregarAutorizacoes()
+        } catch (error) {
+            console.error("Erro ao reverter autorização:", error)
+            setSnackbar({
+                open: true,
+                message: "Erro ao reverter autorização",
+                severity: "error",
+            })
+        }
+    }
+
     const getStatusChip = (autorizacao: AutorizacaoCompra) => {
         if (autorizacao.autorizado_diretoria) {
-            return <Chip label="Liberada" color="success" size="small" />
+            return (
+                <Tooltip
+                    title={`Liberado em ${formatarData(
+                        autorizacao.data_autorizacao_diretoria || "",
+                    )} por ${autorizacao.usuario_diretoria || ""}`}
+                >
+                    <Chip label="Liberado Diretoria" color="success" size="small" />
+                </Tooltip>
+            )
         } else if (autorizacao.autorizado_controladoria) {
-            return <Chip label="Aguardando Diretoria" color="primary" size="small" />
+            return (
+                <Tooltip
+                    title={`Liberado em ${formatarData(
+                        autorizacao.data_autorizacao_controladoria || "",
+                    )} por ${autorizacao.usuario_controladoria || ""}`}
+                >
+                    <Chip label="Liberado Controladoria" color="primary" size="small" />
+                </Tooltip>
+            )
         } else {
             return <Chip label="Aguardando Controladoria" color="warning" size="small" />
         }
@@ -173,14 +210,11 @@ const AutorizacaoCompraPage: React.FC = () => {
 
     // Verifica se o usuário pode excluir a autorização
     const podeExcluir = (autorizacao: AutorizacaoCompra) => {
-        // Só pode excluir se for o próprio usuário que criou e não estiver autorizada
-        // Ou se for nível 00 ou 06
+        // Apenas o usuário que criou e enquanto não houver liberação
         return (
-            (autorizacao.usuario === usuario?.usuario &&
-                !autorizacao.autorizado_controladoria &&
-                !autorizacao.autorizado_diretoria) ||
-            usuario?.nivel === "00" ||
-            usuario?.nivel === "06"
+            autorizacao.usuario === usuario?.usuario &&
+            !autorizacao.autorizado_controladoria &&
+            !autorizacao.autorizado_diretoria
         )
     }
 
@@ -273,6 +307,19 @@ const AutorizacaoCompraPage: React.FC = () => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
+                                                    {usuario?.nivel === "06" &&
+                                                        autorizacao.autorizado_controladoria &&
+                                                        !autorizacao.autorizado_diretoria && (
+                                                            <Tooltip title="Reverter (Controladoria)">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    color="warning"
+                                                                    onClick={() => handleReverterControladoria(autorizacao.id)}
+                                                                >
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
                                                     {podeAutorizarDiretoria(autorizacao) && (
                                                         <Tooltip title="Autorizar (Diretoria)">
                                                             <IconButton
