@@ -7,7 +7,7 @@ export const criarAutorizacao = async (req: Request, res: Response): Promise<voi
     try {
         const autorizacao = {
             ...req.body,
-            usuario: req.user?.usuario, // Pega o usuário do token
+            usuario: req.usuario?.usuario, // Pega o usuário do token
         }
 
         const novaAutorizacao = await autorizacaoCompraService.criarAutorizacao(autorizacao)
@@ -20,8 +20,8 @@ export const criarAutorizacao = async (req: Request, res: Response): Promise<voi
 
 export const listarAutorizacoes = async (req: Request, res: Response): Promise<void> => {
     try {
-        const usuario = req.user?.usuario
-        const nivel = req.user?.nivel
+        const usuario = req.usuario?.usuario
+        const nivel = req.usuario?.nivel
 
         if (!usuario || !nivel) {
             res.status(401).json({ error: "Usuário não autenticado" })
@@ -39,10 +39,10 @@ export const listarAutorizacoes = async (req: Request, res: Response): Promise<v
 export const autorizarControladoria = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params
-        const usuarioControladoria = req.user?.usuario
+        const usuarioControladoria = req.usuario?.usuario
 
         // Verificar se o usuário tem nível 06 (controladoria)
-        if (req.user?.nivel !== "06") {
+        if (req.usuario?.nivel !== "06") {
             res.status(403).json({ error: "Apenas a controladoria pode autorizar" })
             return
         }
@@ -64,10 +64,10 @@ export const autorizarControladoria = async (req: Request, res: Response): Promi
 export const autorizarDiretoria = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params
-        const usuarioDiretoria = req.user?.usuario
+        const usuarioDiretoria = req.usuario?.usuario
 
         // Verificar se o usuário tem nível 00 (diretoria)
-        if (req.user?.nivel !== "00") {
+        if (req.usuario?.nivel !== "00") {
             res.status(403).json({ error: "Apenas a diretoria pode autorizar" })
             return
         }
@@ -106,8 +106,8 @@ export const obterAutorizacao = async (req: Request, res: Response): Promise<voi
 export const atualizarAutorizacao = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params
-        const usuario = req.user?.usuario
-        const nivel = req.user?.nivel
+        const usuario = req.usuario?.usuario
+        const nivel = req.usuario?.nivel
 
         if (!usuario || !nivel) {
             res.status(401).json({ error: "Usuário não autenticado" })
@@ -136,8 +136,8 @@ export const atualizarAutorizacao = async (req: Request, res: Response): Promise
 export const excluirAutorizacao = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params
-        const usuario = req.user?.usuario
-        const nivel = req.user?.nivel
+        const usuario = req.usuario?.usuario
+        const nivel = req.usuario?.nivel
 
         if (!usuario || !nivel) {
             res.status(401).json({ error: "Usuário não autenticado" })
