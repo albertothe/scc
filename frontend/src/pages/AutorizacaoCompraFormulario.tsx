@@ -152,7 +152,7 @@ const AutorizacaoCompraFormulario: React.FC = () => {
 
             // Redirecionar após 1 segundo
             setTimeout(() => {
-                navigate("/autorizacao-compra")
+                navigate("/controladoria/autorizacao-compra")
             }, 1000)
         } catch (error) {
             console.error("Erro ao salvar autorização:", error)
@@ -167,7 +167,7 @@ const AutorizacaoCompraFormulario: React.FC = () => {
     }
 
     const handleVoltar = () => {
-        navigate("/autorizacao-compra")
+        navigate("/controladoria/autorizacao-compra")
     }
 
     if (error) {
