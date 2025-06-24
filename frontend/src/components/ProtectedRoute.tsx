@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext"
 
 interface ProtectedRouteProps {
     children: React.ReactNode
-    niveisPermitidos: string[]
+    niveisPermitidos?: string[]
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, niveisPermitidos }) => {
@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, niveisPermiti
         loading,
         niveisPermitidos,
         usuario,
-        temPermissao: usuario ? temPermissao(niveisPermitidos) : false,
+        temPermissao: usuario && niveisPermitidos ? temPermissao(niveisPermitidos) : false,
     })
 
     if (loading) {
@@ -30,7 +30,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, niveisPermiti
         return <Navigate to="/login" replace />
     }
 
-    if (!temPermissao(niveisPermitidos)) {
+    if (niveisPermitidos && niveisPermitidos.length > 0 && !temPermissao(niveisPermitidos)) {
         console.log("ProtectedRoute: Sem permissão, redirecionando para /home")
         return <Navigate to="/home" replace />
     }

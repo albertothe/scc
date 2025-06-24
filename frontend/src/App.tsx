@@ -27,7 +27,7 @@ function App() {
             <Route
               path="/"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                <ProtectedRoute>
                   <Layout>
                     <Home />
                   </Layout>
@@ -37,7 +37,7 @@ function App() {
             <Route
               path="/home"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                <ProtectedRoute>
                   <Layout>
                     <Home />
                   </Layout>

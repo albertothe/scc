@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Box, Typography, Paper, Grid, Button } from "@mui/material"
+import { Box, Typography, Paper } from "@mui/material"
 import { useAuth } from "../contexts/AuthContext"
 
 const Home: React.FC = () => {
@@ -25,34 +25,7 @@ const Home: React.FC = () => {
                 </Typography>
             </Paper>
 
-            <Grid container spacing={3}>
-                <Grid item xs={12}>
-                    <Typography variant="h6" gutterBottom>
-                        Acesso Rápido
-                    </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                    <Button variant="contained" color="primary" fullWidth href="/produtos-fora" sx={{ p: 2, height: "100%" }}>
-                        Produtos Enco-Fora
-                    </Button>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        href="/produtos-etiquetas"
-                        sx={{ p: 2, height: "100%" }}
-                    >
-                        Produtos Etiquetas
-                    </Button>
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                    <Button variant="contained" color="primary" fullWidth href="/promocao" sx={{ p: 2, height: "100%" }}>
-                        Produtos Promoção
-                    </Button>
-                </Grid>
-            </Grid>
+            {/* Seção de acesso rápido removida conforme solicitação */}
         </Box>
     )
 }
