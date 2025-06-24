@@ -29,6 +29,7 @@ import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
 import DeleteIcon from "@mui/icons-material/Delete"
 import CheckCircleIcon from "@mui/icons-material/CheckCircle"
+import { Visibility as VisibilityIcon } from "@mui/icons-material"
 import { useAuth } from "../contexts/AuthContext"
 import * as autorizacaoCompraService from "../services/autorizacaoCompraService"
 import { formatarData, formatarMoeda } from "../utils/formatters"
@@ -76,6 +77,12 @@ const AutorizacaoCompraPage: React.FC = () => {
     const handleEditar = (id: number | undefined) => {
         if (id) {
             navigate(`/controladoria/autorizacao-compra/editar/${id}`)
+        }
+    }
+
+    const handleVisualizar = (id: number | undefined) => {
+        if (id) {
+            navigate(`/controladoria/autorizacao-compra/visualizar/${id}`)
         }
     }
 
@@ -173,29 +180,54 @@ const AutorizacaoCompraPage: React.FC = () => {
     }
 
     const getStatusChip = (autorizacao: AutorizacaoCompra) => {
-        if (autorizacao.autorizado_diretoria) {
-            return (
+        const chips: React.ReactNode[] = []
+
+        if (autorizacao.autorizado_controladoria) {
+            chips.push(
                 <Tooltip
+                    key="ctrl"
+                    title={`Liberado em ${formatarData(
+                        autorizacao.data_autorizacao_controladoria || "",
+                    )} por ${autorizacao.usuario_controladoria || ""}`}
+                >
+                    <Chip
+                        label="Liberado Controladoria"
+                        color="primary"
+                        size="small"
+                        sx={{ mr: 0.5 }}
+                    />
+                </Tooltip>,
+            )
+        } else {
+            chips.push(
+                <Chip
+                    key="aguarda"
+                    label="Aguardando Controladoria"
+                    color="warning"
+                    size="small"
+                    sx={{ mr: 0.5 }}
+                />,
+            )
+        }
+
+        if (autorizacao.autorizado_diretoria) {
+            chips.push(
+                <Tooltip
+                    key="dir"
                     title={`Liberado em ${formatarData(
                         autorizacao.data_autorizacao_diretoria || "",
                     )} por ${autorizacao.usuario_diretoria || ""}`}
                 >
                     <Chip label="Liberado Diretoria" color="success" size="small" />
-                </Tooltip>
+                </Tooltip>,
             )
-        } else if (autorizacao.autorizado_controladoria) {
-            return (
-                <Tooltip
-                    title={`Liberado em ${formatarData(
-                        autorizacao.data_autorizacao_controladoria || "",
-                    )} por ${autorizacao.usuario_controladoria || ""}`}
-                >
-                    <Chip label="Liberado Controladoria" color="primary" size="small" />
-                </Tooltip>
-            )
-        } else {
-            return <Chip label="Aguardando Controladoria" color="warning" size="small" />
         }
+
+        return (
+            <Box display="flex" flexWrap="wrap">
+                {chips}
+            </Box>
+        )
     }
 
     // Verifica se o usuário pode editar a autorização
@@ -282,6 +314,11 @@ const AutorizacaoCompraPage: React.FC = () => {
                                             <TableCell>{getStatusChip(autorizacao)}</TableCell>
                                             <TableCell>
                                                 <Box display="flex">
+                                                    <Tooltip title="Visualizar">
+                                                        <IconButton size="small" color="info" onClick={() => handleVisualizar(autorizacao.id)}>
+                                                            <VisibilityIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                     {podeEditar(autorizacao) && (
                                                         <Tooltip title="Editar">
                                                             <IconButton size="small" onClick={() => handleEditar(autorizacao.id)}>

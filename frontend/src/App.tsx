@@ -13,6 +13,7 @@ import VendedorMetas from "./pages/VendedorMetas"
 import VendedorMetaFormulario from "./pages/VendedorMetaFormulario"
 import AutorizacaoCompraPage from "./pages/AutorizacaoCompra"
 import AutorizacaoCompraFormulario from "./pages/AutorizacaoCompraFormulario"
+import AutorizacaoCompraDetalhes from "./pages/AutorizacaoCompraDetalhes"
 import { AuthProvider } from "./contexts/AuthContext"
 import { ThemeProvider } from "./contexts/ThemeContext"
 
@@ -171,6 +172,16 @@ function App() {
                 <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <AutorizacaoCompraFormulario />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controladoria/autorizacao-compra/visualizar/:id"
+              element={
+                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                  <Layout>
+                    <AutorizacaoCompraDetalhes />
                   </Layout>
                 </ProtectedRoute>
               }
