@@ -180,3 +180,22 @@ export const salvarPermissoesNivel = async (
         client.release()
     }
 }
+
+export const verificarPermissaoModulo = async (
+    codigo: string,
+    rota: string,
+    acao: "visualizar" | "incluir" | "editar" | "excluir",
+): Promise<boolean> => {
+    const query = `
+        SELECT p.visualizar, p.incluir, p.editar, p.excluir
+        FROM scc_permissoes_nivel p
+        JOIN scc_modulos m ON m.id = p.id_modulo
+        WHERE p.codigo_nivel = $1 AND m.rota = $2
+    `
+    const result = await pool.query(query, [codigo, rota])
+    if (result.rows.length === 0) {
+        return false
+    }
+    const permissao = result.rows[0] as PermissaoNivel
+    return Boolean(permissao[acao])
+}

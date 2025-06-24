@@ -1,6 +1,6 @@
 import { Router } from "express"
 import * as promocaoController from "../controllers/promocaoController"
-import { verificarAutenticacao, verificarNivel } from "../middlewares/authMiddleware"
+import { verificarAutenticacao, verificarPermissao } from "../middlewares/authMiddleware"
 
 const router = Router()
 
@@ -12,6 +12,10 @@ router.get("/", promocaoController.getProdutosPromocao)
 router.get("/buscar", promocaoController.buscarProdutosPromocao)
 
 // Rota para importação (apenas níveis específicos)
-router.post("/importar", verificarNivel(["00", "15"]), promocaoController.importarProdutosPromocao)
+router.post(
+    "/importar",
+    verificarPermissao("promocoes", "incluir"),
+    promocaoController.importarProdutosPromocao,
+)
 
 export default router

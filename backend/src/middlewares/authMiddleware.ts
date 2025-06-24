@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express"
 import { verificarToken } from "../services/authService"
+import { verificarPermissaoModulo } from "../services/controleAcessoService"
 
 // Interface para estender o objeto Request
 declare global {
@@ -50,5 +51,33 @@ export const verificarNivel = (niveisPermitidos: string[]) => {
         }
 
         next()
+    }
+}
+
+export const verificarPermissao = (
+    rota: string,
+    acao: "visualizar" | "incluir" | "editar" | "excluir",
+) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
+        if (!req.usuario) {
+            return res.status(401).json({ mensagem: "Usuário não autenticado" })
+        }
+
+        try {
+            const permitido = await verificarPermissaoModulo(
+                req.usuario.nivel,
+                rota,
+                acao,
+            )
+            if (!permitido) {
+                return res
+                    .status(403)
+                    .json({ mensagem: "Acesso negado. Permissão insuficiente." })
+            }
+            next()
+        } catch (error) {
+            console.error("Erro ao verificar permissão:", error)
+            res.status(500).json({ mensagem: "Erro ao verificar permissão" })
+        }
     }
 }
