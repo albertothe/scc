@@ -12,11 +12,13 @@ import { isValid, isAfter, addDays } from "date-fns"
 interface FiltroDataIntervaloProps {
     onFiltrar: (dataInicio: Date | null, dataFim: Date | null) => void
     label?: string
+    showQuickFilters?: boolean
 }
 
 const FiltroDataIntervalo: React.FC<FiltroDataIntervaloProps> = ({
     onFiltrar,
     label = "Filtrar por data de validade:",
+    showQuickFilters = true,
 }) => {
     const [dataInicio, setDataInicio] = useState<Date | null>(null)
     const [dataFim, setDataFim] = useState<Date | null>(null)
@@ -106,18 +108,22 @@ const FiltroDataIntervalo: React.FC<FiltroDataIntervaloProps> = ({
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Typography variant="caption" sx={{ mr: 1 }}>
-                        Filtros rápidos:
-                    </Typography>
-                    <Button size="small" variant="outlined" onClick={() => aplicarFiltroRapido(7)} sx={{ mr: 1, mt: 1 }}>
-                        Próximos 7 dias
-                    </Button>
-                    <Button size="small" variant="outlined" onClick={() => aplicarFiltroRapido(15)} sx={{ mr: 1, mt: 1 }}>
-                        Próximos 15 dias
-                    </Button>
-                    <Button size="small" variant="outlined" onClick={() => aplicarFiltroRapido(30)} sx={{ mr: 1, mt: 1 }}>
-                        Próximos 30 dias
-                    </Button>
+                    {showQuickFilters && (
+                        <>
+                            <Typography variant="caption" sx={{ mr: 1 }}>
+                                Filtros rápidos:
+                            </Typography>
+                            <Button size="small" variant="outlined" onClick={() => aplicarFiltroRapido(7)} sx={{ mr: 1, mt: 1 }}>
+                                Próximos 7 dias
+                            </Button>
+                            <Button size="small" variant="outlined" onClick={() => aplicarFiltroRapido(15)} sx={{ mr: 1, mt: 1 }}>
+                                Próximos 15 dias
+                            </Button>
+                            <Button size="small" variant="outlined" onClick={() => aplicarFiltroRapido(30)} sx={{ mr: 1, mt: 1 }}>
+                                Próximos 30 dias
+                            </Button>
+                        </>
+                    )}
                     <Button size="small" color="secondary" onClick={handleLimpar} sx={{ mt: 1 }}>
                         Limpar
                     </Button>
