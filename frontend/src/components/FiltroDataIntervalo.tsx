@@ -101,9 +101,17 @@ const FiltroDataIntervalo: React.FC<FiltroDataIntervaloProps> = ({
                     />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
-                    <Button variant="contained" color="primary" onClick={handleFiltrar} disabled={!!error} fullWidth>
+                <Grid item xs={12} md={4} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleFiltrar}
+                        disabled={!!error}
+                    >
                         Aplicar Filtro
+                    </Button>
+                    <Button variant="outlined" color="secondary" onClick={handleLimpar}>
+                        Limpar
                     </Button>
                 </Grid>
 
@@ -124,9 +132,6 @@ const FiltroDataIntervalo: React.FC<FiltroDataIntervaloProps> = ({
                             </Button>
                         </>
                     )}
-                    <Button size="small" color="secondary" onClick={handleLimpar} sx={{ mt: 1 }}>
-                        Limpar
-                    </Button>
                 </Grid>
             </Grid>
         </LocalizationProvider>
