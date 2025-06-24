@@ -8,17 +8,22 @@ import CssBaseline from "@mui/material/CssBaseline"
 
 type ThemeContextType = {
     darkMode: boolean
+    toggleDarkMode: () => void
 }
 
 const ThemeContext = createContext<ThemeContextType>({
     darkMode: false,
+    toggleDarkMode: () => {}
 })
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // Usar preferência do sistema ao iniciar
+    // Usar preferência salva ou padrão claro
     const [darkMode, setDarkMode] = useState<boolean>(() => {
         if (typeof window !== "undefined") {
-            return window.matchMedia("(prefers-color-scheme: dark)").matches
+            const savedMode = localStorage.getItem("darkMode")
+            if (savedMode !== null) {
+                return savedMode === "true"
+            }
         }
         return false
     })
@@ -67,11 +72,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         )
     }, [darkMode])
 
+    // Alternar entre temas
+    const toggleDarkMode = () => {
+        setDarkMode((prevMode) => !prevMode)
+    }
+
+    // Salvar preferência quando mudar
+    useEffect(() => {
+        localStorage.setItem("darkMode", String(darkMode))
+    }, [darkMode])
+
     // Sincronizar com mudanças na preferência do sistema
     useEffect(() => {
         const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
         const handleChange = (e: MediaQueryListEvent) => {
-            setDarkMode(e.matches)
+            // Só atualizar automaticamente se o usuário não tiver definido uma preferência
+            if (localStorage.getItem("darkMode") === null) {
+                setDarkMode(e.matches)
+            }
         }
 
         // Adicionar listener para mudanças na preferência do sistema
@@ -86,7 +104,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [])
 
     return (
-        <ThemeContext.Provider value={{ darkMode }}>
+        <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
             <MuiThemeProvider theme={theme}>
                 <CssBaseline />
                 {children}

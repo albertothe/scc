@@ -19,9 +19,9 @@ export const autenticarUsuario = async (usuario: string, senha: string): Promise
 
         // Consultar usuário na view
         const query = `
-      SELECT usuario, codusuario, nivel 
-      FROM vs_pwb_usuarios 
-      WHERE usuario = $1 AND senha = $2 AND nivel IN ('00','06','15','80')
+      SELECT usuario, codusuario, nivel
+      FROM vs_pwb_usuarios
+      WHERE usuario = $1 AND senha = $2
     `
 
         const result = await pool.query(query, [usuarioUpper, senhaMD5])
