@@ -51,7 +51,7 @@ function App() {
             <Route
               path="/produtos-fora"
               element={
-                <ProtectedRoute rota="/produtos-fora">
+                <ProtectedRoute rota="produtos">
                   <Layout>
                     <ProdutosFora />
                   </Layout>
@@ -61,7 +61,7 @@ function App() {
             <Route
               path="/produtos-etiquetas"
               element={
-                <ProtectedRoute rota="/produtos-etiquetas">
+                <ProtectedRoute rota="produtos">
                   <Layout>
                     <ProdutosEtiquetas />
                   </Layout>
@@ -71,7 +71,7 @@ function App() {
             <Route
               path="/promocao"
               element={
-                <ProtectedRoute rota="/promocao">
+                <ProtectedRoute rota="promocoes">
                   <Layout>
                     <ProdutosPromocao />
                   </Layout>
@@ -82,7 +82,7 @@ function App() {
             <Route
               path="/precificacao"
               element={
-                <ProtectedRoute rota="/precificacao">
+                <ProtectedRoute rota="produtos">
                   <Layout>
                     <Precificacao />
                   </Layout>
@@ -92,7 +92,7 @@ function App() {
             <Route
               path="/comissao/faixas"
               element={
-                <ProtectedRoute rota="/comissao/faixas">
+                <ProtectedRoute rota="comissoes">
                   <Layout>
                     <ComissaoFaixas />
                   </Layout>
@@ -102,7 +102,7 @@ function App() {
             <Route
               path="/comissao/faixas/nova"
               element={
-                <ProtectedRoute rota="/comissao/faixas">
+                <ProtectedRoute rota="comissoes">
                   <Layout>
                     <ComissaoFormulario />
                   </Layout>
@@ -112,7 +112,7 @@ function App() {
             <Route
               path="/comissao/faixas/editar/:id"
               element={
-                <ProtectedRoute rota="/comissao/faixas">
+                <ProtectedRoute rota="comissoes">
                   <Layout>
                     <ComissaoFormulario />
                   </Layout>
@@ -122,7 +122,7 @@ function App() {
             <Route
               path="/comissao/metas"
               element={
-                <ProtectedRoute rota="/comissao/metas">
+                <ProtectedRoute rota="vendedor-metas">
                   <Layout>
                     <VendedorMetas />
                   </Layout>
@@ -132,7 +132,7 @@ function App() {
             <Route
               path="/comissao/metas/nova"
               element={
-                <ProtectedRoute rota="/comissao/metas">
+                <ProtectedRoute rota="vendedor-metas">
                   <Layout>
                     <VendedorMetaFormulario />
                   </Layout>
@@ -142,7 +142,7 @@ function App() {
             <Route
               path="/comissao/metas/editar/:codvendedor"
               element={
-                <ProtectedRoute rota="/comissao/metas">
+                <ProtectedRoute rota="vendedor-metas">
                   <Layout>
                     <VendedorMetaFormulario />
                   </Layout>
@@ -152,7 +152,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra"
               element={
-                <ProtectedRoute rota="/controladoria/autorizacao-compra">
+                <ProtectedRoute rota="autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraPage />
                   </Layout>
@@ -162,7 +162,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/novo"
               element={
-                <ProtectedRoute rota="/controladoria/autorizacao-compra">
+                <ProtectedRoute rota="autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraFormulario />
                   </Layout>
@@ -172,7 +172,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/editar/:id"
               element={
-                <ProtectedRoute rota="/controladoria/autorizacao-compra">
+                <ProtectedRoute rota="autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraFormulario />
                   </Layout>
@@ -182,7 +182,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/visualizar/:id"
               element={
-                <ProtectedRoute rota="/controladoria/autorizacao-compra">
+                <ProtectedRoute rota="autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraDetalhes />
                   </Layout>
@@ -192,7 +192,7 @@ function App() {
             <Route
               path="/controle-acesso/modulos"
               element={
-                <ProtectedRoute rota="/controle-acesso/modulos">
+                <ProtectedRoute rota="controle-acesso">
                   <Layout>
                     <ControleAcessoModulos />
                   </Layout>
@@ -202,7 +202,7 @@ function App() {
             <Route
               path="/controle-acesso/niveis"
               element={
-                <ProtectedRoute rota="/controle-acesso/niveis">
+                <ProtectedRoute rota="controle-acesso">
                   <Layout>
                     <ControleAcessoNiveis />
                   </Layout>
@@ -212,7 +212,7 @@ function App() {
             <Route
               path="/controle-acesso/permissoes"
               element={
-                <ProtectedRoute rota="/controle-acesso/permissoes">
+                <ProtectedRoute rota="controle-acesso">
                   <Layout>
                     <ControleAcessoPermissoes />
                   </Layout>

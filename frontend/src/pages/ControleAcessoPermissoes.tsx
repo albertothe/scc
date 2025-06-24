@@ -26,8 +26,8 @@ const ControleAcessoPermissoes: React.FC = () => {
   const [modulos, setModulos] = useState<Modulo[]>([])
   const [nivelSel, setNivelSel] = useState<string>("")
   const [permissoes, setPermissoes] = useState<Record<number, PermissaoNivel>>({})
-  const { temPermissao } = useAuth()
-  const podeEditar = temPermissao(["00"])
+  const { temPermissaoModulo } = useAuth()
+  const podeEditar = temPermissaoModulo("controle-acesso", "editar")
 
   useEffect(() => {
     const carregar = async () => {
