@@ -209,7 +209,6 @@ const AutorizacaoCompraPage: React.FC = () => {
                 />,
             )
         }
-
         if (autorizacao.autorizado_diretoria) {
             chips.push(
                 <Tooltip
@@ -220,6 +219,16 @@ const AutorizacaoCompraPage: React.FC = () => {
                 >
                     <Chip label="Liberado Diretoria" color="success" size="small" />
                 </Tooltip>,
+            )
+        } else if (autorizacao.autorizado_controladoria) {
+            chips.push(
+                <Chip
+                    key="aguarda_dir"
+                    label="Aguardando Diretoria"
+                    color="warning"
+                    size="small"
+                    sx={{ mr: 0.5 }}
+                />,
             )
         }
 
