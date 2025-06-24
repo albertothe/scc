@@ -51,7 +51,7 @@ function App() {
             <Route
               path="/produtos-fora"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/produtos-fora">
                   <Layout>
                     <ProdutosFora />
                   </Layout>
@@ -61,7 +61,7 @@ function App() {
             <Route
               path="/produtos-etiquetas"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/produtos-etiquetas">
                   <Layout>
                     <ProdutosEtiquetas />
                   </Layout>
@@ -71,7 +71,7 @@ function App() {
             <Route
               path="/promocao"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/promocao">
                   <Layout>
                     <ProdutosPromocao />
                   </Layout>
@@ -82,7 +82,7 @@ function App() {
             <Route
               path="/precificacao"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/precificacao">
                   <Layout>
                     <Precificacao />
                   </Layout>
@@ -92,7 +92,7 @@ function App() {
             <Route
               path="/comissao/faixas"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/comissao/faixas">
                   <Layout>
                     <ComissaoFaixas />
                   </Layout>
@@ -102,7 +102,7 @@ function App() {
             <Route
               path="/comissao/faixas/nova"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/comissao/faixas">
                   <Layout>
                     <ComissaoFormulario />
                   </Layout>
@@ -112,7 +112,7 @@ function App() {
             <Route
               path="/comissao/faixas/editar/:id"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/comissao/faixas">
                   <Layout>
                     <ComissaoFormulario />
                   </Layout>
@@ -122,7 +122,7 @@ function App() {
             <Route
               path="/comissao/metas"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/comissao/metas">
                   <Layout>
                     <VendedorMetas />
                   </Layout>
@@ -132,7 +132,7 @@ function App() {
             <Route
               path="/comissao/metas/nova"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/comissao/metas">
                   <Layout>
                     <VendedorMetaFormulario />
                   </Layout>
@@ -142,7 +142,7 @@ function App() {
             <Route
               path="/comissao/metas/editar/:codvendedor"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "15", "80"]}>
+                <ProtectedRoute rota="/comissao/metas">
                   <Layout>
                     <VendedorMetaFormulario />
                   </Layout>
@@ -152,7 +152,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                <ProtectedRoute rota="/controladoria/autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraPage />
                   </Layout>
@@ -162,7 +162,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/novo"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                <ProtectedRoute rota="/controladoria/autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraFormulario />
                   </Layout>
@@ -172,7 +172,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/editar/:id"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                <ProtectedRoute rota="/controladoria/autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraFormulario />
                   </Layout>
@@ -182,7 +182,7 @@ function App() {
             <Route
               path="/controladoria/autorizacao-compra/visualizar/:id"
               element={
-                <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
+                <ProtectedRoute rota="/controladoria/autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraDetalhes />
                   </Layout>
@@ -192,7 +192,7 @@ function App() {
             <Route
               path="/controle-acesso/modulos"
               element={
-                <ProtectedRoute niveisPermitidos={["00"]}>
+                <ProtectedRoute rota="/controle-acesso/modulos">
                   <Layout>
                     <ControleAcessoModulos />
                   </Layout>
@@ -202,7 +202,7 @@ function App() {
             <Route
               path="/controle-acesso/niveis"
               element={
-                <ProtectedRoute niveisPermitidos={["00"]}>
+                <ProtectedRoute rota="/controle-acesso/niveis">
                   <Layout>
                     <ControleAcessoNiveis />
                   </Layout>
@@ -212,7 +212,7 @@ function App() {
             <Route
               path="/controle-acesso/permissoes"
               element={
-                <ProtectedRoute niveisPermitidos={["00"]}>
+                <ProtectedRoute rota="/controle-acesso/permissoes">
                   <Layout>
                     <ControleAcessoPermissoes />
                   </Layout>
