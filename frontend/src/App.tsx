@@ -14,6 +14,9 @@ import VendedorMetaFormulario from "./pages/VendedorMetaFormulario"
 import AutorizacaoCompraPage from "./pages/AutorizacaoCompra"
 import AutorizacaoCompraFormulario from "./pages/AutorizacaoCompraFormulario"
 import AutorizacaoCompraDetalhes from "./pages/AutorizacaoCompraDetalhes"
+import ControleAcessoModulos from "./pages/ControleAcessoModulos"
+import ControleAcessoNiveis from "./pages/ControleAcessoNiveis"
+import ControleAcessoPermissoes from "./pages/ControleAcessoPermissoes"
 import { AuthProvider } from "./contexts/AuthContext"
 import { ThemeProvider } from "./contexts/ThemeContext"
 
@@ -182,6 +185,36 @@ function App() {
                 <ProtectedRoute niveisPermitidos={["00", "06", "15", "80"]}>
                   <Layout>
                     <AutorizacaoCompraDetalhes />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controle-acesso/modulos"
+              element={
+                <ProtectedRoute niveisPermitidos={["00"]}>
+                  <Layout>
+                    <ControleAcessoModulos />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controle-acesso/niveis"
+              element={
+                <ProtectedRoute niveisPermitidos={["00"]}>
+                  <Layout>
+                    <ControleAcessoNiveis />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controle-acesso/permissoes"
+              element={
+                <ProtectedRoute niveisPermitidos={["00"]}>
+                  <Layout>
+                    <ControleAcessoPermissoes />
                   </Layout>
                 </ProtectedRoute>
               }
