@@ -15,6 +15,8 @@ import {
   Switch,
   FormControlLabel,
 } from "@mui/material"
+import ConfirmacaoExclusao from "../components/ConfirmacaoExclusao"
+import InfoDialog from "../components/InfoDialog"
 import { useAuth } from "../contexts/AuthContext"
 import * as acessoService from "../services/controleAcessoService"
 import type { NivelAcesso } from "../types"
@@ -25,6 +27,8 @@ const ControleAcessoNiveis: React.FC = () => {
   const [descricao, setDescricao] = useState("")
   const [ativo, setAtivo] = useState(true)
   const [editando, setEditando] = useState<string | null>(null)
+  const [confirmacaoExclusao, setConfirmacaoExclusao] = useState<{open:boolean,codigo?:string}>({open:false})
+  const [sucesso, setSucesso] = useState(false)
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("controle-acesso", "editar")
 
@@ -58,6 +62,7 @@ const ControleAcessoNiveis: React.FC = () => {
       }
       limpar()
       await carregar()
+      setSucesso(true)
     } catch (err) {
       console.error("Erro ao salvar nível", err)
     }
@@ -70,9 +75,14 @@ const ControleAcessoNiveis: React.FC = () => {
     setEditando(nivel.codigo)
   }
 
-  const handleExcluir = async (codigo: string) => {
-    if (!window.confirm("Excluir nível?")) return
-    await acessoService.excluirNivel(codigo)
+  const handleExcluir = (codigo: string) => {
+    setConfirmacaoExclusao({ open: true, codigo })
+  }
+
+  const confirmarExclusao = async () => {
+    if (!confirmacaoExclusao.codigo) return
+    await acessoService.excluirNivel(confirmacaoExclusao.codigo)
+    setConfirmacaoExclusao({ open: false })
     await carregar()
   }
 
@@ -125,6 +135,18 @@ const ControleAcessoNiveis: React.FC = () => {
           </TableBody>
         </Table>
       </Paper>
+      <ConfirmacaoExclusao
+        open={confirmacaoExclusao.open}
+        onClose={() => setConfirmacaoExclusao({ open: false })}
+        onConfirm={confirmarExclusao}
+        itemNome="nível"
+      />
+      <InfoDialog
+        open={sucesso}
+        onClose={() => setSucesso(false)}
+        title="Sucesso"
+        message="Registro salvo com sucesso"
+      />
     </Box>
   )
 }

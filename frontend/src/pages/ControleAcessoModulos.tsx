@@ -15,6 +15,8 @@ import {
   Switch,
   FormControlLabel,
 } from "@mui/material"
+import ConfirmacaoExclusao from "../components/ConfirmacaoExclusao"
+import InfoDialog from "../components/InfoDialog"
 import { useAuth } from "../contexts/AuthContext"
 import * as acessoService from "../services/controleAcessoService"
 import type { Modulo } from "../types"
@@ -25,6 +27,8 @@ const ControleAcessoModulos: React.FC = () => {
   const [rota, setRota] = useState("")
   const [ativo, setAtivo] = useState(true)
   const [editId, setEditId] = useState<number | null>(null)
+  const [confirmacaoExclusao, setConfirmacaoExclusao] = useState<{open:boolean,id?:number}>({open:false})
+  const [sucesso, setSucesso] = useState(false)
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("controle-acesso", "editar")
 
@@ -58,6 +62,7 @@ const ControleAcessoModulos: React.FC = () => {
       }
       limpar()
       await carregar()
+      setSucesso(true)
     } catch (err) {
       console.error("Erro ao salvar módulo", err)
     }
@@ -70,9 +75,14 @@ const ControleAcessoModulos: React.FC = () => {
     setEditId(m.id)
   }
 
-  const handleExcluir = async (id: number) => {
-    if (!window.confirm("Excluir módulo?")) return
-    await acessoService.excluirModulo(id)
+  const handleExcluir = (id: number) => {
+    setConfirmacaoExclusao({ open: true, id })
+  }
+
+  const confirmarExclusao = async () => {
+    if (!confirmacaoExclusao.id) return
+    await acessoService.excluirModulo(confirmacaoExclusao.id)
+    setConfirmacaoExclusao({ open: false })
     await carregar()
   }
 
@@ -123,6 +133,18 @@ const ControleAcessoModulos: React.FC = () => {
           </TableBody>
         </Table>
       </Paper>
+      <ConfirmacaoExclusao
+        open={confirmacaoExclusao.open}
+        onClose={() => setConfirmacaoExclusao({ open: false })}
+        onConfirm={confirmarExclusao}
+        itemNome="módulo"
+      />
+      <InfoDialog
+        open={sucesso}
+        onClose={() => setSucesso(false)}
+        title="Sucesso"
+        message="Registro salvo com sucesso"
+      />
     </Box>
   )
 }
