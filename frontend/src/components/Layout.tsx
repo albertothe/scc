@@ -39,6 +39,10 @@ import {
   Person as PersonIcon,
   AccountBalance as ControladoriaIcon, // Ícone para Controladoria
   ShoppingCart as AutorizacaoIcon, // Ícone para Autorização Compra
+  Security as AcessoIcon,
+  Settings as ModulosIcon,
+  People as NiveisIcon,
+  VpnKey as PermissoesIcon,
 } from "@mui/icons-material"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
@@ -131,6 +135,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       text: "Controladoria",
       icon: <ControladoriaIcon />,
       subItems: [{ text: "Autorização Compra", icon: <AutorizacaoIcon />, path: "/controladoria/autorizacao-compra" }],
+    },
+    {
+      text: "Controle de Acesso",
+      icon: <AcessoIcon />,
+      subItems: [
+        { text: "Módulos", icon: <ModulosIcon />, path: "/controle-acesso/modulos" },
+        { text: "Níveis", icon: <NiveisIcon />, path: "/controle-acesso/niveis" },
+        { text: "Permissões", icon: <PermissoesIcon />, path: "/controle-acesso/permissoes" },
+      ],
     },
   ]
 

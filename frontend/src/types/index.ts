@@ -108,3 +108,28 @@ export interface AutorizacaoCompra {
   usuario_diretoria?: string
   liberada?: boolean
 }
+
+// Tipos para o módulo de Controle de Acesso
+export interface Modulo {
+  id: number
+  nome: string
+  rota: string
+  icone?: string
+  ordem?: number
+  ativo: boolean
+}
+
+export interface NivelAcesso {
+  codigo: string
+  descricao: string
+  ativo: boolean
+}
+
+export interface PermissaoNivel {
+  codigo_nivel: string
+  id_modulo: number
+  visualizar: boolean
+  incluir: boolean
+  editar: boolean
+  excluir: boolean
+}
