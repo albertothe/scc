@@ -1,31 +1,49 @@
 import { Router } from "express"
-import { verificarAutenticacao, verificarNivel } from "../middlewares/authMiddleware"
+import { verificarAutenticacao, verificarPermissao } from "../middlewares/authMiddleware"
 import * as autorizacaoCompraController from "../controllers/autorizacaoCompraController"
 
 const router = Router()
 
 // Rotas para autorização de compra
-router.post("/", verificarAutenticacao, autorizacaoCompraController.criarAutorizacao)
-router.get("/", verificarAutenticacao, autorizacaoCompraController.listarAutorizacoes)
-router.get("/:id", verificarAutenticacao, autorizacaoCompraController.obterAutorizacao)
+router.post(
+    "/",
+    verificarAutenticacao,
+    verificarPermissao("autorizacao-compra", "incluir"),
+    autorizacaoCompraController.criarAutorizacao,
+)
+router.get(
+    "/",
+    verificarAutenticacao,
+    autorizacaoCompraController.listarAutorizacoes,
+)
+router.get(
+    "/:id",
+    verificarAutenticacao,
+    autorizacaoCompraController.obterAutorizacao,
+)
 router.put(
     "/:id/autorizar-controladoria",
     verificarAutenticacao,
-    verificarNivel(["06"]),
+    verificarPermissao("autorizacao-compra", "editar"),
     autorizacaoCompraController.autorizarControladoria,
 )
 router.put(
     "/:id/reverter-controladoria",
     verificarAutenticacao,
-    verificarNivel(["06"]),
+    verificarPermissao("autorizacao-compra", "editar"),
     autorizacaoCompraController.reverterControladoria,
 )
 router.put(
     "/:id/autorizar-diretoria",
     verificarAutenticacao,
-    verificarNivel(["00"]),
+    verificarPermissao("autorizacao-compra", "editar"),
     autorizacaoCompraController.autorizarDiretoria,
 )
-router.delete("/:id", verificarAutenticacao, autorizacaoCompraController.excluirAutorizacao)
+router.delete(
+    "/:id",
+    verificarAutenticacao,
+    verificarPermissao("autorizacao-compra", "excluir"),
+    autorizacaoCompraController.excluirAutorizacao,
+)
 
 export default router

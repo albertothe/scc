@@ -1,6 +1,6 @@
 import { Router } from "express"
 import * as produtoController from "../controllers/produtoController"
-import { verificarAutenticacao, verificarNivel } from "../middlewares/authMiddleware"
+import { verificarAutenticacao, verificarPermissao } from "../middlewares/authMiddleware"
 
 const router = Router()
 
@@ -13,11 +13,27 @@ router.get("/etiquetas", produtoController.getProdutosEtiquetas)
 router.get("/buscar", produtoController.buscarProdutos)
 
 // Rotas que requerem nível específico
-router.post("/fora", verificarNivel(["00", "15"]), produtoController.adicionarProdutoFora)
-router.delete("/fora/:codproduto/:mesAno", verificarNivel(["00", "15"]), produtoController.removerProdutoFora)
-router.post("/etiqueta", verificarNivel(["00", "15"]), produtoController.adicionarProdutoBandeira)
-router.delete("/etiqueta/:codproduto/:mesAno", verificarNivel(["00", "15"]), produtoController.removerProdutoBandeira)
-router.post("/fora/importar", verificarNivel(["00"]), produtoController.importarProdutosFora)
-router.post("/etiqueta/importar", verificarNivel(["00"]), produtoController.importarProdutosEtiquetas)
+router.post("/fora", verificarPermissao("produtos", "incluir"), produtoController.adicionarProdutoFora)
+router.delete(
+    "/fora/:codproduto/:mesAno",
+    verificarPermissao("produtos", "excluir"),
+    produtoController.removerProdutoFora,
+)
+router.post("/etiqueta", verificarPermissao("produtos", "incluir"), produtoController.adicionarProdutoBandeira)
+router.delete(
+    "/etiqueta/:codproduto/:mesAno",
+    verificarPermissao("produtos", "excluir"),
+    produtoController.removerProdutoBandeira,
+)
+router.post(
+    "/fora/importar",
+    verificarPermissao("produtos", "incluir"),
+    produtoController.importarProdutosFora,
+)
+router.post(
+    "/etiqueta/importar",
+    verificarPermissao("produtos", "incluir"),
+    produtoController.importarProdutosEtiquetas,
+)
 
 export default router

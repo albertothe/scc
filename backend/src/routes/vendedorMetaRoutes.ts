@@ -1,6 +1,6 @@
 import express from "express"
 import * as vendedorMetaController from "../controllers/vendedorMetaController"
-import { verificarAutenticacao, verificarNivel } from "../middlewares/authMiddleware"
+import { verificarAutenticacao, verificarPermissao } from "../middlewares/authMiddleware"
 
 const router = express.Router()
 
@@ -18,6 +18,11 @@ router.delete("/:codvendedor/:competencia", verificarAutenticacao, vendedorMetaC
 router.post("/copiar", verificarAutenticacao, vendedorMetaController.copiarMetas)
 
 // Rota para importar metas em lote
-router.post("/importar", verificarAutenticacao, verificarNivel(["00", "15"]), vendedorMetaController.importarMetas)
+router.post(
+    "/importar",
+    verificarAutenticacao,
+    verificarPermissao("vendedor-metas", "incluir"),
+    vendedorMetaController.importarMetas,
+)
 
 export default router
