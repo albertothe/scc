@@ -107,6 +107,8 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
                     {" "}
                     {autorizacao.autorizado_diretoria
                         ? `Liberado em ${formatarData(autorizacao.data_autorizacao_diretoria || "")} por ${autorizacao.usuario_diretoria}`
+                        : autorizacao.autorizado_controladoria
+                        ? "Aguardando Diretoria"
                         : "Aguardando"}
                 </Typography>
             </Paper>
