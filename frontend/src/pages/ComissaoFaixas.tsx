@@ -74,8 +74,8 @@ const ComissaoFaixas: React.FC = () => {
     const [filtroAberto, setFiltroAberto] = useState(false)
 
     const navigate = useNavigate()
-    const { temPermissao } = useAuth()
-    const podeEditar = temPermissao(["00"])
+    const { temPermissaoModulo } = useAuth()
+    const podeEditar = temPermissaoModulo("comissoes", "editar")
 
     // Carregar faixas ao montar o componente
     useEffect(() => {

@@ -25,8 +25,8 @@ const ControleAcessoNiveis: React.FC = () => {
   const [descricao, setDescricao] = useState("")
   const [ativo, setAtivo] = useState(true)
   const [editando, setEditando] = useState<string | null>(null)
-  const { temPermissao } = useAuth()
-  const podeEditar = temPermissao(["00"])
+  const { temPermissaoModulo } = useAuth()
+  const podeEditar = temPermissaoModulo("controle-acesso", "editar")
 
   const carregar = async () => {
     try {

@@ -66,8 +66,8 @@ const VendedorMetas: React.FC = () => {
     const [dialogoImportacaoAberto, setDialogoImportacaoAberto] = useState(false)
 
     const navigate = useNavigate()
-    const { temPermissao } = useAuth()
-    const podeEditar = temPermissao(["00"])
+    const { temPermissaoModulo } = useAuth()
+    const podeEditar = temPermissaoModulo("vendedor-metas", "editar")
 
     // Carregar metas ao montar o componente ou quando a competência mudar
     useEffect(() => {

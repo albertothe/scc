@@ -25,8 +25,8 @@ const ControleAcessoModulos: React.FC = () => {
   const [rota, setRota] = useState("")
   const [ativo, setAtivo] = useState(true)
   const [editId, setEditId] = useState<number | null>(null)
-  const { temPermissao } = useAuth()
-  const podeEditar = temPermissao(["00"])
+  const { temPermissaoModulo } = useAuth()
+  const podeEditar = temPermissaoModulo("controle-acesso", "editar")
 
   const carregar = async () => {
     try {
