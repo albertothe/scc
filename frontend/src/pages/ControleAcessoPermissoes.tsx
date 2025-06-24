@@ -17,6 +17,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material"
+import InfoDialog from "../components/InfoDialog"
 import { useAuth } from "../contexts/AuthContext"
 import * as acessoService from "../services/controleAcessoService"
 import type { NivelAcesso, Modulo, PermissaoNivel } from "../types"
@@ -26,6 +27,7 @@ const ControleAcessoPermissoes: React.FC = () => {
   const [modulos, setModulos] = useState<Modulo[]>([])
   const [nivelSel, setNivelSel] = useState<string>("")
   const [permissoes, setPermissoes] = useState<Record<number, PermissaoNivel>>({})
+  const [sucesso, setSucesso] = useState(false)
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("controle-acesso", "editar")
 
@@ -58,7 +60,7 @@ const ControleAcessoPermissoes: React.FC = () => {
   const handleSalvar = async () => {
     const lista = Object.values(permissoes)
     await acessoService.salvarPermissoes(nivelSel, lista)
-    alert("Permissões salvas")
+    setSucesso(true)
   }
 
   return (
@@ -108,6 +110,12 @@ const ControleAcessoPermissoes: React.FC = () => {
           )}
         </Paper>
       )}
+      <InfoDialog
+        open={sucesso}
+        onClose={() => setSucesso(false)}
+        title="Sucesso"
+        message="Permissões salvas com sucesso"
+      />
     </Box>
   )
 }
