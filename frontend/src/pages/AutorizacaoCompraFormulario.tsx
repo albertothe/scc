@@ -9,6 +9,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import { useAuth } from "../contexts/AuthContext"
 import * as autorizacaoCompraService from "../services/autorizacaoCompraService"
 import type { AutorizacaoCompra } from "../types"
+import { LOJAS } from "../utils/lojas"
 
 const AutorizacaoCompraFormulario: React.FC = () => {
     const navigate = useNavigate()
@@ -22,25 +23,7 @@ const AutorizacaoCompraFormulario: React.FC = () => {
         severity: "success" as "success" | "error",
     })
 
-    const opcoesLojas = [
-        "LOURIVAL",
-        "KENNEDY",
-        "DIRCEU",
-        "PREMIUM",
-        "PARNAIBA",
-        "TANCREDO",
-        "PIÇARRA",
-        "TIMON",
-        "CD",
-        "BLACK",
-        "PICOS",
-        "PREM.PHB",
-        "CIMENTO",
-        "E-COMMERCE",
-        "ATACADO",
-        "LIGHT",
-        "CPTH",
-    ]
+    const opcoesLojas = LOJAS
 
     const isEdicao = !!id
 
