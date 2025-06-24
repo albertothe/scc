@@ -107,7 +107,12 @@ export const listarPermissoes = async (req: Request, res: Response): Promise<voi
 export const salvarPermissoes = async (req: Request, res: Response): Promise<void> => {
     try {
         const codigo = req.params.codigo
-        await acessoService.salvarPermissoesNivel(codigo, req.body)
+        const permissoes = Array.isArray(req.body) ? req.body : null
+        if (!permissoes) {
+            res.status(400).json({ error: "Formato de permissões inválido" })
+            return
+        }
+        await acessoService.salvarPermissoesNivel(codigo, permissoes)
         res.json({ message: "Permissões salvas" })
     } catch (error) {
         console.error("Erro ao salvar permissões:", error)
