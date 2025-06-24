@@ -116,7 +116,7 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
                             Detalhes da Autorização de Compra
                         </Typography>
                     </Box>
-                    <Box>
+                    <Box className="no-print">
                         <Button
                             variant="outlined"
                             startIcon={<PrintIcon />}
