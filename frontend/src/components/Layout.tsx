@@ -29,8 +29,6 @@ import {
   Label,
   ExitToApp,
   LocalOffer,
-  Brightness4 as DarkModeIcon,
-  Brightness7 as LightModeIcon,
   AttachMoney,
   ExpandLess,
   ExpandMore,
@@ -42,7 +40,6 @@ import {
 } from "@mui/icons-material"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
-import { useThemeMode } from "../contexts/ThemeContext"
 
 interface LayoutProps {
   children: ReactNode
@@ -71,7 +68,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"))
   const location = useLocation()
   const { logout, isAuthenticated, usuario } = useAuth()
-  const { darkMode, toggleDarkMode } = useThemeMode()
   const navigate = useNavigate()
 
   // Redirecionar para login se não estiver autenticado
@@ -366,11 +362,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               {usuario?.usuario ? usuario.usuario.charAt(0) : "U"}
             </Avatar>
-            <Tooltip title="Alternar tema" placement="right">
-              <IconButton onClick={toggleDarkMode} size="small">
-                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
+            {/* Botão de alternância de tema removido */}
           </>
         ) : (
           // Layout horizontal quando o menu está expandido
@@ -395,11 +387,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Typography>
               </Box>
             </Box>
-            <Tooltip title="Alternar tema">
-              <IconButton onClick={toggleDarkMode} size="small">
-                {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-              </IconButton>
-            </Tooltip>
+            {/* Botão de alternância de tema removido */}
           </>
         )}
       </Box>
@@ -457,14 +445,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          <IconButton
-            color="primary"
-            aria-label="toggle theme"
-            onClick={toggleDarkMode}
-            sx={{ position: "fixed", top: 10, right: 10, zIndex: 1300, bgcolor: "white" }}
-          >
-            {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
+          {/* Botão de alternância de tema removido */}
           <Drawer
             variant="temporary"
             open={drawerOpen}
