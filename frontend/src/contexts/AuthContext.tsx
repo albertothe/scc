@@ -4,6 +4,8 @@ import type React from "react"
 import { createContext, useState, useContext, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import * as authService from "../services/authService"
+import * as acessoService from "../services/controleAcessoService"
+import type { PermissaoNivel, Modulo } from "../types"
 
 interface AuthContextType {
     isAuthenticated: boolean
@@ -12,6 +14,11 @@ interface AuthContextType {
     logout: () => void
     loading: boolean
     temPermissao: (niveisPermitidos: string[]) => boolean
+    temPermissaoModulo: (
+        rota: string,
+        acao?: "visualizar" | "incluir" | "editar" | "excluir",
+    ) => boolean
+    permissoesModulo: Record<string, PermissaoNivel>
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -21,6 +28,8 @@ export const AuthContext = createContext<AuthContextType>({
     logout: () => { },
     loading: true,
     temPermissao: () => false,
+    temPermissaoModulo: () => false,
+    permissoesModulo: {},
 })
 
 export const useAuth = () => useContext(AuthContext)
@@ -32,7 +41,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         null,
     )
     const [loading, setLoading] = useState<boolean>(true)
+    const [permissoesModulo, setPermissoesModulo] = useState<Record<string, PermissaoNivel>>({})
     const navigate = useNavigate()
+
+    // Carrega permissões de módulo para o nível informado
+    const carregarPermissoesModulo = async (nivel: string) => {
+        try {
+            const [mods, perms] = await Promise.all([
+                acessoService.getModulos(),
+                acessoService.getPermissoes(nivel),
+            ])
+            const rotaMap: Record<number, string> = {}
+            mods.forEach((m: Modulo) => {
+                rotaMap[m.id] = m.rota
+            })
+            const map: Record<string, PermissaoNivel> = {}
+            perms.forEach((p) => {
+                const rota = rotaMap[p.id_modulo]
+                if (rota) {
+                    map[rota] = p
+                }
+            })
+            setPermissoesModulo(map)
+        } catch (error) {
+            console.error("Erro ao carregar permissões do módulo:", error)
+        }
+    }
 
     // Verificar se o usuário já está autenticado ao carregar a página
     useEffect(() => {
@@ -55,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             nivel: usuarioAtual.nivel,
                             id: Number(usuarioAtual.codusuario), // Usar codusuario como id
                         })
+                        await carregarPermissoesModulo(usuarioAtual.nivel)
 
                         // Se estiver na página de login, redirecionar para home
                         if (window.location.pathname === "/login") {
@@ -96,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 nivel: usuarioLogado.nivel,
                 id: Number(usuarioLogado.codusuario), // Usar codusuario como id
             })
+            await carregarPermissoesModulo(usuarioLogado.nivel)
 
             // Não fazemos o redirecionamento aqui, deixamos para o componente Login fazer
             return true
@@ -119,10 +155,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return niveisPermitidos.includes(usuario.nivel)
     }
 
+    const temPermissaoModulo = (
+        rota: string,
+        acao: "visualizar" | "incluir" | "editar" | "excluir" = "visualizar",
+    ): boolean => {
+        const perm = permissoesModulo[rota]
+        if (!perm) return false
+        return Boolean(perm[acao])
+    }
+
     console.log("AuthProvider: Estado atual", { isAuthenticated, loading, usuario })
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, usuario, login, logout, loading, temPermissao }}>
+        <AuthContext.Provider value={{
+            isAuthenticated,
+            usuario,
+            login,
+            logout,
+            loading,
+            temPermissao,
+            temPermissaoModulo,
+            permissoesModulo,
+        }}>
             {children}
         </AuthContext.Provider>
     )
