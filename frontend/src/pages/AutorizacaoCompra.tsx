@@ -32,6 +32,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle"
 import { Visibility as VisibilityIcon } from "@mui/icons-material"
 import { useAuth } from "../contexts/AuthContext"
 import * as autorizacaoCompraService from "../services/autorizacaoCompraService"
+import type { ListarAutorizacoesParams } from "../services/autorizacaoCompraService"
 import { formatarData, formatarMoeda } from "../utils/formatters"
 import type { AutorizacaoCompra } from "../types"
 import ContadorItens from "../components/ContadorItens"
@@ -73,7 +74,7 @@ const AutorizacaoCompraPage: React.FC = () => {
     const carregarAutorizacoes = async () => {
         try {
             setLoading(true)
-            const params: autorizacaoCompraService.ListarAutorizacoesParams = {
+            const params: ListarAutorizacoesParams = {
                 loja: filtroLoja || undefined,
                 setor: filtroSetor || undefined,
                 busca: filtroBusca || undefined,
