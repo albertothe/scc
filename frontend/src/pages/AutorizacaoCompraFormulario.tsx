@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Box, Button, Grid, InputAdornment, Paper, Snackbar, TextField, Typography, Alert } from "@mui/material"
+import { Box, Button, Grid, InputAdornment, Paper, Snackbar, TextField, Typography, Alert, MenuItem } from "@mui/material"
 import SaveIcon from "@mui/icons-material/Save"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import { useAuth } from "../contexts/AuthContext"
@@ -21,6 +21,26 @@ const AutorizacaoCompraFormulario: React.FC = () => {
         message: "",
         severity: "success" as "success" | "error",
     })
+
+    const opcoesLojas = [
+        "LOURIVAL",
+        "KENNEDY",
+        "DIRCEU",
+        "PREMIUM",
+        "PARNAIBA",
+        "TANCREDO",
+        "PIÇARRA",
+        "TIMON",
+        "CD",
+        "BLACK",
+        "PICOS",
+        "PREM.PHB",
+        "CIMENTO",
+        "E-COMMERCE",
+        "ATACADO",
+        "LIGHT",
+        "CPTH",
+    ]
 
     const isEdicao = !!id
 
@@ -201,6 +221,7 @@ const AutorizacaoCompraFormulario: React.FC = () => {
                     <Grid container spacing={3}>
                         <Grid item xs={12} md={6}>
                             <TextField
+                                select
                                 fullWidth
                                 label="Loja"
                                 name="loja"
@@ -210,7 +231,13 @@ const AutorizacaoCompraFormulario: React.FC = () => {
                                 helperText={formErrors.loja}
                                 disabled={loading}
                                 required
-                            />
+                            >
+                                {opcoesLojas.map((loja) => (
+                                    <MenuItem key={loja} value={loja}>
+                                        {loja}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <TextField

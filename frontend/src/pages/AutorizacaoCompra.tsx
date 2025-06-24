@@ -48,6 +48,11 @@ const AutorizacaoCompraPage: React.FC = () => {
         message: "",
         severity: "success" as "success" | "error",
     })
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean
+        id?: number
+        action?: "autorizarControladoria" | "autorizarDiretoria" | "reverterControladoria"
+    }>({ open: false })
 
     const carregarAutorizacoes = async () => {
         try {
@@ -114,6 +119,35 @@ const AutorizacaoCompraPage: React.FC = () => {
         }
         setDeleteDialogOpen(false)
         setAutorizacaoParaExcluir(null)
+    }
+
+    const abrirConfirmacao = (
+        id: number | undefined,
+        action: "autorizarControladoria" | "autorizarDiretoria" | "reverterControladoria",
+    ) => {
+        if (!id) return
+        setConfirmDialog({ open: true, id, action })
+    }
+
+    const executarConfirmacao = async () => {
+        if (!confirmDialog.id || !confirmDialog.action) {
+            setConfirmDialog({ open: false })
+            return
+        }
+
+        switch (confirmDialog.action) {
+            case "autorizarControladoria":
+                await handleAutorizarControladoria(confirmDialog.id)
+                break
+            case "autorizarDiretoria":
+                await handleAutorizarDiretoria(confirmDialog.id)
+                break
+            case "reverterControladoria":
+                await handleReverterControladoria(confirmDialog.id)
+                break
+        }
+
+        setConfirmDialog({ open: false })
     }
 
     const handleAutorizarControladoria = async (id: number | undefined) => {
@@ -195,6 +229,12 @@ const AutorizacaoCompraPage: React.FC = () => {
                         color="primary"
                         size="small"
                         sx={{ mr: 0.5 }}
+                        onClick={() =>
+                            usuario?.nivel === "06" && !autorizacao.autorizado_diretoria
+                                ? abrirConfirmacao(autorizacao.id, "reverterControladoria")
+                                : undefined
+                        }
+                        clickable={usuario?.nivel === "06" && !autorizacao.autorizado_diretoria}
                     />
                 </Tooltip>,
             )
@@ -206,6 +246,12 @@ const AutorizacaoCompraPage: React.FC = () => {
                     color="warning"
                     size="small"
                     sx={{ mr: 0.5 }}
+                    onClick={() =>
+                        usuario?.nivel === "06"
+                            ? abrirConfirmacao(autorizacao.id, "autorizarControladoria")
+                            : undefined
+                    }
+                    clickable={usuario?.nivel === "06"}
                 />,
             )
         }
@@ -228,6 +274,12 @@ const AutorizacaoCompraPage: React.FC = () => {
                     color="warning"
                     size="small"
                     sx={{ mr: 0.5 }}
+                    onClick={() =>
+                        usuario?.nivel === "00"
+                            ? abrirConfirmacao(autorizacao.id, "autorizarDiretoria")
+                            : undefined
+                    }
+                    clickable={usuario?.nivel === "00"}
                 />,
             )
         }
@@ -347,7 +399,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                                                             <IconButton
                                                                 size="small"
                                                                 color="primary"
-                                                                onClick={() => handleAutorizarControladoria(autorizacao.id)}
+                                                                onClick={() => abrirConfirmacao(autorizacao.id, "autorizarControladoria")}
                                                             >
                                                                 <CheckCircleIcon fontSize="small" />
                                                             </IconButton>
@@ -360,7 +412,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                                                                 <IconButton
                                                                     size="small"
                                                                     color="warning"
-                                                                    onClick={() => handleReverterControladoria(autorizacao.id)}
+                                                                    onClick={() => abrirConfirmacao(autorizacao.id, "reverterControladoria")}
                                                                 >
                                                                     <DeleteIcon fontSize="small" />
                                                                 </IconButton>
@@ -371,7 +423,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                                                             <IconButton
                                                                 size="small"
                                                                 color="secondary"
-                                                                onClick={() => handleAutorizarDiretoria(autorizacao.id)}
+                                                                onClick={() => abrirConfirmacao(autorizacao.id, "autorizarDiretoria")}
                                                             >
                                                                 <CheckCircleIcon fontSize="small" />
                                                             </IconButton>
@@ -400,6 +452,26 @@ const AutorizacaoCompraPage: React.FC = () => {
                     </Button>
                     <Button onClick={confirmarExclusao} color="error" autoFocus>
                         Excluir
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialogo de confirmação de ações */}
+            <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false })}>
+                <DialogTitle>Confirmar Ação</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        {confirmDialog.action === "autorizarControladoria" && "Deseja autorizar pela Controladoria?"}
+                        {confirmDialog.action === "reverterControladoria" && "Deseja reverter a autorização da Controladoria?"}
+                        {confirmDialog.action === "autorizarDiretoria" && "Deseja autorizar pela Diretoria?"}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmDialog({ open: false })} color="primary">
+                        Cancelar
+                    </Button>
+                    <Button onClick={executarConfirmacao} color="secondary" autoFocus>
+                        Confirmar
                     </Button>
                 </DialogActions>
             </Dialog>

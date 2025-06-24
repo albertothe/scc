@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import {
     Box,
@@ -13,6 +13,8 @@ import {
 } from "@mui/material"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import PrintIcon from "@mui/icons-material/Print"
+import { jsPDF } from "jspdf"
+import html2canvas from "html2canvas"
 import VisibilityIcon from "@mui/icons-material/Visibility"
 import PersonIcon from "@mui/icons-material/Person"
 import StoreIcon from "@mui/icons-material/Store"
@@ -49,12 +51,21 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
         carregar()
     }, [id])
 
+    const pdfRef = useRef<HTMLDivElement>(null)
+
     const handleVoltar = () => {
         navigate("/controladoria/autorizacao-compra")
     }
 
-    const handleImprimir = () => {
-        window.print()
+    const handleImprimir = async () => {
+        if (!pdfRef.current) return
+        const canvas = await html2canvas(pdfRef.current)
+        const imgData = canvas.toDataURL("image/png")
+        const pdf = new jsPDF()
+        const pdfWidth = pdf.internal.pageSize.getWidth()
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
+        pdf.save("autorizacao-compra.pdf")
     }
 
     if (loading) {
@@ -96,6 +107,7 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
 
     return (
         <Box p={3}>
+            <div ref={pdfRef}>
             <Paper sx={{ p: 3 }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                     <Box display="flex" alignItems="center">
@@ -111,7 +123,7 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
                             onClick={handleImprimir}
                             sx={{ mr: 1 }}
                         >
-                            Imprimir
+                            Gerar PDF
                         </Button>
                         <Button startIcon={<ArrowBackIcon />} onClick={handleVoltar}>
                             Voltar
@@ -260,6 +272,7 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
                     </Box>
                 </Box>
             </Paper>
+            </div>
         </Box>
     )
 }
