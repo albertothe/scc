@@ -108,7 +108,7 @@ const FiltroDataIntervalo: React.FC<FiltroDataIntervaloProps> = ({
                         onClick={handleFiltrar}
                         disabled={!!error}
                     >
-                        Aplicar Filtro
+                        Filtrar
                     </Button>
                     <Button variant="outlined" color="secondary" onClick={handleLimpar}>
                         Limpar
