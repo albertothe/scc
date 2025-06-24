@@ -28,11 +28,31 @@ export const listarAutorizacoes = async (req: Request, res: Response): Promise<v
             return
         }
 
-        const autorizacoes = await autorizacaoCompraService.listarAutorizacoes(
+        const page = Number.parseInt((req.query.page as string) || "1")
+        const limit = Number.parseInt((req.query.limit as string) || "10")
+
+        const filtros: {
+            loja?: string
+            setor?: string
+            busca?: string
+            dataInicio?: string
+            dataFim?: string
+        } = {}
+
+        if (nivel === "00" || nivel === "06") {
+            if (req.query.loja) filtros.loja = req.query.loja as string
+            if (req.query.setor) filtros.setor = req.query.setor as string
+            if (req.query.busca) filtros.busca = req.query.busca as string
+            if (req.query.dataInicio) filtros.dataInicio = req.query.dataInicio as string
+            if (req.query.dataFim) filtros.dataFim = req.query.dataFim as string
+        }
+
+        const resultado = await autorizacaoCompraService.listarAutorizacoes(
             usuario,
             nivel ?? "",
+            { ...filtros, page, limit },
         )
-        res.json(autorizacoes)
+        res.json(resultado)
     } catch (error) {
         console.error("Erro ao listar autorizações:", error)
         res.status(500).json({ error: "Erro interno do servidor" })

@@ -35,6 +35,12 @@ import * as autorizacaoCompraService from "../services/autorizacaoCompraService"
 import { formatarData, formatarMoeda } from "../utils/formatters"
 import type { AutorizacaoCompra } from "../types"
 import ContadorItens from "../components/ContadorItens"
+import FiltroSelect from "../components/FiltroSelect"
+import FiltroBusca from "../components/FiltroBusca"
+import FiltroDataIntervalo from "../components/FiltroDataIntervalo"
+import Paginacao from "../components/Paginacao"
+import { LOJAS } from "../utils/lojas"
+import { SETORES } from "../utils/setores"
 
 const AutorizacaoCompraPage: React.FC = () => {
     const navigate = useNavigate()
@@ -54,11 +60,36 @@ const AutorizacaoCompraPage: React.FC = () => {
         action?: "autorizarControladoria" | "autorizarDiretoria" | "reverterControladoria"
     }>({ open: false })
 
+    const [filtroLoja, setFiltroLoja] = useState("")
+    const [filtroSetor, setFiltroSetor] = useState("")
+    const [filtroBusca, setFiltroBusca] = useState("")
+    const [filtroDataInicio, setFiltroDataInicio] = useState<Date | null>(null)
+    const [filtroDataFim, setFiltroDataFim] = useState<Date | null>(null)
+
+    const [page, setPage] = useState(1)
+    const [rowsPerPage, setRowsPerPage] = useState(10)
+    const [total, setTotal] = useState(0)
+
     const carregarAutorizacoes = async () => {
         try {
             setLoading(true)
-            const data = await autorizacaoCompraService.listarAutorizacoes()
-            setAutorizacoes(data)
+            const params: autorizacaoCompraService.ListarAutorizacoesParams = {
+                loja: filtroLoja || undefined,
+                setor: filtroSetor || undefined,
+                busca: filtroBusca || undefined,
+                dataInicio: filtroDataInicio
+                    ? filtroDataInicio.toISOString().slice(0, 10)
+                    : undefined,
+                dataFim: filtroDataFim
+                    ? filtroDataFim.toISOString().slice(0, 10)
+                    : undefined,
+                page,
+                limit: rowsPerPage,
+            }
+
+            const data = await autorizacaoCompraService.listarAutorizacoes(params)
+            setAutorizacoes(data.dados)
+            setTotal(data.total)
         } catch (error) {
             console.error("Erro ao carregar autorizações:", error)
             setSnackbar({
@@ -73,7 +104,15 @@ const AutorizacaoCompraPage: React.FC = () => {
 
     useEffect(() => {
         carregarAutorizacoes()
-    }, [])
+    }, [
+        filtroLoja,
+        filtroSetor,
+        filtroBusca,
+        filtroDataInicio,
+        filtroDataFim,
+        page,
+        rowsPerPage,
+    ])
 
     const handleNovo = () => {
         navigate("/controladoria/autorizacao-compra/novo")
@@ -342,6 +381,48 @@ const AutorizacaoCompraPage: React.FC = () => {
                         <ContadorItens quantidade={autorizacoes.length} label="autorizações" />
                     </Box>
 
+                    <Box component={Paper} sx={{ p: 2, mb: 2 }}>
+                        <FiltroBusca
+                            onBuscar={(termo) => {
+                                setFiltroBusca(termo)
+                                setPage(1)
+                            }}
+                            placeholder="Buscar por usuário ou fornecedor..."
+                        />
+                        <Box display="flex" gap={2} flexWrap="wrap">
+                            <Box sx={{ minWidth: 180 }}>
+                                <FiltroSelect
+                                    label="Loja"
+                                    valor={filtroLoja}
+                                    opcoes={LOJAS as unknown as string[]}
+                                    onChange={(v) => {
+                                        setFiltroLoja(v)
+                                        setPage(1)
+                                    }}
+                                />
+                            </Box>
+                            <Box sx={{ minWidth: 180 }}>
+                                <FiltroSelect
+                                    label="Setor"
+                                    valor={filtroSetor}
+                                    opcoes={SETORES as unknown as string[]}
+                                    onChange={(v) => {
+                                        setFiltroSetor(v)
+                                        setPage(1)
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+                        <FiltroDataIntervalo
+                            onFiltrar={(inicio, fim) => {
+                                setFiltroDataInicio(inicio)
+                                setFiltroDataFim(fim)
+                                setPage(1)
+                            }}
+                            label="Filtrar por data de criação:"
+                        />
+                    </Box>
+
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
@@ -437,6 +518,18 @@ const AutorizacaoCompraPage: React.FC = () => {
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    {total > 0 && (
+                        <Paginacao
+                            count={total}
+                            page={page}
+                            rowsPerPage={rowsPerPage}
+                            onPageChange={(p) => setPage(p)}
+                            onRowsPerPageChange={(r) => {
+                                setRowsPerPage(r)
+                                setPage(1)
+                            }}
+                        />
+                    )}
                 </>
             )}
 
