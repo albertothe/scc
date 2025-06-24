@@ -462,6 +462,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {isMobile ? (
         <>
           <IconButton
+            className="no-print"
             color="primary"
             aria-label="open drawer"
             edge="start"
@@ -471,6 +472,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <IconButton
+            className="no-print"
             color="primary"
             aria-label="toggle theme"
             onClick={toggleDarkMode}
@@ -479,6 +481,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
           <Drawer
+            className="no-print"
             variant="temporary"
             open={drawerOpen}
             onClose={toggleDrawer}
@@ -492,6 +495,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </>
       ) : (
         <Drawer
+          className="no-print"
           variant="permanent"
           sx={{
             width: menuCollapsed ? MINI_DRAWER_WIDTH : DRAWER_WIDTH,
