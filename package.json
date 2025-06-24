@@ -74,6 +74,8 @@
     "react-router-dom": "latest",
     "recharts": "2.15.0",
     "sonner": "^1.7.1",
+    "jspdf": "latest",
+    "html2canvas": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
