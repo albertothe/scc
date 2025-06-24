@@ -8,8 +8,20 @@ export const getAutorizacoes = async (usuarioId?: number): Promise<AutorizacaoCo
     return response.data
 }
 
-export const listarAutorizacoes = async (): Promise<AutorizacaoCompra[]> => {
-    const response = await api.get("/autorizacao-compra")
+export interface ListarAutorizacoesParams {
+    loja?: string
+    setor?: string
+    busca?: string
+    dataInicio?: string
+    dataFim?: string
+    page?: number
+    limit?: number
+}
+
+export const listarAutorizacoes = async (
+    params: ListarAutorizacoesParams = {},
+): Promise<{ dados: AutorizacaoCompra[]; total: number }> => {
+    const response = await api.get("/autorizacao-compra", { params })
     return response.data
 }
 
