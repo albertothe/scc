@@ -127,19 +127,21 @@ export const getPermissoesNivel = async (codigo: string): Promise<PermissaoNivel
     return result.rows
 }
 
-export const salvarPermissoesNivel = async (codigo: string, permissoes: PermissaoNivel[]): Promise<void> => {
+export const salvarPermissoesNivel = async (
+    codigo: string,
+    permissoes: PermissaoNivel[],
+): Promise<void> => {
     const client = await pool.connect()
     try {
         await client.query("BEGIN")
 
         for (const perm of permissoes) {
-            const query = `
-                INSERT INTO scc_permissoes_nivel (codigo_nivel, id_modulo, visualizar, incluir, editar, excluir)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (codigo_nivel, id_modulo)
-                DO UPDATE SET visualizar = EXCLUDED.visualizar, incluir = EXCLUDED.incluir, editar = EXCLUDED.editar, excluir = EXCLUDED.excluir
+            const updateQuery = `
+                UPDATE scc_permissoes_nivel
+                SET visualizar = $3, incluir = $4, editar = $5, excluir = $6
+                WHERE codigo_nivel = $1 AND id_modulo = $2
             `
-            await client.query(query, [
+            const res = await client.query(updateQuery, [
                 codigo,
                 perm.id_modulo,
                 perm.visualizar,
@@ -147,6 +149,27 @@ export const salvarPermissoesNivel = async (codigo: string, permissoes: Permissa
                 perm.editar,
                 perm.excluir,
             ])
+
+            if ((res.rowCount ?? 0) === 0) {
+                const insertQuery = `
+                    INSERT INTO scc_permissoes_nivel (
+                        codigo_nivel,
+                        id_modulo,
+                        visualizar,
+                        incluir,
+                        editar,
+                        excluir
+                    ) VALUES ($1, $2, $3, $4, $5, $6)
+                `
+                await client.query(insertQuery, [
+                    codigo,
+                    perm.id_modulo,
+                    perm.visualizar,
+                    perm.incluir,
+                    perm.editar,
+                    perm.excluir,
+                ])
+            }
         }
 
         await client.query("COMMIT")
