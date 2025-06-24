@@ -9,9 +9,10 @@ import ClearIcon from "@mui/icons-material/Clear"
 interface FiltroBuscaProps {
     onBuscar: (termo: string) => void
     placeholder?: string
+    size?: "small" | "medium"
 }
 
-const FiltroBusca: React.FC<FiltroBuscaProps> = ({ onBuscar, placeholder = "Buscar por código ou produto..." }) => {
+const FiltroBusca: React.FC<FiltroBuscaProps> = ({ onBuscar, placeholder = "Buscar por código ou produto...", size = "medium" }) => {
     const [termo, setTermo] = useState("")
 
     const handleBuscar = () => {
@@ -33,6 +34,7 @@ const FiltroBusca: React.FC<FiltroBuscaProps> = ({ onBuscar, placeholder = "Busc
         <TextField
             fullWidth
             variant="outlined"
+            size={size}
             placeholder={placeholder}
             value={termo}
             onChange={(e) => setTermo(e.target.value)}
@@ -51,7 +53,7 @@ const FiltroBusca: React.FC<FiltroBuscaProps> = ({ onBuscar, placeholder = "Busc
                     </InputAdornment>
                 ) : null,
             }}
-            sx={{ mb: 2 }}
+            sx={{ mb: size === "small" ? 1 : 2 }}
         />
     )
 }

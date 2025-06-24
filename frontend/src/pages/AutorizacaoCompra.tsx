@@ -382,16 +382,20 @@ const AutorizacaoCompraPage: React.FC = () => {
                     </Box>
 
                     <Box component={Paper} sx={{ p: 2, mb: 2 }}>
-                        <FiltroBusca
-                            onBuscar={(termo) => {
-                                setFiltroBusca(termo)
-                                setPage(1)
-                            }}
-                            placeholder="Buscar por usuário ou fornecedor..."
-                        />
-                        <Box display="flex" gap={2} flexWrap="wrap">
-                            <Box sx={{ minWidth: 180 }}>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-end" }}>
+                            <Box sx={{ flex: "1 1 220px", minWidth: 220 }}>
+                                <FiltroBusca
+                                    size="small"
+                                    onBuscar={(termo) => {
+                                        setFiltroBusca(termo)
+                                        setPage(1)
+                                    }}
+                                    placeholder="Buscar por usuário ou fornecedor..."
+                                />
+                            </Box>
+                            <Box sx={{ width: 160 }}>
                                 <FiltroSelect
+                                    size="small"
                                     label="Loja"
                                     valor={filtroLoja}
                                     opcoes={LOJAS as unknown as string[]}
@@ -401,8 +405,9 @@ const AutorizacaoCompraPage: React.FC = () => {
                                     }}
                                 />
                             </Box>
-                            <Box sx={{ minWidth: 180 }}>
+                            <Box sx={{ width: 160 }}>
                                 <FiltroSelect
+                                    size="small"
                                     label="Setor"
                                     valor={filtroSetor}
                                     opcoes={SETORES as unknown as string[]}
@@ -412,15 +417,18 @@ const AutorizacaoCompraPage: React.FC = () => {
                                     }}
                                 />
                             </Box>
+                            <Box sx={{ flex: "1 1 260px", minWidth: 260 }}>
+                                <FiltroDataIntervalo
+                                    showQuickFilters={false}
+                                    onFiltrar={(inicio, fim) => {
+                                        setFiltroDataInicio(inicio)
+                                        setFiltroDataFim(fim)
+                                        setPage(1)
+                                    }}
+                                    label="Filtrar por data de criação:"
+                                />
+                            </Box>
                         </Box>
-                        <FiltroDataIntervalo
-                            onFiltrar={(inicio, fim) => {
-                                setFiltroDataInicio(inicio)
-                                setFiltroDataFim(fim)
-                                setPage(1)
-                            }}
-                            label="Filtrar por data de criação:"
-                        />
                     </Box>
 
                     <TableContainer component={Paper}>

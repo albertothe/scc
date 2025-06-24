@@ -8,17 +8,18 @@ interface FiltroSelectProps {
     valor: string
     opcoes: string[]
     onChange: (valor: string) => void
+    size?: "small" | "medium"
 }
 
-const FiltroSelect: React.FC<FiltroSelectProps> = ({ label, valor, opcoes, onChange }) => {
+const FiltroSelect: React.FC<FiltroSelectProps> = ({ label, valor, opcoes, onChange, size = "medium" }) => {
     const handleChange = (event: SelectChangeEvent) => {
         onChange(event.target.value)
     }
 
     return (
-        <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
+        <FormControl fullWidth variant="outlined" size={size} sx={{ mb: size === "small" ? 1 : 2 }}>
             <InputLabel id={`filtro-${label.toLowerCase()}-label`}>{label}</InputLabel>
-            <Select labelId={`filtro-${label.toLowerCase()}-label`} value={valor} label={label} onChange={handleChange}>
+            <Select labelId={`filtro-${label.toLowerCase()}-label`} value={valor} label={label} onChange={handleChange} size={size}>
                 <MenuItem value="">Todos</MenuItem>
                 {opcoes.map((opcao) => (
                     <MenuItem key={opcao} value={opcao}>
