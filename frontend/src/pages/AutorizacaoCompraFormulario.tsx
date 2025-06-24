@@ -10,6 +10,7 @@ import { useAuth } from "../contexts/AuthContext"
 import * as autorizacaoCompraService from "../services/autorizacaoCompraService"
 import type { AutorizacaoCompra } from "../types"
 import { LOJAS } from "../utils/lojas"
+import { SETORES } from "../utils/setores"
 
 const AutorizacaoCompraFormulario: React.FC = () => {
     const navigate = useNavigate()
@@ -24,6 +25,7 @@ const AutorizacaoCompraFormulario: React.FC = () => {
     })
 
     const opcoesLojas = LOJAS
+    const opcoesSetores = SETORES
 
     const isEdicao = !!id
 
@@ -224,6 +226,7 @@ const AutorizacaoCompraFormulario: React.FC = () => {
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <TextField
+                                select
                                 fullWidth
                                 label="Setor"
                                 name="setor"
@@ -233,7 +236,13 @@ const AutorizacaoCompraFormulario: React.FC = () => {
                                 helperText={formErrors.setor}
                                 disabled={loading}
                                 required
-                            />
+                            >
+                                {opcoesSetores.map((setor) => (
+                                    <MenuItem key={setor} value={setor}>
+                                        {setor}
+                                    </MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
