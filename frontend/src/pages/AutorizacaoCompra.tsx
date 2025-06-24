@@ -418,7 +418,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                                     }}
                                 />
                             </Box>
-                            <Box sx={{ flex: "1 1 260px", minWidth: 260 }}>
+                            <Box sx={{ flex: "1 1 220px", minWidth: 220 }}>
                                 <FiltroDataIntervalo
                                     showQuickFilters={false}
                                     onFiltrar={(inicio, fim) => {
