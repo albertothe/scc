@@ -3,7 +3,18 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Box, Button, Grid, InputAdornment, Paper, Snackbar, TextField, Typography, Alert, MenuItem } from "@mui/material"
+import {
+    Box,
+    Button,
+    Grid,
+    InputAdornment,
+    Paper,
+    Snackbar,
+    TextField,
+    Typography,
+    Alert,
+    MenuItem,
+} from "@mui/material"
 import SaveIcon from "@mui/icons-material/Save"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import { useAuth } from "../contexts/AuthContext"
@@ -143,14 +154,14 @@ const AutorizacaoCompraFormulario: React.FC = () => {
                 await autorizacaoCompraService.atualizarAutorizacao(Number(id), dadosParaSalvar)
                 setSnackbar({
                     open: true,
-                    message: "Autorização atualizada com sucesso",
+                    message: "✅ Autorização de compra alterada com sucesso!",
                     severity: "success",
                 })
             } else {
                 await autorizacaoCompraService.criarAutorizacao(dadosParaSalvar)
                 setSnackbar({
                     open: true,
-                    message: "Autorização criada com sucesso",
+                    message: "✅ Autorização de compra incluída com sucesso!",
                     severity: "success",
                 })
             }
@@ -298,7 +309,12 @@ const AutorizacaoCompraFormulario: React.FC = () => {
             </Paper>
 
             {/* Snackbar para mensagens */}
-            <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={4000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: "top", horizontal: "center" }}
+            >
                 <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
                     {snackbar.message}
                 </Alert>

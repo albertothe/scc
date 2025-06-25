@@ -9,19 +9,24 @@ import cors from "cors"
  */
 
 const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map(origin => origin.trim()).filter(Boolean)
+  ? process.env.FRONTEND_URL.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
   : []
 
-const corsOptions = allowedOrigins.length > 0
-  ? {
+const corsOptions =
+  allowedOrigins.length > 0
+    ? {
       origin: allowedOrigins,
-      methods: ["GET", "POST", "PUT", "DELETE"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
     }
-  : {
+    : {
       origin: "*",
-      methods: ["GET", "POST", "PUT", "DELETE"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
     }
 
 export const corsMiddleware = cors(corsOptions)
