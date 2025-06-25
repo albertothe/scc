@@ -22,6 +22,12 @@ router.get(
     autorizacaoCompraController.obterAutorizacao,
 )
 router.put(
+    "/:id",
+    verificarAutenticacao,
+    verificarPermissao("autorizacao-compra", "editar"),
+    autorizacaoCompraController.atualizarAutorizacao,
+)
+router.put(
     "/:id/autorizar-controladoria",
     verificarAutenticacao,
     verificarPermissao("autorizacao-compra", "editar"),
