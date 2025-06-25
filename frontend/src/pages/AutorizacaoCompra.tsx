@@ -24,6 +24,7 @@ import {
     Tooltip,
     Typography,
     Alert,
+    TextField,
 } from "@mui/material"
 import AddIcon from "@mui/icons-material/Add"
 import EditIcon from "@mui/icons-material/Edit"
@@ -38,7 +39,6 @@ import type { AutorizacaoCompra } from "../types"
 import ContadorItens from "../components/ContadorItens"
 import FiltroSelect from "../components/FiltroSelect"
 import FiltroBusca from "../components/FiltroBusca"
-import FiltroDataIntervalo from "../components/FiltroDataIntervalo"
 import Paginacao from "../components/Paginacao"
 import { LOJAS } from "../utils/lojas"
 import { SETORES } from "../utils/setores"
@@ -78,12 +78,8 @@ const AutorizacaoCompraPage: React.FC = () => {
                 loja: filtroLoja || undefined,
                 setor: filtroSetor || undefined,
                 busca: filtroBusca || undefined,
-                dataInicio: filtroDataInicio
-                    ? filtroDataInicio.toISOString().slice(0, 10)
-                    : undefined,
-                dataFim: filtroDataFim
-                    ? filtroDataFim.toISOString().slice(0, 10)
-                    : undefined,
+                dataInicio: filtroDataInicio ? filtroDataInicio.toISOString().slice(0, 10) : undefined,
+                dataFim: filtroDataFim ? filtroDataFim.toISOString().slice(0, 10) : undefined,
                 page,
                 limit: rowsPerPage,
             }
@@ -105,15 +101,7 @@ const AutorizacaoCompraPage: React.FC = () => {
 
     useEffect(() => {
         carregarAutorizacoes()
-    }, [
-        filtroLoja,
-        filtroSetor,
-        filtroBusca,
-        filtroDataInicio,
-        filtroDataFim,
-        page,
-        rowsPerPage,
-    ])
+    }, [filtroLoja, filtroSetor, filtroBusca, filtroDataInicio, filtroDataFim, page, rowsPerPage])
 
     const handleNovo = () => {
         navigate("/controladoria/autorizacao-compra/novo")
@@ -287,9 +275,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                     size="small"
                     sx={{ mr: 0.5 }}
                     onClick={() =>
-                        usuario?.nivel === "06"
-                            ? abrirConfirmacao(autorizacao.id, "autorizarControladoria")
-                            : undefined
+                        usuario?.nivel === "06" ? abrirConfirmacao(autorizacao.id, "autorizarControladoria") : undefined
                     }
                     clickable={usuario?.nivel === "06"}
                 />,
@@ -314,11 +300,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                     color="warning"
                     size="small"
                     sx={{ mr: 0.5 }}
-                    onClick={() =>
-                        usuario?.nivel === "00"
-                            ? abrirConfirmacao(autorizacao.id, "autorizarDiretoria")
-                            : undefined
-                    }
+                    onClick={() => (usuario?.nivel === "00" ? abrirConfirmacao(autorizacao.id, "autorizarDiretoria") : undefined)}
                     clickable={usuario?.nivel === "00"}
                 />,
             )
@@ -383,8 +365,19 @@ const AutorizacaoCompraPage: React.FC = () => {
                     </Box>
 
                     <Box component={Paper} sx={{ p: 2, mb: 2 }}>
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "flex-end" }}>
-                            <Box sx={{ flex: "1 1 220px", minWidth: 220 }}>
+                        <Box
+                            sx={{
+                                display: "grid",
+                                gridTemplateColumns: {
+                                    xs: "1fr",
+                                    sm: "1fr 1fr",
+                                    md: "2fr 1fr 1fr 1fr 1fr 1fr",
+                                },
+                                gap: 2,
+                                alignItems: "center",
+                            }}
+                        >
+                            <Box>
                                 <FiltroBusca
                                     size="small"
                                     onBuscar={(termo) => {
@@ -394,7 +387,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                                     placeholder="Buscar por usuário ou fornecedor..."
                                 />
                             </Box>
-                            <Box sx={{ width: 160 }}>
+                            <Box>
                                 <FiltroSelect
                                     size="small"
                                     label="Loja"
@@ -406,7 +399,7 @@ const AutorizacaoCompraPage: React.FC = () => {
                                     }}
                                 />
                             </Box>
-                            <Box sx={{ width: 160 }}>
+                            <Box>
                                 <FiltroSelect
                                     size="small"
                                     label="Setor"
@@ -418,16 +411,50 @@ const AutorizacaoCompraPage: React.FC = () => {
                                     }}
                                 />
                             </Box>
-                            <Box sx={{ flex: "1 1 220px", minWidth: 220 }}>
-                                <FiltroDataIntervalo
-                                    showQuickFilters={false}
-                                    onFiltrar={(inicio, fim) => {
-                                        setFiltroDataInicio(inicio)
-                                        setFiltroDataFim(fim)
+                            <Box>
+                                <TextField
+                                    size="small"
+                                    type="date"
+                                    label="Data inicial"
+                                    value={filtroDataInicio ? filtroDataInicio.toISOString().slice(0, 10) : ""}
+                                    onChange={(e) => {
+                                        setFiltroDataInicio(e.target.value ? new Date(e.target.value) : null)
                                         setPage(1)
                                     }}
-                                    label="Filtrar por data de criação:"
+                                    InputLabelProps={{ shrink: true }}
+                                    fullWidth
                                 />
+                            </Box>
+                            <Box>
+                                <TextField
+                                    size="small"
+                                    type="date"
+                                    label="Data final"
+                                    value={filtroDataFim ? filtroDataFim.toISOString().slice(0, 10) : ""}
+                                    onChange={(e) => {
+                                        setFiltroDataFim(e.target.value ? new Date(e.target.value) : null)
+                                        setPage(1)
+                                    }}
+                                    InputLabelProps={{ shrink: true }}
+                                    fullWidth
+                                />
+                            </Box>
+                            <Box>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    onClick={() => {
+                                        setFiltroLoja("")
+                                        setFiltroSetor("")
+                                        setFiltroBusca("")
+                                        setFiltroDataInicio(null)
+                                        setFiltroDataFim(null)
+                                        setPage(1)
+                                    }}
+                                    fullWidth
+                                >
+                                    Limpar
+                                </Button>
                             </Box>
                         </Box>
                     </Box>
