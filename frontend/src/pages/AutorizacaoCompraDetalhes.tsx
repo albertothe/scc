@@ -1,33 +1,46 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import type React from "react"
+import { useEffect, useState, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import {
-    Box,
-    Paper,
-    Typography,
-    Button,
-    CircularProgress,
-    Grid,
-    Chip,
-} from "@mui/material"
+import { Box, Paper, Typography, Button, CircularProgress, Grid, Chip } from "@mui/material"
 import ArrowBackIcon from "@mui/icons-material/ArrowBack"
 import PrintIcon from "@mui/icons-material/Print"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
-import VisibilityIcon from "@mui/icons-material/Visibility"
-import PersonIcon from "@mui/icons-material/Person"
-import StoreIcon from "@mui/icons-material/Store"
-import WorkIcon from "@mui/icons-material/Work"
-import LocalShippingIcon from "@mui/icons-material/LocalShipping"
-import MoneyIcon from "@mui/icons-material/AttachMoney"
-import NotesIcon from "@mui/icons-material/Notes"
-import AccessTimeIcon from "@mui/icons-material/AccessTime"
-import CheckCircleIcon from "@mui/icons-material/CheckCircle"
-import CancelIcon from "@mui/icons-material/Cancel"
 import * as autorizacaoCompraService from "../services/autorizacaoCompraService"
 import { formatarData, formatarMoeda } from "../utils/formatters"
 import type { AutorizacaoCompra } from "../types"
+
+const styles = `
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .recibo-header {
+      text-align: center;
+      border-bottom: 2px solid #333;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    .recibo-content {
+      line-height: 1.6;
+    }
+    .recibo-footer {
+      margin-top: 40px;
+      border-top: 1px solid #ccc;
+      padding-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+  }
+`
 
 const AutorizacaoCompraDetalhes: React.FC = () => {
     const { id } = useParams<{ id: string }>()
@@ -59,13 +72,34 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
 
     const handleImprimir = async () => {
         if (!pdfRef.current) return
-        const canvas = await html2canvas(pdfRef.current)
+
+        // Configurações para melhor qualidade e evitar elementos indesejados
+        const canvas = await html2canvas(pdfRef.current, {
+            scale: 2, // Melhor qualidade
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: "#ffffff", // Fundo branco
+            width: pdfRef.current.scrollWidth,
+            height: pdfRef.current.scrollHeight,
+            ignoreElements: (element) => {
+                // Ignora elementos com classe no-print
+                return element.classList.contains("no-print")
+            },
+        })
+
         const imgData = canvas.toDataURL("image/png")
-        const pdf = new jsPDF()
+        const pdf = new jsPDF("p", "mm", "a4")
+
         const pdfWidth = pdf.internal.pageSize.getWidth()
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight)
-        pdf.save("autorizacao-compra.pdf")
+        const pdfHeight = pdf.internal.pageSize.getHeight()
+        const imgWidth = canvas.width
+        const imgHeight = canvas.height
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
+        const imgX = (pdfWidth - imgWidth * ratio) / 2
+        const imgY = 0
+
+        pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio)
+        pdf.save(`autorizacao-compra-${autorizacao?.id || "documento"}.pdf`)
     }
 
     if (loading) {
@@ -95,183 +129,254 @@ const AutorizacaoCompraDetalhes: React.FC = () => {
         autorizacao.autorizado_controladoria && autorizacao.autorizado_diretoria
             ? "Aprovado"
             : autorizacao.autorizado_controladoria
-            ? "Aguardando diretoria"
-            : "Pendente"
+                ? "Aguardando diretoria"
+                : "Pendente"
 
     const statusColor =
         autorizacao.autorizado_controladoria && autorizacao.autorizado_diretoria
             ? "success.main"
             : autorizacao.autorizado_controladoria
-            ? "info.main"
-            : "text.secondary"
+                ? "info.main"
+                : "text.secondary"
 
     return (
         <Box p={3}>
+            <style>{styles}</style>
+            {/* Botões - só aparecem na tela */}
+            <Box className="no-print" display="flex" justifyContent="flex-end" mb={3}>
+                <Button variant="outlined" startIcon={<PrintIcon />} onClick={handleImprimir} sx={{ mr: 1 }}>
+                    Gerar PDF
+                </Button>
+                <Button startIcon={<ArrowBackIcon />} onClick={handleVoltar}>
+                    Voltar
+                </Button>
+            </Box>
             <div ref={pdfRef}>
-            <Paper sx={{ p: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                    <Box display="flex" alignItems="center">
-                        <VisibilityIcon sx={{ mr: 1 }} />
-                        <Typography variant="h5" component="h1">
-                            Detalhes da Autorização de Compra
+                <Paper
+                    sx={{
+                        p: 4,
+                        backgroundColor: "#ffffff",
+                        maxWidth: "210mm", // Largura A4
+                        margin: "0 auto",
+                        boxShadow: "none", // Remove sombra para o PDF
+                    }}
+                >
+                    {/* Cabeçalho do Recibo */}
+                    <Box className="recibo-header" sx={{ textAlign: "center", borderBottom: "2px solid #333", pb: 3, mb: 4 }}>
+                        <Typography variant="h4" component="h1" sx={{ fontWeight: "bold", mb: 1 }}>
+                            AUTORIZAÇÃO DE COMPRA
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: "text.secondary" }}>
+                            Protocolo Nº {autorizacao.id?.toString().padStart(6, "0")}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                            Emitido em: {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR")}
                         </Typography>
                     </Box>
-                    <Box className="no-print">
-                        <Button
-                            variant="outlined"
-                            startIcon={<PrintIcon />}
-                            onClick={handleImprimir}
-                            sx={{ mr: 1 }}
-                        >
-                            Gerar PDF
-                        </Button>
-                        <Button startIcon={<ArrowBackIcon />} onClick={handleVoltar}>
-                            Voltar
-                        </Button>
-                    </Box>
-                </Box>
 
-                <Box component={Paper} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>
-                        Dados da Solicitação
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <PersonIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Usuário:</strong> {autorizacao.usuario}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <StoreIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Loja:</strong> {autorizacao.loja}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <WorkIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Setor:</strong> {autorizacao.setor}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <LocalShippingIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Fornecedor:</strong> {autorizacao.fornecedor}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <MoneyIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Valor:</strong>{" "}
-                                    <Box component="span" sx={{ fontWeight: "bold", color: "primary.main" }}>
-                                        {formatarMoeda(autorizacao.valor)}
+                    <Box className="recibo-content">
+                        {/* Status da Autorização */}
+                        <Box sx={{ textAlign: "center", mb: 4 }}>
+                            <Chip
+                                label={statusLabel}
+                                sx={{
+                                    backgroundColor: statusColor,
+                                    color: "#fff",
+                                    fontSize: "16px",
+                                    fontWeight: "bold",
+                                    px: 3,
+                                    py: 1,
+                                    height: "40px", // Adiciona altura para simular o tamanho large
+                                }}
+                            />
+                        </Box>
+
+                        {/* Dados da Solicitação */}
+                        <Box component={Paper} variant="outlined" sx={{ p: 3, mb: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", borderBottom: "1px solid #eee", pb: 1 }}>
+                                📋 DADOS DA SOLICITAÇÃO
+                            </Typography>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ mb: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Solicitante:
+                                        </Typography>
+                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            {autorizacao.usuario}
+                                        </Typography>
                                     </Box>
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <NotesIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Observação:</strong> {autorizacao.observacao || "-"}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </Box>
-
-                <Box component={Paper} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="h6" gutterBottom>
-                        Datas e Horários
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <AccessTimeIcon sx={{ mr: 1 }} />
-                                <Typography>
-                                    <strong>Data/Hora Criação:</strong> {formatarData(autorizacao.data_criacao || "")} {autorizacao.hora_criacao}
-                                </Typography>
-                            </Box>
-                        </Grid>
-                        {autorizacao.data_autorizacao_controladoria && (
-                            <Grid item xs={12} md={6}>
-                                <Box display="flex" alignItems="center">
-                                    <AccessTimeIcon sx={{ mr: 1 }} />
-                                    <Typography>
-                                        <strong>Data Liberação Controladoria:</strong> {formatarData(autorizacao.data_autorizacao_controladoria)}
-                                    </Typography>
-                                </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ mb: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Loja:
+                                        </Typography>
+                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            {autorizacao.loja}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ mb: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Setor:
+                                        </Typography>
+                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            {autorizacao.setor}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <Box sx={{ mb: 2 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Fornecedor:
+                                        </Typography>
+                                        <Typography variant="body1" sx={{ fontWeight: "bold" }}>
+                                            {autorizacao.fornecedor}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Box
+                                        sx={{
+                                            textAlign: "center",
+                                            p: 2,
+                                            backgroundColor: "#f5f5f5",
+                                            borderRadius: 2,
+                                            border: "2px solid #e0e0e0",
+                                        }}
+                                    >
+                                        <Typography variant="body2" color="text.secondary">
+                                            Valor Total:
+                                        </Typography>
+                                        <Typography variant="h4" sx={{ fontWeight: "bold", color: "primary.main" }}>
+                                            {formatarMoeda(autorizacao.valor)}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                {autorizacao.observacao && (
+                                    <Grid item xs={12}>
+                                        <Box sx={{ mb: 2 }}>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Observações:
+                                            </Typography>
+                                            <Typography
+                                                variant="body1"
+                                                sx={{ fontStyle: "italic", p: 1, backgroundColor: "#f9f9f9", borderRadius: 1 }}
+                                            >
+                                                {autorizacao.observacao}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                )}
                             </Grid>
-                        )}
-                        {autorizacao.data_autorizacao_diretoria && (
-                            <Grid item xs={12} md={6}>
-                                <Box display="flex" alignItems="center">
-                                    <AccessTimeIcon sx={{ mr: 1 }} />
-                                    <Typography>
-                                        <strong>Data Liberação Diretoria:</strong> {formatarData(autorizacao.data_autorizacao_diretoria)}
-                                    </Typography>
-                                </Box>
-                            </Grid>
-                        )}
-                    </Grid>
-                </Box>
+                        </Box>
 
-                <Box component={Paper} variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="h6" gutterBottom>
-                        Status da Aprovação
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <Typography>
-                                    <strong>Controladoria:</strong>
+                        {/* Histórico de Aprovações */}
+                        <Box component={Paper} variant="outlined" sx={{ p: 3, mb: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", borderBottom: "1px solid #eee", pb: 1 }}>
+                                ✅ HISTÓRICO DE APROVAÇÕES
+                            </Typography>
+
+                            {/* Criação */}
+                            <Box sx={{ mb: 3, p: 2, backgroundColor: "#f0f8ff", borderRadius: 1, borderLeft: "4px solid #2196f3" }}>
+                                <Typography variant="body1" sx={{ fontWeight: "bold", mb: 1 }}>
+                                    📝 Solicitação Criada
+                                </Typography>
+                                <Typography variant="body2">
+                                    Data: {formatarData(autorizacao.data_criacao || "")} às {autorizacao.hora_criacao}
+                                </Typography>
+                                <Typography variant="body2">Por: {autorizacao.usuario}</Typography>
+                            </Box>
+
+                            {/* Controladoria */}
+                            <Box
+                                sx={{
+                                    mb: 3,
+                                    p: 2,
+                                    backgroundColor: autorizacao.autorizado_controladoria ? "#f0fff0" : "#fff8f0",
+                                    borderRadius: 1,
+                                    borderLeft: `4px solid ${autorizacao.autorizado_controladoria ? "#4caf50" : "#ff9800"}`,
+                                }}
+                            >
+                                <Typography variant="body1" sx={{ fontWeight: "bold", mb: 1 }}>
+                                    🏢 Controladoria
                                 </Typography>
                                 {autorizacao.autorizado_controladoria ? (
-                                    <Typography sx={{ color: "success.main", ml: 1, display: "flex", alignItems: "center" }}>
-                                        <CheckCircleIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                        Liberado em {formatarData(autorizacao.data_autorizacao_controladoria || "")} por {autorizacao.usuario_controladoria}
-                                    </Typography>
+                                    <>
+                                        <Typography variant="body2" sx={{ color: "success.main", fontWeight: "bold" }}>
+                                            ✅ APROVADO
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            Data: {formatarData(autorizacao.data_autorizacao_controladoria || "")}
+                                        </Typography>
+                                        <Typography variant="body2">Por: {autorizacao.usuario_controladoria}</Typography>
+                                    </>
                                 ) : (
-                                    <Typography sx={{ color: "error.main", ml: 1, display: "flex", alignItems: "center" }}>
-                                        <CancelIcon fontSize="small" sx={{ mr: 0.5 }} /> Pendente
+                                    <Typography variant="body2" sx={{ color: "warning.main", fontWeight: "bold" }}>
+                                        ⏳ PENDENTE
                                     </Typography>
                                 )}
                             </Box>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Box display="flex" alignItems="center">
-                                <Typography>
-                                    <strong>Diretoria:</strong>
+
+                            {/* Diretoria */}
+                            <Box
+                                sx={{
+                                    mb: 2,
+                                    p: 2,
+                                    backgroundColor: autorizacao.autorizado_diretoria ? "#f0fff0" : "#fff8f0",
+                                    borderRadius: 1,
+                                    borderLeft: `4px solid ${autorizacao.autorizado_diretoria ? "#4caf50" : "#ff9800"}`,
+                                }}
+                            >
+                                <Typography variant="body1" sx={{ fontWeight: "bold", mb: 1 }}>
+                                    👔 Diretoria
                                 </Typography>
                                 {autorizacao.autorizado_diretoria ? (
-                                    <Typography sx={{ color: "success.main", ml: 1, display: "flex", alignItems: "center" }}>
-                                        <CheckCircleIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                        Liberado em {formatarData(autorizacao.data_autorizacao_diretoria || "")} por {autorizacao.usuario_diretoria}
-                                    </Typography>
+                                    <>
+                                        <Typography variant="body2" sx={{ color: "success.main", fontWeight: "bold" }}>
+                                            ✅ APROVADO
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            Data: {formatarData(autorizacao.data_autorizacao_diretoria || "")}
+                                        </Typography>
+                                        <Typography variant="body2">Por: {autorizacao.usuario_diretoria}</Typography>
+                                    </>
                                 ) : (
-                                    <Typography sx={{ color: "error.main", ml: 1, display: "flex", alignItems: "center" }}>
-                                        <CancelIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                        {autorizacao.autorizado_controladoria ? "Aguardando Diretoria" : "Pendente"}
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            color: autorizacao.autorizado_controladoria ? "warning.main" : "text.secondary",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        {autorizacao.autorizado_controladoria ? "⏳ AGUARDANDO APROVAÇÃO" : "⏳ PENDENTE"}
                                     </Typography>
                                 )}
                             </Box>
-                        </Grid>
-                    </Grid>
-                    <Box mt={2}>
-                        <Chip label={statusLabel} sx={{ backgroundColor: statusColor, color: "#fff" }} />
+                        </Box>
                     </Box>
-                </Box>
-            </Paper>
+
+                    {/* Rodapé do Recibo */}
+                    <Box
+                        className="recibo-footer"
+                        sx={{
+                            mt: 4,
+                            pt: 2,
+                            borderTop: "1px solid #ccc",
+                            textAlign: "center",
+                            color: "text.secondary",
+                        }}
+                    >
+                        <Typography variant="body2">
+                            Este documento foi gerado automaticamente pelo Sistema de Gestão J Monte
+                        </Typography>
+                        <Typography variant="caption">
+                            Documento válido sem assinatura • Gerado em {new Date().toLocaleString("pt-BR")}
+                        </Typography>
+                    </Box>
+                </Paper>
             </div>
         </Box>
     )
