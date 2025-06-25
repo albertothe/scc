@@ -27,6 +27,12 @@ router.put(
     verificarPermissao("autorizacao-compra", "editar"),
     autorizacaoCompraController.atualizarAutorizacao,
 )
+router.patch(
+    "/:id",
+    verificarAutenticacao,
+    verificarPermissao("autorizacao-compra", "editar"),
+    autorizacaoCompraController.atualizarAutorizacao,
+)
 router.put(
     "/:id/autorizar-controladoria",
     verificarAutenticacao,

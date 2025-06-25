@@ -46,7 +46,7 @@ export const atualizarAutorizacao = async (
     id: number,
     autorizacao: Partial<AutorizacaoCompra>,
 ): Promise<AutorizacaoCompra> => {
-    const response = await api.put(`/autorizacao-compra/${id}`, autorizacao)
+    const response = await api.patch(`/autorizacao-compra/${id}`, autorizacao)
     return response.data
 }
 
