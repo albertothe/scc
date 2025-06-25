@@ -1,9 +1,9 @@
 import axios from "axios"
 
-// Configuração do axios para a API
+// Configuração do axios para a API utilizando variáveis de ambiente
 const api = axios.create({
-  // Remover completamente o prefixo /api da baseURL
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8001",
+  // A URL base é obtida do arquivo .env
+  baseURL: process.env.REACT_APP_API_URL ?? "http://localhost:8001/api",
 })
 
 // Adicionar logs para depuração
