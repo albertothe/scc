@@ -46,34 +46,10 @@ import {
     AttachMoney as MoneyIcon,
 } from "@mui/icons-material"
 import { useAuth } from "../contexts/AuthContext"
+import * as comissaoVendedorService from "../services/comissaoVendedorService"
 
-// Interfaces
-interface Vendedor {
-    codvendedor: string
-    codloja: string
-    vendedor: string
-    nome_completo: string
-}
-
-interface Loja {
-    codloja: string
-    loja: string
-}
-
-interface ComissaoVendedor {
-    id?: number
-    codvendedor: string
-    vendedor?: string
-    nome_completo?: string
-    codloja: string
-    loja?: string
-    percentual_base: number
-    percentual_extra: number
-    meta_mensal: number
-    ativo: boolean
-    data_inicio: string
-    observacoes?: string
-}
+// Tipagens compartilhadas
+import type { Vendedor, Loja, ComissaoVendedor } from "../types"
 
 const ComissoesVendedores: React.FC = () => {
     // Estados
@@ -113,66 +89,6 @@ const ComissoesVendedores: React.FC = () => {
     const { temPermissao } = useAuth()
     const podeEditar = temPermissao(["00"])
 
-    // Dados mockados para demonstração
-    const dadosMockados = {
-        vendedores: [
-            { codvendedor: "001", codloja: "01", vendedor: "JOÃO SILVA", nome_completo: "JOÃO SILVA DOS SANTOS" },
-            { codvendedor: "002", codloja: "01", vendedor: "MARIA OLIVEIRA", nome_completo: "MARIA OLIVEIRA COSTA" },
-            { codvendedor: "003", codloja: "02", vendedor: "PEDRO SANTOS", nome_completo: "PEDRO SANTOS LIMA" },
-            { codvendedor: "004", codloja: "02", vendedor: "ANA COSTA", nome_completo: "ANA COSTA FERREIRA" },
-            { codvendedor: "005", codloja: "03", vendedor: "CARLOS LIMA", nome_completo: "CARLOS LIMA PEREIRA" },
-        ],
-        lojas: [
-            { codloja: "01", loja: "MATRIZ" },
-            { codloja: "02", loja: "FILIAL CENTRO" },
-            { codloja: "03", loja: "FILIAL NORTE" },
-            { codloja: "04", loja: "FILIAL SUL" },
-            { codloja: "05", loja: "FILIAL LESTE" },
-        ],
-        comissoes: [
-            {
-                id: 1,
-                codvendedor: "001",
-                vendedor: "JOÃO SILVA",
-                nome_completo: "JOÃO SILVA DOS SANTOS",
-                codloja: "01",
-                loja: "MATRIZ",
-                percentual_base: 2.5,
-                percentual_extra: 1.0,
-                meta_mensal: 50000,
-                ativo: true,
-                data_inicio: "2024-01-01",
-                observacoes: "Vendedor experiente",
-            },
-            {
-                id: 2,
-                codvendedor: "002",
-                vendedor: "MARIA OLIVEIRA",
-                nome_completo: "MARIA OLIVEIRA COSTA",
-                codloja: "01",
-                loja: "MATRIZ",
-                percentual_base: 3.0,
-                percentual_extra: 1.5,
-                meta_mensal: 60000,
-                ativo: true,
-                data_inicio: "2024-02-01",
-            },
-            {
-                id: 3,
-                codvendedor: "003",
-                vendedor: "PEDRO SANTOS",
-                nome_completo: "PEDRO SANTOS LIMA",
-                codloja: "02",
-                loja: "FILIAL CENTRO",
-                percentual_base: 2.0,
-                percentual_extra: 0.8,
-                meta_mensal: 40000,
-                ativo: false,
-                data_inicio: "2023-12-01",
-                observacoes: "Inativo temporariamente",
-            },
-        ],
-    }
 
     // Carregar dados
     useEffect(() => {
@@ -184,17 +100,15 @@ const ComissoesVendedores: React.FC = () => {
             setLoading(true)
             setError(null)
 
-            // Simular carregamento de dados
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            const [vendedoresData, lojasData, comissoesData] = await Promise.all([
+                comissaoVendedorService.getVendedores(),
+                comissaoVendedorService.getLojas(),
+                comissaoVendedorService.getComissoesVendedores(),
+            ])
 
-            // Em produção, fazer chamadas para a API:
-            // const vendedoresData = await api.get('/vendedores')
-            // const lojasData = await api.get('/lojas')
-            // const comissoesData = await api.get('/comissoes-vendedores')
-
-            setVendedores(dadosMockados.vendedores)
-            setLojas(dadosMockados.lojas)
-            setComissoes(dadosMockados.comissoes)
+            setVendedores(vendedoresData)
+            setLojas(lojasData)
+            setComissoes(comissoesData)
         } catch (erro) {
             console.error("Erro ao carregar dados:", erro)
             setError("Não foi possível carregar os dados. Tente novamente.")
@@ -274,27 +188,19 @@ const ComissoesVendedores: React.FC = () => {
                 return
             }
 
-            // Simular salvamento
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            let comissaoSalva: ComissaoVendedor
 
             if (formulario.id) {
-                // Atualizar
-                setComissoes((prev) => prev.map((c) => (c.id === formulario.id ? { ...formulario } : c)))
+                comissaoSalva = await comissaoVendedorService.atualizarComissaoVendedor(formulario.id, formulario)
+                setComissoes((prev) => prev.map((c) => (c.id === formulario.id ? comissaoSalva : c)))
                 setSnackbar({
                     open: true,
                     message: "✅ Comissão alterada com sucesso!",
                     severity: "success",
                 })
             } else {
-                // Criar
-                const novaComissao = {
-                    ...formulario,
-                    id: Math.max(...comissoes.map((c) => c.id || 0)) + 1,
-                    vendedor: vendedores.find((v) => v.codvendedor === formulario.codvendedor)?.vendedor,
-                    nome_completo: vendedores.find((v) => v.codvendedor === formulario.codvendedor)?.nome_completo,
-                    loja: lojas.find((l) => l.codloja === formulario.codloja)?.loja,
-                }
-                setComissoes((prev) => [...prev, novaComissao])
+                comissaoSalva = await comissaoVendedorService.criarComissaoVendedor(formulario)
+                setComissoes((prev) => [...prev, comissaoSalva])
                 setSnackbar({
                     open: true,
                     message: "✅ Comissão incluída com sucesso!",
@@ -322,8 +228,7 @@ const ComissoesVendedores: React.FC = () => {
         if (!comissaoSelecionada) return
 
         try {
-            // Simular exclusão
-            await new Promise((resolve) => setTimeout(resolve, 500))
+            await comissaoVendedorService.excluirComissaoVendedor(comissaoSelecionada.id!)
 
             setComissoes((prev) => prev.filter((c) => c.id !== comissaoSelecionada.id))
             setSnackbar({
