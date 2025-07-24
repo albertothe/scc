@@ -19,6 +19,7 @@ import ControleAcessoNiveis from "./pages/ControleAcessoNiveis"
 import ControleAcessoPermissoes from "./pages/ControleAcessoPermissoes"
 import { AuthProvider } from "./contexts/AuthContext"
 import { ThemeProvider } from "./contexts/ThemeContext"
+import ComissoesVendedores from "./pages/ComissoesVendedores"
 
 function App() {
   console.log("App renderizando")
@@ -145,6 +146,16 @@ function App() {
                 <ProtectedRoute rota="vendedor-metas">
                   <Layout>
                     <VendedorMetaFormulario />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/comissao/vendedores"
+              element={
+                <ProtectedRoute rota="comissoes">
+                  <Layout>
+                    <ComissoesVendedores />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -39,10 +39,6 @@ import {
   Person as PersonIcon,
   AccountBalance as ControladoriaIcon, // Ícone para Controladoria
   ShoppingCart as AutorizacaoIcon, // Ícone para Autorização Compra
-  Security as AcessoIcon,
-  Settings as ModulosIcon,
-  People as NiveisIcon,
-  VpnKey as PermissoesIcon,
 } from "@mui/icons-material"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
@@ -129,21 +125,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       subItems: [
         { text: "Faixas de Comissão", icon: <BarChart />, path: "/comissao/faixas" },
         { text: "Metas Vendedores", icon: <PersonIcon />, path: "/comissao/metas" },
+        { text: "Comissões Vendedores", icon: <AttachMoney />, path: "/comissao/vendedores" },
       ],
     },
     {
       text: "Controladoria",
       icon: <ControladoriaIcon />,
       subItems: [{ text: "Autorização Compra", icon: <AutorizacaoIcon />, path: "/controladoria/autorizacao-compra" }],
-    },
-    {
-      text: "Controle de Acesso",
-      icon: <AcessoIcon />,
-      subItems: [
-        { text: "Módulos", icon: <ModulosIcon />, path: "/controle-acesso/modulos" },
-        { text: "Níveis", icon: <NiveisIcon />, path: "/controle-acesso/niveis" },
-        { text: "Permissões", icon: <PermissoesIcon />, path: "/controle-acesso/permissoes" },
-      ],
     },
   ]
 
@@ -462,7 +450,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {isMobile ? (
         <>
           <IconButton
-            className="no-print"
             color="primary"
             aria-label="open drawer"
             edge="start"
@@ -472,7 +459,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <IconButton
-            className="no-print"
             color="primary"
             aria-label="toggle theme"
             onClick={toggleDarkMode}
@@ -481,7 +467,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
           <Drawer
-            className="no-print"
             variant="temporary"
             open={drawerOpen}
             onClose={toggleDrawer}
@@ -495,7 +480,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </>
       ) : (
         <Drawer
-          className="no-print"
           variant="permanent"
           sx={{
             width: menuCollapsed ? MINI_DRAWER_WIDTH : DRAWER_WIDTH,
