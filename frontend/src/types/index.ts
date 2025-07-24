@@ -89,6 +89,28 @@ export interface VendedorMetaCompleta extends VendedorMeta {
   codloja?: string
 }
 
+// Tipos para o módulo de Comissões de Vendedores
+export interface Loja {
+  codloja: string
+  loja: string
+}
+
+export interface ComissaoVendedor {
+  id?: number
+  codvendedor: string
+  vendedor?: string
+  nome_completo?: string
+  codloja: string
+  loja?: string
+  percentual_base: number
+  percentual_extra: number
+  meta_mensal: number
+  ativo: boolean
+  data_inicio: string
+  data_fim?: string
+  observacoes?: string
+}
+
 // Tipos para o módulo de Autorização de Compra
 export interface AutorizacaoCompra {
   id?: number
