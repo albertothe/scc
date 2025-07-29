@@ -23,4 +23,7 @@ export interface VendedorMetaCompleta extends VendedorMeta {
     vendedor?: string
     nome_completo?: string
     codloja?: string
+    venda_bruta?: number
+    devolucao?: number
+    valor_liquido?: number
 }

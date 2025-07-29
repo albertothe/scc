@@ -119,9 +119,21 @@ export const getMetasPorCompetencia = async (competencia: string): Promise<Vende
         m.incluc100,
         v.vendedor,
         v.nome_completo,
-        v.codloja
+        v.codloja,
+        COALESCE(vd.venda_bruta, 0) AS venda_bruta,
+        COALESCE(vd.devolucao, 0) AS devolucao,
+        COALESCE(vd.valor_liquido, 0) AS valor_liquido
       FROM pwb_vendedor_metas m
       LEFT JOIN vs_pwb_dvendedores v ON m.codvendedor = v.codvendedor
+      LEFT JOIN (
+        SELECT codvendedor,
+               date_trunc('month', mes) AS mes,
+               SUM(venda_bruta) AS venda_bruta,
+               SUM(devolucao) AS devolucao,
+               SUM(valor_liquido) AS valor_liquido
+        FROM vs_pwb_comissao_vendedores
+        GROUP BY codvendedor, date_trunc('month', mes)
+      ) vd ON vd.codvendedor = m.codvendedor AND TO_CHAR(vd.mes, 'YYYY-MM') = $1
       WHERE TO_CHAR(m.competencia, 'YYYY-MM') = $1
       ORDER BY v.vendedor
     `
@@ -166,9 +178,21 @@ export const getMetaVendedor = async (
         m.incluc100,
         v.vendedor,
         v.nome_completo,
-        v.codloja
+        v.codloja,
+        COALESCE(vd.venda_bruta, 0) AS venda_bruta,
+        COALESCE(vd.devolucao, 0) AS devolucao,
+        COALESCE(vd.valor_liquido, 0) AS valor_liquido
       FROM pwb_vendedor_metas m
       LEFT JOIN vs_pwb_dvendedores v ON m.codvendedor = v.codvendedor
+      LEFT JOIN (
+        SELECT codvendedor,
+               date_trunc('month', mes) AS mes,
+               SUM(venda_bruta) AS venda_bruta,
+               SUM(devolucao) AS devolucao,
+               SUM(valor_liquido) AS valor_liquido
+        FROM vs_pwb_comissao_vendedores
+        GROUP BY codvendedor, date_trunc('month', mes)
+      ) vd ON vd.codvendedor = m.codvendedor AND TO_CHAR(vd.mes, 'YYYY-MM') = $2
       WHERE m.codvendedor = $1 AND TO_CHAR(m.competencia, 'YYYY-MM') = $2
     `
 
