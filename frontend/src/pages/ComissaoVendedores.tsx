@@ -97,37 +97,33 @@ const ComissaoVendedores: React.FC = () => {
                             <TableRow>
                                 <TableCell>Vendedor</TableCell>
                                 <TableCell>Loja</TableCell>
-                                <TableCell>Férias</TableCell>
                                 <TableCell>Base Salarial</TableCell>
                                 <TableCell>Meta Faturamento</TableCell>
                                 <TableCell>Meta Lucro</TableCell>
                                 <TableCell>Venda Bruta</TableCell>
                                 <TableCell>Devolução</TableCell>
                                 <TableCell>Venda Líquida</TableCell>
-                                <TableCell>Fat. Mínimo</TableCell>
-                                <TableCell>IncFat 90%</TableCell>
-                                <TableCell>IncFat 100%</TableCell>
-                                <TableCell>IncLuc 90%</TableCell>
-                                <TableCell>IncLuc 100%</TableCell>
+                                <TableCell>Meta Fat. Ating.</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {metas.map((meta) => (
                                 <TableRow key={meta.codvendedor}>
-                                    <TableCell>{meta.vendedor || meta.codvendedor}</TableCell>
-                                    <TableCell>{meta.codloja}</TableCell>
-                                    <TableCell>{meta.ferias ? "Sim" : "Não"}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.base_salarial) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.meta_faturamento) || 0)}</TableCell>
-                                    <TableCell>{formatarPercentual(Number(meta.meta_lucra) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.venda_bruta) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.devolucao) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.valor_liquido) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.faturamento_minimo) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.incfat90) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.incfat100) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.incluc90) || 0)}</TableCell>
-                                    <TableCell>{formatarValor(Number(meta.incluc100) || 0)}</TableCell>
+                                <TableCell>{meta.vendedor || meta.codvendedor}</TableCell>
+                                <TableCell>{meta.codloja}</TableCell>
+                                <TableCell>{formatarValor(Number(meta.base_salarial) || 0)}</TableCell>
+                                <TableCell>{formatarValor(Number(meta.meta_faturamento) || 0)}</TableCell>
+                                <TableCell>{formatarPercentual((Number(meta.meta_lucra) || 0) / 100)}</TableCell>
+                                <TableCell>{formatarValor(Number(meta.venda_bruta) || 0)}</TableCell>
+                                <TableCell>{formatarValor(Number(meta.devolucao) || 0)}</TableCell>
+                                <TableCell>{formatarValor(Number(meta.valor_liquido) || 0)}</TableCell>
+                                <TableCell>
+                                    {formatarPercentual(
+                                        Number(meta.meta_faturamento) > 0
+                                            ? (Number(meta.valor_liquido) || 0) / Number(meta.meta_faturamento)
+                                            : 0,
+                                    )}
+                                </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
