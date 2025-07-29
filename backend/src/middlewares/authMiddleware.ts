@@ -15,13 +15,13 @@ declare global {
     }
 }
 
-// Middleware para verificar autenticação
+// Middleware para verificar autenticaÃ§Ã£o
 export const verificarAutenticacao = (req: Request, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization
 
         if (!authHeader) {
-            return res.status(401).json({ mensagem: "Token não fornecido" })
+            return res.status(401).json({ mensagem: "Token nÃ£o fornecido" })
         }
 
         const [bearer, token] = authHeader.split(" ")
@@ -35,19 +35,19 @@ export const verificarAutenticacao = (req: Request, res: Response, next: NextFun
 
         next()
     } catch (error) {
-        return res.status(401).json({ mensagem: "Token inválido ou expirado" })
+        return res.status(401).json({ mensagem: "Token invÃ¡lido ou expirado" })
     }
 }
 
-// Middleware para verificar nível de acesso
+// Middleware para verificar nÃ­vel de acesso
 export const verificarNivel = (niveisPermitidos: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         if (!req.usuario) {
-            return res.status(401).json({ mensagem: "Usuário não autenticado" })
+            return res.status(401).json({ mensagem: "UsuÃ¡rio nÃ£o autenticado" })
         }
 
         if (!niveisPermitidos.includes(req.usuario.nivel)) {
-            return res.status(403).json({ mensagem: "Acesso negado. Nível de permissão insuficiente." })
+            return res.status(403).json({ mensagem: "Acesso negado. NÃ­vel de permissÃ£o insuficiente." })
         }
 
         next()
@@ -60,7 +60,7 @@ export const verificarPermissao = (
 ) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         if (!req.usuario) {
-            return res.status(401).json({ mensagem: "Usuário não autenticado" })
+            return res.status(401).json({ mensagem: "UsuÃ¡rio nÃ£o autenticado" })
         }
 
         try {
@@ -72,12 +72,12 @@ export const verificarPermissao = (
             if (!permitido) {
                 return res
                     .status(403)
-                    .json({ mensagem: "Acesso negado. Permissão insuficiente." })
+                    .json({ mensagem: "Acesso negado. PermissÃ£o insuficiente." })
             }
             next()
         } catch (error) {
-            console.error("Erro ao verificar permissão:", error)
-            res.status(500).json({ mensagem: "Erro ao verificar permissão" })
+            console.error("Erro ao verificar permissÃ£o:", error)
+            res.status(500).json({ mensagem: "Erro ao verificar permissÃ£o" })
         }
     }
 }
