@@ -129,6 +129,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       subItems: [
         { text: "Faixas de Comissão", icon: <BarChart />, path: "/comissao/faixas" },
         { text: "Metas Vendedores", icon: <PersonIcon />, path: "/comissao/metas" },
+        { text: "Comissão Vendedores", icon: <PersonIcon />, path: "/comissao/vendedores" },
       ],
     },
     {
