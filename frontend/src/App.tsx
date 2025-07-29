@@ -9,6 +9,7 @@ import ProdutosPromocao from "./pages/ProdutosPromocao"
 import Precificacao from "./pages/Precificacao" // Importar o componente de Precificação
 import ComissaoFaixas from "./pages/ComissaoFaixas"
 import ComissaoFormulario from "./pages/ComissaoFormulario"
+import ComissaoVendedores from "./pages/ComissaoVendedores"
 import VendedorMetas from "./pages/VendedorMetas"
 import VendedorMetaFormulario from "./pages/VendedorMetaFormulario"
 import AutorizacaoCompraPage from "./pages/AutorizacaoCompra"
@@ -115,6 +116,16 @@ function App() {
                 <ProtectedRoute rota="comissoes">
                   <Layout>
                     <ComissaoFormulario />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/comissao/vendedores"
+              element={
+                <ProtectedRoute rota="vendedor-metas">
+                  <Layout>
+                    <ComissaoVendedores />
                   </Layout>
                 </ProtectedRoute>
               }
