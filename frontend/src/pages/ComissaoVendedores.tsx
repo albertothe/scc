@@ -15,7 +15,15 @@ import {
     CircularProgress,
     Alert,
     Snackbar,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    OutlinedInput,
+    Checkbox,
+    ListItemText,
 } from "@mui/material"
+import type { SelectChangeEvent } from "@mui/material"
 import * as vendedorMetaService from "../services/vendedorMetaService"
 import type { VendedorMetaCompleta } from "../types"
 import FiltroCompetencia from "../components/FiltroCompetencia"
@@ -29,6 +37,9 @@ const ComissaoVendedores: React.FC = () => {
         return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`
     })
     const [snackbarOpen, setSnackbarOpen] = useState(false)
+    const [lojasDisponiveis, setLojasDisponiveis] = useState<string[]>([])
+    const [lojasSelecionadas, setLojasSelecionadas] = useState<string[]>([])
+    const [metasFiltradas, setMetasFiltradas] = useState<VendedorMetaCompleta[]>([])
 
     useEffect(() => {
         carregarMetas()
@@ -39,8 +50,14 @@ const ComissaoVendedores: React.FC = () => {
             setLoading(true)
             setError(null)
             const dados = await vendedorMetaService.getMetasPorCompetencia(competencia)
-            setMetas(Array.isArray(dados) ? dados : [])
-            if (Array.isArray(dados) && dados.length === 0) {
+            const metasCarregadas = Array.isArray(dados) ? dados : []
+            setMetas(metasCarregadas)
+            setMetasFiltradas(metasCarregadas)
+
+            const lojas = Array.from(new Set(metasCarregadas.map((m) => m.codloja).filter(Boolean)))
+            setLojasDisponiveis(lojas)
+
+            if (metasCarregadas.length === 0) {
                 setSnackbarOpen(true)
             }
         } catch (e) {
@@ -54,6 +71,19 @@ const ComissaoVendedores: React.FC = () => {
     const handleCompetenciaChange = (novaCompetencia: string) => {
         setCompetencia(novaCompetencia)
     }
+
+    const handleLojasChange = (event: SelectChangeEvent<string[]>) => {
+        const valor = event.target.value
+        setLojasSelecionadas(typeof valor === "string" ? valor.split(",") : valor)
+    }
+
+    useEffect(() => {
+        if (lojasSelecionadas.length > 0) {
+            setMetasFiltradas(metas.filter((m) => m.codloja && lojasSelecionadas.includes(m.codloja)))
+        } else {
+            setMetasFiltradas(metas)
+        }
+    }, [lojasSelecionadas, metas])
 
     const formatarValor = (valor: number) => {
         return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -74,12 +104,32 @@ const ComissaoVendedores: React.FC = () => {
                 <Typography variant="h5" component="h1">
                     Comissão Vendedores - {formatarCompetencia(competencia)}
                 </Typography>
-                <FiltroCompetencia
-                    competencia={competencia}
-                    onChange={handleCompetenciaChange}
-                    label="Competência"
-                    sx={{ minWidth: 200 }}
-                />
+                <Box display="flex" gap={2}>
+                    <FiltroCompetencia
+                        competencia={competencia}
+                        onChange={handleCompetenciaChange}
+                        label="Competência"
+                        sx={{ minWidth: 200 }}
+                    />
+                    <FormControl sx={{ minWidth: 160 }} size="small">
+                        <InputLabel id="lojas-label">Lojas</InputLabel>
+                        <Select
+                            labelId="lojas-label"
+                            multiple
+                            value={lojasSelecionadas}
+                            onChange={handleLojasChange}
+                            input={<OutlinedInput label="Lojas" />}
+                            renderValue={(selected) => (selected as string[]).join(", ")}
+                        >
+                            {lojasDisponiveis.map((loja) => (
+                                <MenuItem key={loja} value={loja}>
+                                    <Checkbox checked={lojasSelecionadas.indexOf(loja) > -1} />
+                                    <ListItemText primary={loja} />
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Box>
             </Box>
 
             {loading ? (
@@ -103,20 +153,30 @@ const ComissaoVendedores: React.FC = () => {
                                 <TableCell>Venda Bruta</TableCell>
                                 <TableCell>Devolução</TableCell>
                                 <TableCell>Venda Líquida</TableCell>
+                                <TableCell>% Lucro</TableCell>
                                 <TableCell>Meta Fat. Ating.</TableCell>
+                                <TableCell>Meta Lucro Ating.</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {metas.map((meta) => (
+                            {metasFiltradas.map((meta) => (
                                 <TableRow key={meta.codvendedor}>
                                 <TableCell>{meta.vendedor || meta.codvendedor}</TableCell>
                                 <TableCell>{meta.codloja}</TableCell>
                                 <TableCell>{formatarValor(Number(meta.base_salarial) || 0)}</TableCell>
                                 <TableCell>{formatarValor(Number(meta.meta_faturamento) || 0)}</TableCell>
-                                <TableCell>{formatarPercentual((Number(meta.meta_lucra) || 0) / 100)}</TableCell>
+                                <TableCell>{formatarPercentual(Number(meta.meta_lucra) || 0)}</TableCell>
                                 <TableCell>{formatarValor(Number(meta.venda_bruta) || 0)}</TableCell>
                                 <TableCell>{formatarValor(Number(meta.devolucao) || 0)}</TableCell>
                                 <TableCell>{formatarValor(Number(meta.valor_liquido) || 0)}</TableCell>
+                                <TableCell>
+                                    {(() => {
+                                        const vendaBruta = Number(meta.venda_bruta) || 0
+                                        const lucro = Number(meta.valor_liquido) || 0
+                                        const perc = vendaBruta > 0 && lucro > 0 ? lucro / vendaBruta : 0
+                                        return formatarPercentual(perc)
+                                    })()}
+                                </TableCell>
                                 <TableCell>
                                     {formatarPercentual(
                                         Number(meta.meta_faturamento) > 0
@@ -124,8 +184,18 @@ const ComissaoVendedores: React.FC = () => {
                                             : 0,
                                     )}
                                 </TableCell>
-                                </TableRow>
-                            ))}
+                                <TableCell>
+                                    {(() => {
+                                        const vendaBruta = Number(meta.venda_bruta) || 0
+                                        const lucro = Number(meta.valor_liquido) || 0
+                                        const percLucro = vendaBruta > 0 && lucro > 0 ? lucro / vendaBruta : 0
+                                        const metaLucro = Number(meta.meta_lucra) || 0
+                                        const ating = metaLucro > 0 ? percLucro / metaLucro : 0
+                                        return formatarPercentual(ating)
+                                    })()}
+                                </TableCell>
+                            </TableRow>
+                        ))}
                         </TableBody>
                     </Table>
                 </TableContainer>
