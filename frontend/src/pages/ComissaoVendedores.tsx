@@ -54,7 +54,13 @@ const ComissaoVendedores: React.FC = () => {
             setMetas(metasCarregadas)
             setMetasFiltradas(metasCarregadas)
 
-            const lojas = Array.from(new Set(metasCarregadas.map((m) => m.codloja).filter(Boolean)))
+            const lojas = Array.from(
+                new Set(
+                    metasCarregadas
+                        .map((m) => m.codloja)
+                        .filter((codloja): codloja is string => Boolean(codloja)),
+                ),
+            )
             setLojasDisponiveis(lojas)
 
             if (metasCarregadas.length === 0) {
