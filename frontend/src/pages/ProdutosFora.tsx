@@ -47,8 +47,9 @@ import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 const ProdutosFora: React.FC = () => {
-  // Inicializar com maio de 2025 como padrão
-  const dataPadrao = new Date(2025, 4, 1) // Maio é mês 4 (0-indexed)
+  // Inicializar sempre com o primeiro dia do mês atual
+  const hoje = new Date()
+  const dataPadrao = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [produtosFiltrados, setProdutosFiltrados] = useState<Produto[]>([])
   const [produtosPaginados, setProdutosPaginados] = useState<Produto[]>([])

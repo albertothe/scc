@@ -4,7 +4,8 @@ import type { ProdutoPromocao } from "../types"
 // Função para buscar todos os produtos em promoção
 export const getProdutosPromocao = async (): Promise<ProdutoPromocao[]> => {
     try {
-        const response = await api.get("/promocoes", { timeout: 10000 })
+        // A listagem pode retornar muitos itens; aumentamos o timeout para evitar falhas prematuras.
+        const response = await api.get("/promocoes", { timeout: 30000 })
 
         // Converter produto para maiúsculas
         const produtos = response.data.map((produto: ProdutoPromocao) => ({
@@ -24,7 +25,7 @@ export const buscarProdutosPromocao = async (termo: string): Promise<ProdutoProm
     try {
         const response = await api.get("/promocoes/buscar", {
             params: { termo },
-            timeout: 10000,
+            timeout: 30000,
         })
 
         // Converter produto para maiúsculas
