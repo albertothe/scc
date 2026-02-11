@@ -52,6 +52,7 @@ export const listarDre = async (filtros: DreFiltros): Promise<DreRegistro[]> => 
 
 export const atualizarDre = async (sequencial: number, ano: number, mes: number, dados: AtualizarDreInput): Promise<void> => {
   const client = await drePool.connect()
+  const dataReferencia = `${ano}-${String(mes).padStart(2, "0")}-01`
 
   try {
     await client.query("begin")
@@ -99,26 +100,15 @@ export const atualizarDre = async (sequencial: number, ano: number, mes: number,
           realizado = $1
         where
           sequencial = $2
-          and data = make_date($3, $4, 1)
+          and date_trunc('month', data::timestamp) = date_trunc('month', $3::date)
       `
 
-      const updateDespesasResult = await client.query(updateDespesasQuery, [dados.realizado, sequencial, ano, mes])
+      const updateDespesasResult = await client.query(updateDespesasQuery, [dados.realizado, sequencial, dataReferencia])
 
       if (updateDespesasResult.rowCount === 0) {
-        const insertDespesasQuery = `
-          insert into despesas_f360 (
-            sequencial,
-            data,
-            realizado
-          )
-          values (
-            $1,
-            make_date($2, $3, 1),
-            $4
-          )
-        `
-
-        await client.query(insertDespesasQuery, [sequencial, ano, mes, dados.realizado])
+        console.warn(
+          `Nenhum registro em despesas_f360 encontrado para o sequencial ${sequencial} no mês ${dataReferencia}. Atualização aplicada apenas em fato.`,
+        )
       }
     }
 
