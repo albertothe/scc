@@ -65,9 +65,67 @@ const ImportacaoMetasVendedores: React.FC<ImportacaoMetasVendedoresProps> = ({
     const [sucesso, setSucesso] = useState<string | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    const parseNumero = (valor: unknown): number => {
+        if (typeof valor === "number") return valor
+        if (typeof valor !== "string") return 0
+
+        const normalizado = valor.replace(/\s/g, "").replace("%", "")
+        if (!normalizado) return 0
+
+        const temVirgula = normalizado.includes(",")
+        const temPonto = normalizado.includes(".")
+
+        if (temVirgula && temPonto) {
+            return Number.parseFloat(normalizado.replace(/\./g, "").replace(",", ".")) || 0
+        }
+
+        if (temVirgula) {
+            return Number.parseFloat(normalizado.replace(",", ".")) || 0
+        }
+
+        return Number.parseFloat(normalizado) || 0
+    }
+
+    const normalizarCabecalho = (texto: string) => {
+        return texto
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim()
+            .toLowerCase()
+    }
+
+    const obterValorCampo = (row: Record<string, unknown>, nomes: string[]) => {
+        const mapa = new Map<string, unknown>()
+        Object.keys(row).forEach((chave) => mapa.set(normalizarCabecalho(chave), row[chave]))
+
+        for (const nome of nomes) {
+            const valor = mapa.get(normalizarCabecalho(nome))
+            if (valor !== undefined && valor !== null && String(valor).trim() !== "") {
+                return valor
+            }
+        }
+
+        return ""
+    }
+
+    const formatarCodVendedor = (valor: unknown) => {
+        if (valor === null || valor === undefined) return ""
+        return String(valor).trim()
+    }
+
     // Formatar competência para exibição
     const formatarCompetencia = (data: string) => {
         if (!data) return ""
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+            return data
+        }
+
+        if (/^\d{2}\/\d{4}$/.test(data)) {
+            const [mes, ano] = data.split("/")
+            return `${ano}-${mes.padStart(2, "0")}-01`
+        }
+
         const partes = data.split("/")
         if (partes.length === 2) {
             const [mes, ano] = partes
@@ -117,21 +175,30 @@ const ImportacaoMetasVendedores: React.FC<ImportacaoMetasVendedoresProps> = ({
                     const workbook = XLSX.read(data, { type: "array" })
                     const sheetName = workbook.SheetNames[0]
                     const worksheet = workbook.Sheets[sheetName]
-                    const json = XLSX.utils.sheet_to_json(worksheet)
+                    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" })
 
                     // Validar e converter os dados
-                    const metasImportadas: MetaImportacao[] = json.map((row: any) => {
-                        const codvendedor = row["Código Vendedor"] || ""
-                        const base_salarial = Number.parseFloat(row["Base Salarial"]) || 0
-                        const meta_faturamento = Number.parseFloat(row["Meta Faturamento"]) || 0
-                        const meta_lucra = Number.parseFloat(row["Meta Lucro (%)"] || 0) / 100 // Converter de percentual para decimal
-                        const faturamento_minimo = Number.parseFloat(row["Faturamento Mínimo"]) || 0
-                        const incfat90 = Number.parseFloat(row["Inc. Fat. 90%"] || 0)
-                        const incfat100 = Number.parseFloat(row["Inc. Fat. 100%"] || 0)
-                        const incluc90 = Number.parseFloat(row["Inc. Lucro 90%"] || 0)
-                        const incluc100 = Number.parseFloat(row["Inc. Lucro 100%"] || 0)
-                        const ferias = (row["Férias"] || "").toLowerCase() === "sim"
-                        const comp = formatarCompetencia(row["Competência"] || competencia)
+                    const metasImportadas: MetaImportacao[] = json.map((row) => {
+                        const codvendedor = formatarCodVendedor(
+                            obterValorCampo(row, ["Código Vendedor", "Codigo Vendedor", "codvendedor", "Código", "Codigo"]),
+                        )
+                        const base_salarial = parseNumero(obterValorCampo(row, ["Base Salarial", "base_salarial"]))
+                        const meta_faturamento = parseNumero(obterValorCampo(row, ["Meta Faturamento", "meta_faturamento"]))
+                        const metaLucroValor = parseNumero(obterValorCampo(row, ["Meta Lucro (%)", "Meta Lucro", "meta_lucra"]))
+                        const meta_lucra = metaLucroValor > 1 ? metaLucroValor / 100 : metaLucroValor
+                        const faturamento_minimo = parseNumero(
+                            obterValorCampo(row, ["Faturamento Mínimo", "Faturamento Minimo", "faturamento_minimo"]),
+                        )
+                        const incfat90 = parseNumero(obterValorCampo(row, ["Inc. Fat. 90%", "incfat90"]))
+                        const incfat100 = parseNumero(obterValorCampo(row, ["Inc. Fat. 100%", "incfat100"]))
+                        const incluc90 = parseNumero(obterValorCampo(row, ["Inc. Lucro 90%", "incluc90"]))
+                        const incluc100 = parseNumero(obterValorCampo(row, ["Inc. Lucro 100%", "incluc100"]))
+                        const feriasValor = String(obterValorCampo(row, ["Férias", "Ferias", "ferias"]))
+                            .trim()
+                            .toLowerCase()
+                        const ferias = ["sim", "s", "true", "1", "x"].includes(feriasValor)
+                        const compPlanilha = String(obterValorCampo(row, ["Competência", "Competencia", "competencia"])).trim()
+                        const comp = formatarCompetencia(compPlanilha || competencia)
 
                         // Validar os dados
                         let valido = true
@@ -156,8 +223,8 @@ const ImportacaoMetasVendedores: React.FC<ImportacaoMetasVendedoresProps> = ({
 
                         return {
                             codvendedor,
-                            nome_vendedor: row["Nome Vendedor"] || "",
-                            codloja: row["Loja"] || "",
+                            nome_vendedor: String(obterValorCampo(row, ["Nome Vendedor", "nome_vendedor"]) || ""),
+                            codloja: String(obterValorCampo(row, ["Loja", "codloja"]) || ""),
                             competencia: comp,
                             base_salarial,
                             meta_faturamento,
