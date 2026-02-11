@@ -40,12 +40,28 @@ const Dre: React.FC = () => {
   const getRegistroKey = (registro: DreRegistro, campo: "realizado" | "orcado") =>
     `${registro.sequencial}-${registro.ano}-${registro.mes}-${campo}`
 
-  const formatarParaEdicao = (valor: number | null) => {
-    if (valor === null) {
+  const converterParaNumero = (valor: number | string | null) => {
+    if (valor === null || valor === "") {
+      return null
+    }
+
+    if (typeof valor === "number") {
+      return Number.isNaN(valor) ? null : valor
+    }
+
+    const numeroConvertido = Number(valor)
+
+    return Number.isNaN(numeroConvertido) ? null : numeroConvertido
+  }
+
+  const formatarParaEdicao = (valor: number | string | null) => {
+    const numero = converterParaNumero(valor)
+
+    if (numero === null) {
       return ""
     }
 
-    return valor.toFixed(2).replace(".", ",")
+    return numero.toFixed(2).replace(".", ",")
   }
 
   const normalizarEntradaMoeda = (valor: string) => {
@@ -158,12 +174,14 @@ const Dre: React.FC = () => {
     })
   }
 
-  const formatarValor = (valor: number | null) => {
-    if (valor === null) {
+  const formatarValor = (valor: number | string | null) => {
+    const numero = converterParaNumero(valor)
+
+    if (numero === null) {
       return ""
     }
 
-    return formatadorMoeda.format(valor)
+    return formatadorMoeda.format(numero)
   }
 
   const getValorCampo = (registro: DreRegistro, campo: "realizado" | "orcado") => {
