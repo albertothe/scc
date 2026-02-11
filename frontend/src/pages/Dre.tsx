@@ -22,6 +22,11 @@ import { atualizarDre, getDre } from "../services/dreService"
 import { useAuth } from "../contexts/AuthContext"
 
 const Dre: React.FC = () => {
+  const formatadorMoeda = new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+
   const [registros, setRegistros] = useState<DreRegistro[]>([])
   const [registrosBase, setRegistrosBase] = useState<DreRegistro[]>([])
   const [opcoesDescricao, setOpcoesDescricao] = useState<string[]>([])
@@ -74,16 +79,31 @@ const Dre: React.FC = () => {
   }
 
   const alterarValor = (index: number, campo: "realizado" | "orcado", valor: string) => {
+    const valorSemMascara = valor.replace(/\./g, "").replace(",", ".")
+    const valorConvertido = valorSemMascara === "" ? null : Number(valorSemMascara)
+
+    if (valorSemMascara !== "" && Number.isNaN(valorConvertido)) {
+      return
+    }
+
     setRegistros((prev) =>
       prev.map((registro, i) =>
         i === index
           ? {
               ...registro,
-              [campo]: valor === "" ? null : Number(valor),
+              [campo]: valorConvertido,
             }
           : registro,
       ),
     )
+  }
+
+  const formatarValor = (valor: number | null) => {
+    if (valor === null) {
+      return ""
+    }
+
+    return formatadorMoeda.format(valor)
   }
 
   const salvarLinha = async (registro: DreRegistro) => {
@@ -108,7 +128,16 @@ const Dre: React.FC = () => {
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box display="flex" gap={2} flexWrap="wrap">
           <TextField label="Ano" value={filtros.ano} onChange={(e) => setFiltros((prev) => ({ ...prev, ano: e.target.value }))} />
-          <TextField label="Mês" value={filtros.mes} onChange={(e) => setFiltros((prev) => ({ ...prev, mes: e.target.value }))} />
+          <TextField
+            label="Mês"
+            value={filtros.mes}
+            onChange={(e) =>
+              setFiltros((prev) => ({
+                ...prev,
+                mes: e.target.value.replace(/\D/g, "").slice(0, 2),
+              }))
+            }
+          />
           <FormControl sx={{ minWidth: 240 }}>
             <InputLabel id="dre-descricao-label">Descrição</InputLabel>
             <Select
@@ -164,8 +193,9 @@ const Dre: React.FC = () => {
                 <TableCell>
                   <TextField
                     size="small"
-                    type="number"
-                    value={registro.realizado ?? ""}
+                    type="text"
+                    inputProps={{ style: { textAlign: "right" } }}
+                    value={formatarValor(registro.realizado)}
                     onChange={(e) => alterarValor(index, "realizado", e.target.value)}
                     disabled={!podeEditar}
                   />
@@ -173,8 +203,9 @@ const Dre: React.FC = () => {
                 <TableCell>
                   <TextField
                     size="small"
-                    type="number"
-                    value={registro.orcado ?? ""}
+                    type="text"
+                    inputProps={{ style: { textAlign: "right" } }}
+                    value={formatarValor(registro.orcado)}
                     onChange={(e) => alterarValor(index, "orcado", e.target.value)}
                     disabled={!podeEditar}
                   />
