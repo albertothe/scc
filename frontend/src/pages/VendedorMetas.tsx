@@ -26,6 +26,10 @@ import {
     DialogContentText,
     DialogTitle,
     Link,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
 } from "@mui/material"
 import {
     Add as AddIcon,
@@ -35,6 +39,7 @@ import {
     ContentCopy as CopyIcon,
     FileDownload as FileDownloadIcon,
     FileUpload as FileUploadIcon,
+    MoreVert as MoreVertIcon,
 } from "@mui/icons-material"
 import { useNavigate, Link as RouterLink } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
@@ -64,10 +69,12 @@ const VendedorMetas: React.FC = () => {
     })
     const [mostrarApenasFerias, setMostrarApenasFerias] = useState(false)
     const [dialogoImportacaoAberto, setDialogoImportacaoAberto] = useState(false)
+    const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
 
     const navigate = useNavigate()
     const { temPermissaoModulo } = useAuth()
     const podeEditar = temPermissaoModulo("vendedor-metas", "editar")
+    const menuAberto = Boolean(menuAnchorEl)
 
     // Carregar metas ao montar o componente ou quando a competência mudar
     useEffect(() => {
@@ -266,6 +273,19 @@ const VendedorMetas: React.FC = () => {
         fecharModalImportacao()
     }
 
+    const abrirMenuOpcoes = (event: React.MouseEvent<HTMLElement>) => {
+        setMenuAnchorEl(event.currentTarget)
+    }
+
+    const fecharMenuOpcoes = () => {
+        setMenuAnchorEl(null)
+    }
+
+    const acaoMenuOpcoes = (acao: () => void) => {
+        fecharMenuOpcoes()
+        acao()
+    }
+
     // Filtrar metas de acordo com o checkbox de férias
     const metasFiltradas = mostrarApenasFerias ? metas.filter((meta) => meta.ferias) : metas
 
@@ -298,16 +318,47 @@ const VendedorMetas: React.FC = () => {
                             <Button
                                 variant="outlined"
                                 color="secondary"
-                                startIcon={<CopyIcon />}
-                                onClick={handleCopiarMetas}
-                                sx={{ mr: 2 }}
-                                disabled={metas.length === 0}
+                                startIcon={<MoreVertIcon />}
+                                onClick={abrirMenuOpcoes}
+                                sx={{ mr: 2, minWidth: 120 }}
+                                aria-controls={menuAberto ? "opcoes-vendedor-metas" : undefined}
+                                aria-haspopup="true"
+                                aria-expanded={menuAberto ? "true" : undefined}
                             >
-                                Copiar Metas
+                                Opções
                             </Button>
-                            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdicionarMeta}>
-                                Nova Meta
-                            </Button>
+                            <Menu id="opcoes-vendedor-metas" anchorEl={menuAnchorEl} open={menuAberto} onClose={fecharMenuOpcoes}>
+                                <MenuItem onClick={() => acaoMenuOpcoes(exportarMetas)} disabled={metas.length === 0}>
+                                    <ListItemIcon>
+                                        <FileDownloadIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Exportar Excel</ListItemText>
+                                </MenuItem>
+                                <MenuItem onClick={() => acaoMenuOpcoes(exportarModelo)}>
+                                    <ListItemIcon>
+                                        <FileDownloadIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Exportar Modelo</ListItemText>
+                                </MenuItem>
+                                <MenuItem onClick={() => acaoMenuOpcoes(abrirModalImportacao)}>
+                                    <ListItemIcon>
+                                        <FileUploadIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Importar Excel</ListItemText>
+                                </MenuItem>
+                                <MenuItem onClick={() => acaoMenuOpcoes(handleCopiarMetas)} disabled={metas.length === 0}>
+                                    <ListItemIcon>
+                                        <CopyIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Copiar Metas</ListItemText>
+                                </MenuItem>
+                                <MenuItem onClick={() => acaoMenuOpcoes(handleAdicionarMeta)}>
+                                    <ListItemIcon>
+                                        <AddIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText>Nova Meta</ListItemText>
+                                </MenuItem>
+                            </Menu>
                         </>
                     )}
                 </Box>
@@ -325,33 +376,7 @@ const VendedorMetas: React.FC = () => {
                     label="Mostrar apenas vendedores em férias"
                 />
 
-                {/* Botões de importação e exportação */}
-                {podeEditar && (
-                    <Box>
-                        <Button
-                            variant="outlined"
-                            color="primary"
-                            startIcon={<FileDownloadIcon />}
-                            onClick={exportarMetas}
-                            sx={{ mr: 2 }}
-                            disabled={metas.length === 0}
-                        >
-                            Exportar Excel
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            color="primary"
-                            startIcon={<FileDownloadIcon />}
-                            onClick={exportarModelo}
-                            sx={{ mr: 2 }}
-                        >
-                            Exportar Modelo
-                        </Button>
-                        <Button variant="outlined" color="primary" startIcon={<FileUploadIcon />} onClick={abrirModalImportacao}>
-                            Importar Excel
-                        </Button>
-                    </Box>
-                )}
+                <Box />
             </Box>
 
             {error && (
