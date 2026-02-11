@@ -315,6 +315,27 @@ const Dre: React.FC = () => {
     }
   }
 
+  const exportarLayoutImportacao = () => {
+    if (!registros.length) {
+      setMensagem({ tipo: "error", texto: "Filtre os dados antes de baixar o layout de importação." })
+      return
+    }
+
+    const dadosLayout = registros.map((registro) => ({
+      sequencial: registro.sequencial,
+      ano: registro.ano,
+      mes: registro.mes,
+      valor: "",
+    }))
+
+    const planilha = XLSX.utils.json_to_sheet(dadosLayout)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, planilha, "Layout_Importacao_DRE")
+    XLSX.writeFile(workbook, `layout_importacao_dre_${filtros.ano || "todos"}_${filtros.mes || "todos"}.xlsx`)
+
+    setMensagem({ tipo: "success", texto: "Layout de importação baixado com sucesso." })
+  }
+
   const abrirImportacao = (campo: "realizado" | "orcado") => {
     const input = document.createElement("input")
     input.type = "file"
@@ -372,6 +393,11 @@ const Dre: React.FC = () => {
           <Button variant="outlined" onClick={exportarFiltrado} disabled={!filtroAplicado || !registros.length || importando}>
             Exportar filtrado
           </Button>
+          {podeEditar && (
+            <Button variant="outlined" onClick={exportarLayoutImportacao} disabled={!filtroAplicado || !registros.length || importando}>
+              Baixar layout de importação
+            </Button>
+          )}
           {podeEditar && (
             <>
               <Button
