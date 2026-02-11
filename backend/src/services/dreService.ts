@@ -59,7 +59,7 @@ export const atualizarDre = async (sequencial: number, ano: number, mes: number,
     where
       sequencial = $3
       and ano = $4
-      and mes = $5
+      and cast(mes as integer) = $5
   `
 
   const result = await drePool.query(query, [dados.realizado, dados.orcado, sequencial, ano, mes])
