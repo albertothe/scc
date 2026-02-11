@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { Box, Button, Paper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material"
 import type { DreRegistro } from "../types"
 import { atualizarDre, getDre } from "../services/dreService"
@@ -10,10 +10,17 @@ const Dre: React.FC = () => {
   const [registros, setRegistros] = useState<DreRegistro[]>([])
   const [filtros, setFiltros] = useState({ ano: "", mes: "", descricao: "" })
   const [carregando, setCarregando] = useState(false)
+  const [filtroAplicado, setFiltroAplicado] = useState(false)
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("dre", "editar")
 
   const carregar = useCallback(async () => {
+    if (!filtros.ano || !filtros.mes) {
+      setFiltroAplicado(false)
+      setRegistros([])
+      return
+    }
+
     setCarregando(true)
     try {
       const data = await getDre({
@@ -22,16 +29,13 @@ const Dre: React.FC = () => {
         descricao: filtros.descricao || undefined,
       })
       setRegistros(data)
+      setFiltroAplicado(true)
     } catch (error) {
       console.error("Erro ao carregar DRE", error)
     } finally {
       setCarregando(false)
     }
   }, [filtros.ano, filtros.descricao, filtros.mes])
-
-  useEffect(() => {
-    carregar()
-  }, [carregar])
 
   const alterarValor = (index: number, campo: "realizado" | "orcado", valor: string) => {
     setRegistros((prev) =>
@@ -74,13 +78,21 @@ const Dre: React.FC = () => {
             value={filtros.descricao}
             onChange={(e) => setFiltros((prev) => ({ ...prev, descricao: e.target.value }))}
           />
-          <Button variant="contained" onClick={carregar} disabled={carregando}>
+          <Button variant="contained" onClick={carregar} disabled={carregando || !filtros.ano || !filtros.mes}>
             Filtrar
           </Button>
         </Box>
       </Paper>
 
       <Paper>
+        {!filtroAplicado && (
+          <Box p={2}>
+            <Typography variant="body2" color="text.secondary">
+              Informe ano e mês e clique em filtrar para carregar os dados da DRE.
+            </Typography>
+          </Box>
+        )}
+
         <Table size="small">
           <TableHead>
             <TableRow>
