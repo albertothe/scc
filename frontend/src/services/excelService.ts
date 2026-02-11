@@ -14,6 +14,17 @@ export const exportarModeloPlanilha = () => {
     XLSX.writeFile(workbook, "modelo_importacao_produtos.xlsx")
 }
 
+// Função para exportar o modelo de planilha para produtos com etiquetas
+export const exportarModeloEtiquetas = () => {
+    const data = [{ codproduto: "", etiqueta: "verde" }]
+    const worksheet = XLSX.utils.json_to_sheet(data)
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Produtos")
+
+    XLSX.writeFile(workbook, "modelo_importacao_etiquetas.xlsx")
+}
+
 // Função para exportar produtos existentes
 export const exportarProdutos = (produtos: { codproduto: string; produto: string }[]) => {
     // Criar uma planilha com os dados

@@ -599,6 +599,7 @@ const ProdutosFora: React.FC = () => {
         onClose={() => setOpenImportacao(false)}
         onImport={handleImportarProdutos}
         mesAno={mesAno} // Garantir que estamos usando o mesAno atual
+        onDownloadLayout={handleExportarModelo}
       />
 
       <ConfirmacaoExclusao

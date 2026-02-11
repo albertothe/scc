@@ -29,9 +29,10 @@ interface ImportacaoPlanilhaProps {
     onClose: () => void
     onImport: (produtos: string[]) => Promise<{ success: string[]; errors: { codigo: string; motivo: string }[] }>
     mesAno: string
+    onDownloadLayout?: () => void
 }
 
-const ImportacaoPlanilha: React.FC<ImportacaoPlanilhaProps> = ({ open, onClose, onImport, mesAno }) => {
+const ImportacaoPlanilha: React.FC<ImportacaoPlanilhaProps> = ({ open, onClose, onImport, mesAno, onDownloadLayout }) => {
     const [file, setFile] = useState<File | null>(null)
     const [loading, setLoading] = useState(false)
     const [produtos, setProdutos] = useState<string[]>([])
@@ -195,6 +196,12 @@ const ImportacaoPlanilha: React.FC<ImportacaoPlanilhaProps> = ({ open, onClose, 
                             Selecione uma planilha Excel com os códigos de produtos para importar para a competência{" "}
                             <strong>{getCompetenciaFormatada()}</strong>.
                         </Typography>
+
+                        {onDownloadLayout && (
+                            <Button variant="outlined" size="small" sx={{ mb: 2 }} onClick={onDownloadLayout}>
+                                Baixar layout de importação
+                            </Button>
+                        )}
 
                         <Box
                             sx={{
