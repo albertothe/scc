@@ -20,7 +20,7 @@ export const listarDre = async (filtros: DreFiltros): Promise<DreRegistro[]> => 
 
   if (filtros.mes) {
     values.push(filtros.mes)
-    conditions.push(`fato.mes = $${values.length}`)
+    conditions.push(`cast(fato.mes as integer) = $${values.length}`)
   }
 
   if (filtros.descricao) {
