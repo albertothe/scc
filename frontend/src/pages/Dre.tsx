@@ -1,18 +1,43 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Box, Button, Paper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material"
+import {
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from "@mui/material"
 import type { DreRegistro } from "../types"
 import { atualizarDre, getDre } from "../services/dreService"
 import { useAuth } from "../contexts/AuthContext"
 
 const Dre: React.FC = () => {
   const [registros, setRegistros] = useState<DreRegistro[]>([])
+  const [registrosBase, setRegistrosBase] = useState<DreRegistro[]>([])
+  const [opcoesDescricao, setOpcoesDescricao] = useState<string[]>([])
   const [filtros, setFiltros] = useState({ ano: "", mes: "", descricao: "" })
   const [carregando, setCarregando] = useState(false)
   const [filtroAplicado, setFiltroAplicado] = useState(false)
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("dre", "editar")
+
+  const aplicarFiltroDescricao = useCallback((dados: DreRegistro[], descricao: string) => {
+    if (!descricao) {
+      return dados
+    }
+
+    return dados.filter((registro) => registro.descricao === descricao)
+  }, [])
 
   const carregar = useCallback(async () => {
     if (!filtros.ano || !filtros.mes) {
@@ -26,16 +51,27 @@ const Dre: React.FC = () => {
       const data = await getDre({
         ano: filtros.ano || undefined,
         mes: filtros.mes || undefined,
-        descricao: filtros.descricao || undefined,
       })
-      setRegistros(data)
+      const descricoes = [...new Set(data.map((registro) => registro.descricao))].sort((a, b) => a.localeCompare(b))
+
+      setRegistrosBase(data)
+      setOpcoesDescricao(descricoes)
+      setRegistros(aplicarFiltroDescricao(data, filtros.descricao))
       setFiltroAplicado(true)
     } catch (error) {
       console.error("Erro ao carregar DRE", error)
     } finally {
       setCarregando(false)
     }
-  }, [filtros.ano, filtros.descricao, filtros.mes])
+  }, [aplicarFiltroDescricao, filtros.ano, filtros.descricao, filtros.mes])
+
+  const alterarDescricao = (descricao: string) => {
+    setFiltros((prev) => ({ ...prev, descricao }))
+
+    if (filtroAplicado) {
+      setRegistros(aplicarFiltroDescricao(registrosBase, descricao))
+    }
+  }
 
   const alterarValor = (index: number, campo: "realizado" | "orcado", valor: string) => {
     setRegistros((prev) =>
@@ -73,11 +109,22 @@ const Dre: React.FC = () => {
         <Box display="flex" gap={2} flexWrap="wrap">
           <TextField label="Ano" value={filtros.ano} onChange={(e) => setFiltros((prev) => ({ ...prev, ano: e.target.value }))} />
           <TextField label="Mês" value={filtros.mes} onChange={(e) => setFiltros((prev) => ({ ...prev, mes: e.target.value }))} />
-          <TextField
-            label="Descrição"
-            value={filtros.descricao}
-            onChange={(e) => setFiltros((prev) => ({ ...prev, descricao: e.target.value }))}
-          />
+          <FormControl sx={{ minWidth: 240 }}>
+            <InputLabel id="dre-descricao-label">Descrição</InputLabel>
+            <Select
+              labelId="dre-descricao-label"
+              value={filtros.descricao}
+              label="Descrição"
+              onChange={(e) => alterarDescricao(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {opcoesDescricao.map((descricao) => (
+                <MenuItem key={descricao} value={descricao}>
+                  {descricao}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button variant="contained" onClick={carregar} disabled={carregando || !filtros.ano || !filtros.mes}>
             Filtrar
           </Button>
