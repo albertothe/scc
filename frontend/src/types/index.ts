@@ -158,3 +158,14 @@ export interface PermissaoNivel {
   editar: boolean
   excluir: boolean
 }
+
+
+export interface DreRegistro {
+  sequencial: number
+  descricao: string
+  subdescricao: string | null
+  ano: number
+  mes: number
+  realizado: number | null
+  orcado: number | null
+}

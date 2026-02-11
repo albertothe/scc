@@ -18,6 +18,7 @@ import AutorizacaoCompraDetalhes from "./pages/AutorizacaoCompraDetalhes"
 import ControleAcessoModulos from "./pages/ControleAcessoModulos"
 import ControleAcessoNiveis from "./pages/ControleAcessoNiveis"
 import ControleAcessoPermissoes from "./pages/ControleAcessoPermissoes"
+import Dre from "./pages/Dre"
 import { AuthProvider } from "./contexts/AuthContext"
 import { ThemeProvider } from "./contexts/ThemeContext"
 
@@ -156,6 +157,16 @@ function App() {
                 <ProtectedRoute rota="vendedor-metas">
                   <Layout>
                     <VendedorMetaFormulario />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controladoria/dre"
+              element={
+                <ProtectedRoute rota="dre">
+                  <Layout>
+                    <Dre />
                   </Layout>
                 </ProtectedRoute>
               }
