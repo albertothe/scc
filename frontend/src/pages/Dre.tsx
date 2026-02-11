@@ -33,8 +33,32 @@ const Dre: React.FC = () => {
   const [filtros, setFiltros] = useState({ ano: "", mes: "", descricao: "" })
   const [carregando, setCarregando] = useState(false)
   const [filtroAplicado, setFiltroAplicado] = useState(false)
+  const [valoresEditando, setValoresEditando] = useState<Record<string, string>>({})
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("dre", "editar")
+
+  const getRegistroKey = (registro: DreRegistro, campo: "realizado" | "orcado") =>
+    `${registro.sequencial}-${registro.ano}-${registro.mes}-${campo}`
+
+  const formatarParaEdicao = (valor: number | null) => {
+    if (valor === null) {
+      return ""
+    }
+
+    return valor.toFixed(2).replace(".", ",")
+  }
+
+  const normalizarEntradaMoeda = (valor: string) => {
+    const apenasPermitidos = valor.replace(/[^\d,]/g, "")
+    const [parteInteira, ...partesDecimais] = apenasPermitidos.split(",")
+    const parteDecimal = partesDecimais.join("").slice(0, 2)
+
+    if (partesDecimais.length === 0) {
+      return parteInteira
+    }
+
+    return `${parteInteira},${parteDecimal}`
+  }
 
   const aplicarFiltroDescricao = useCallback((dados: DreRegistro[], descricao: string) => {
     if (!descricao) {
@@ -62,6 +86,7 @@ const Dre: React.FC = () => {
       setRegistrosBase(data)
       setOpcoesDescricao(descricoes)
       setRegistros(aplicarFiltroDescricao(data, filtros.descricao))
+      setValoresEditando({})
       setFiltroAplicado(true)
     } catch (error) {
       console.error("Erro ao carregar DRE", error)
@@ -79,12 +104,26 @@ const Dre: React.FC = () => {
   }
 
   const alterarValor = (index: number, campo: "realizado" | "orcado", valor: string) => {
-    const valorSemMascara = valor.replace(/\./g, "").replace(",", ".")
+    const valorNormalizado = normalizarEntradaMoeda(valor)
+    const valorSemMascara = valorNormalizado.replace(",", ".")
     const valorConvertido = valorSemMascara === "" ? null : Number(valorSemMascara)
 
     if (valorSemMascara !== "" && Number.isNaN(valorConvertido)) {
       return
     }
+
+    setValoresEditando((prev) => {
+      const registro = registros[index]
+
+      if (!registro) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        [getRegistroKey(registro, campo)]: valorNormalizado,
+      }
+    })
 
     setRegistros((prev) =>
       prev.map((registro, i) =>
@@ -98,12 +137,39 @@ const Dre: React.FC = () => {
     )
   }
 
+  const iniciarEdicaoValor = (registro: DreRegistro, campo: "realizado" | "orcado") => {
+    setValoresEditando((prev) => ({
+      ...prev,
+      [getRegistroKey(registro, campo)]: formatarParaEdicao(registro[campo]),
+    }))
+  }
+
+  const finalizarEdicaoValor = (registro: DreRegistro, campo: "realizado" | "orcado") => {
+    const chave = getRegistroKey(registro, campo)
+
+    setValoresEditando((prev) => {
+      if (!(chave in prev)) {
+        return prev
+      }
+
+      const next = { ...prev }
+      delete next[chave]
+      return next
+    })
+  }
+
   const formatarValor = (valor: number | null) => {
     if (valor === null) {
       return ""
     }
 
     return formatadorMoeda.format(valor)
+  }
+
+  const getValorCampo = (registro: DreRegistro, campo: "realizado" | "orcado") => {
+    const chave = getRegistroKey(registro, campo)
+
+    return valoresEditando[chave] ?? formatarValor(registro[campo])
   }
 
   const salvarLinha = async (registro: DreRegistro) => {
@@ -195,8 +261,10 @@ const Dre: React.FC = () => {
                     size="small"
                     type="text"
                     inputProps={{ style: { textAlign: "right" } }}
-                    value={formatarValor(registro.realizado)}
+                    value={getValorCampo(registro, "realizado")}
                     onChange={(e) => alterarValor(index, "realizado", e.target.value)}
+                    onFocus={() => iniciarEdicaoValor(registro, "realizado")}
+                    onBlur={() => finalizarEdicaoValor(registro, "realizado")}
                     disabled={!podeEditar}
                   />
                 </TableCell>
@@ -205,8 +273,10 @@ const Dre: React.FC = () => {
                     size="small"
                     type="text"
                     inputProps={{ style: { textAlign: "right" } }}
-                    value={formatarValor(registro.orcado)}
+                    value={getValorCampo(registro, "orcado")}
                     onChange={(e) => alterarValor(index, "orcado", e.target.value)}
+                    onFocus={() => iniciarEdicaoValor(registro, "orcado")}
+                    onBlur={() => finalizarEdicaoValor(registro, "orcado")}
                     disabled={!podeEditar}
                   />
                 </TableCell>
