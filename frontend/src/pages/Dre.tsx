@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import {
+  Alert,
   Box,
   Button,
   FormControl,
@@ -17,6 +18,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material"
+import * as XLSX from "xlsx"
 import type { DreRegistro } from "../types"
 import { atualizarDre, getDre } from "../services/dreService"
 import { useAuth } from "../contexts/AuthContext"
@@ -32,6 +34,8 @@ const Dre: React.FC = () => {
   const [opcoesDescricao, setOpcoesDescricao] = useState<string[]>([])
   const [filtros, setFiltros] = useState({ ano: "", mes: "", descricao: "" })
   const [carregando, setCarregando] = useState(false)
+  const [importando, setImportando] = useState(false)
+  const [mensagem, setMensagem] = useState<{ tipo: "success" | "error"; texto: string } | null>(null)
   const [filtroAplicado, setFiltroAplicado] = useState(false)
   const [valoresEditando, setValoresEditando] = useState<Record<string, string>>({})
   const { temPermissaoModulo } = useAuth()
@@ -39,6 +43,8 @@ const Dre: React.FC = () => {
 
   const getRegistroKey = (registro: DreRegistro, campo: "realizado" | "orcado") =>
     `${registro.sequencial}-${registro.ano}-${registro.mes}-${campo}`
+
+  const gerarChaveComposta = (sequencial: number, ano: number, mes: number) => `${sequencial}-${ano}-${mes}`
 
   const converterParaNumero = (valor: number | string | null) => {
     if (valor === null || valor === "") {
@@ -103,6 +109,7 @@ const Dre: React.FC = () => {
       setOpcoesDescricao(descricoes)
       setRegistros(aplicarFiltroDescricao(data, filtros.descricao))
       setValoresEditando({})
+      setMensagem(null)
       setFiltroAplicado(true)
     } catch (error) {
       console.error("Erro ao carregar DRE", error)
@@ -203,6 +210,127 @@ const Dre: React.FC = () => {
     }
   }
 
+  const exportarFiltrado = () => {
+    if (!registros.length) {
+      setMensagem({ tipo: "error", texto: "Não há registros filtrados para exportar." })
+      return
+    }
+
+    const dadosExportacao = registros.map((registro) => ({
+      sequencial: registro.sequencial,
+      ano: registro.ano,
+      mes: registro.mes,
+      descricao: registro.descricao,
+      subdescricao: registro.subdescricao ?? "",
+      realizado: registro.realizado,
+      orcado: registro.orcado,
+    }))
+
+    const planilha = XLSX.utils.json_to_sheet(dadosExportacao)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, planilha, "DRE")
+    const nomeArquivo = `dre_filtrado_${filtros.ano || "todos"}_${filtros.mes || "todos"}.xlsx`
+    XLSX.writeFile(workbook, nomeArquivo)
+    setMensagem({ tipo: "success", texto: "Exportação concluída com sucesso." })
+  }
+
+  const processarImportacao = async (arquivo: File, campo: "realizado" | "orcado") => {
+    if (!registros.length) {
+      setMensagem({ tipo: "error", texto: "Filtre os dados antes de importar uma planilha." })
+      return
+    }
+
+    setImportando(true)
+    setMensagem(null)
+
+    try {
+      const buffer = await arquivo.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: "array" })
+      const primeiraAba = workbook.SheetNames[0]
+
+      if (!primeiraAba) {
+        throw new Error("Planilha sem abas válidas.")
+      }
+
+      const worksheet = workbook.Sheets[primeiraAba]
+      const linhas = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+        raw: false,
+        defval: "",
+      })
+
+      if (!linhas.length) {
+        throw new Error("A planilha está vazia.")
+      }
+
+      const indiceRegistros = new Map(registros.map((item) => [gerarChaveComposta(item.sequencial, item.ano, item.mes), item]))
+
+      let atualizados = 0
+
+      for (const linha of linhas) {
+        const sequencial = Number(linha.sequencial ?? linha.Sequencial)
+        const ano = Number(linha.ano ?? linha.Ano)
+        const mes = Number(linha.mes ?? linha.Mês ?? linha.Mes)
+        const valorBruto = String(linha.valor ?? linha.Valor ?? "").replace(/\./g, "").replace(",", ".")
+        const valor = valorBruto === "" ? null : Number(valorBruto)
+
+        if (
+          Number.isNaN(sequencial) ||
+          Number.isNaN(ano) ||
+          Number.isNaN(mes) ||
+          (valor !== null && Number.isNaN(valor))
+        ) {
+          continue
+        }
+
+        const registroAtual = indiceRegistros.get(gerarChaveComposta(sequencial, ano, mes))
+
+        if (!registroAtual) {
+          continue
+        }
+
+        const payload = {
+          ano,
+          mes,
+          realizado: campo === "realizado" ? valor : registroAtual.realizado,
+          orcado: campo === "orcado" ? valor : registroAtual.orcado,
+        }
+
+        await atualizarDre(sequencial, payload)
+        atualizados += 1
+      }
+
+      await carregar()
+      setMensagem({
+        tipo: atualizados > 0 ? "success" : "error",
+        texto:
+          atualizados > 0
+            ? `${atualizados} registro(s) importado(s) para ${campo === "realizado" ? "Realizado" : "Orçado"}.`
+            : "Nenhum registro correspondente foi encontrado para importar.",
+      })
+    } catch (error) {
+      console.error("Erro ao importar planilha DRE", error)
+      setMensagem({ tipo: "error", texto: "Erro ao importar planilha. Verifique o formato (sequencial, ano, mes, valor)." })
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  const abrirImportacao = (campo: "realizado" | "orcado") => {
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = ".xlsx,.xls"
+    input.onchange = async (event) => {
+      const target = event.target as HTMLInputElement
+      const arquivo = target.files?.[0]
+
+      if (arquivo) {
+        await processarImportacao(arquivo, campo)
+      }
+    }
+
+    input.click()
+  }
+
   return (
     <Box p={3}>
       <Typography variant="h4" gutterBottom>
@@ -241,7 +369,33 @@ const Dre: React.FC = () => {
           <Button variant="contained" onClick={carregar} disabled={carregando || !filtros.ano || !filtros.mes}>
             Filtrar
           </Button>
+          <Button variant="outlined" onClick={exportarFiltrado} disabled={!filtroAplicado || !registros.length || importando}>
+            Exportar filtrado
+          </Button>
+          {podeEditar && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => abrirImportacao("realizado")}
+                disabled={!filtroAplicado || importando || carregando}
+              >
+                Importar Realizado
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => abrirImportacao("orcado")}
+                disabled={!filtroAplicado || importando || carregando}
+              >
+                Importar Orçado
+              </Button>
+            </>
+          )}
         </Box>
+        {mensagem && (
+          <Box mt={2}>
+            <Alert severity={mensagem.tipo}>{mensagem.texto}</Alert>
+          </Box>
+        )}
       </Paper>
 
       <Paper>
