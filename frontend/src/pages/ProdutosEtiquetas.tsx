@@ -55,11 +55,10 @@ import {
   removerProdutoBandeira,
   importarProdutosEtiquetas,
 } from "../services/produtoService"
-import { exportarProdutos } from "../services/excelService"
+import { exportarModeloEtiquetas, exportarProdutos } from "../services/excelService"
 import type { Produto } from "../types"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import * as XLSX from "xlsx"
 
 const ProdutosEtiquetas: React.FC = () => {
   // Inicializar com maio de 2025 como padrão
@@ -382,17 +381,7 @@ const ProdutosEtiquetas: React.FC = () => {
 
   // Exportar modelo de planilha para etiquetas
   const handleExportarModelo = () => {
-    // Criar um modelo específico para etiquetas com colunas codproduto e etiqueta
-    const data = [{ codproduto: "", etiqueta: "verde" }]
-    const worksheet = XLSX.utils.json_to_sheet(data)
-
-    // Criar um workbook e adicionar a planilha
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Produtos")
-
-    // Gerar o arquivo e fazer o download
-    XLSX.writeFile(workbook, "modelo_importacao_etiquetas.xlsx")
-
+    exportarModeloEtiquetas()
     handleMenuClose()
   }
 
@@ -700,6 +689,7 @@ const ProdutosEtiquetas: React.FC = () => {
         onClose={() => setOpenImportacao(false)}
         onImport={handleImportarProdutos}
         mesAno={mesAno}
+        onDownloadLayout={handleExportarModelo}
       />
 
       <ConfirmacaoExclusao

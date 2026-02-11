@@ -36,9 +36,10 @@ interface ImportacaoPromocaoProps {
         success: string[]
         errors: { codigo: string; motivo: string }[]
     }>
+    onDownloadLayout?: () => void
 }
 
-const ImportacaoPromocao: React.FC<ImportacaoPromocaoProps> = ({ open, onClose, onImport }) => {
+const ImportacaoPromocao: React.FC<ImportacaoPromocaoProps> = ({ open, onClose, onImport, onDownloadLayout }) => {
     const [file, setFile] = useState<File | null>(null)
     const [loading, setLoading] = useState(false)
     const [produtos, setProdutos] = useState<
@@ -288,6 +289,12 @@ const ImportacaoPromocao: React.FC<ImportacaoPromocaoProps> = ({ open, onClose, 
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
                             A planilha deve conter as colunas: codproduto, codloja, tabela, valor_promocao e data_validade.
                         </Typography>
+
+                        {onDownloadLayout && (
+                            <Button variant="outlined" size="small" sx={{ mb: 2 }} onClick={onDownloadLayout}>
+                                Baixar layout de importação
+                            </Button>
+                        )}
 
                         <Box
                             sx={{

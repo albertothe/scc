@@ -32,9 +32,10 @@ interface ImportacaoEtiquetasProps {
         errors: { codigo: string; motivo: string }[]
     }>
     mesAno: string
+    onDownloadLayout?: () => void
 }
 
-const ImportacaoEtiquetas: React.FC<ImportacaoEtiquetasProps> = ({ open, onClose, onImport, mesAno }) => {
+const ImportacaoEtiquetas: React.FC<ImportacaoEtiquetasProps> = ({ open, onClose, onImport, mesAno, onDownloadLayout }) => {
     const [file, setFile] = useState<File | null>(null)
     const [loading, setLoading] = useState(false)
     const [produtos, setProdutos] = useState<{ codproduto: string; etiqueta: string }[]>([])
@@ -219,6 +220,12 @@ const ImportacaoEtiquetas: React.FC<ImportacaoEtiquetasProps> = ({ open, onClose
                             Cada produto deve ter um código e uma etiqueta (verde ou vermelha). Produtos sem etiqueta válida não serão
                             importados.
                         </Typography>
+
+                        {onDownloadLayout && (
+                            <Button variant="outlined" size="small" sx={{ mb: 2 }} onClick={onDownloadLayout}>
+                                Baixar layout de importação
+                            </Button>
+                        )}
 
                         <Box
                             sx={{

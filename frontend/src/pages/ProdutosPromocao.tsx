@@ -567,6 +567,7 @@ const ProdutosPromocao: React.FC = () => {
                 open={openImportacao}
                 onClose={() => setOpenImportacao(false)}
                 onImport={handleImportarProdutos}
+                onDownloadLayout={handleExportarModelo}
             />
 
             <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
