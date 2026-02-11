@@ -10,8 +10,8 @@ const drePool = new Pool({
 })
 
 export const listarDre = async (filtros: DreFiltros): Promise<DreRegistro[]> => {
-  const conditions: string[] = ["fato.data >= $1"]
-  const values: Array<string | number> = ["2025-10-01"]
+  const conditions: string[] = []
+  const values: Array<string | number> = []
 
   if (filtros.ano) {
     values.push(filtros.ano)
@@ -41,8 +41,7 @@ export const listarDre = async (filtros: DreFiltros): Promise<DreRegistro[]> => 
       dimensao
     inner join
       fato on fato.sequencial = dimensao.sequencial
-    where
-      ${conditions.join(" and ")}
+    ${conditions.length > 0 ? `where ${conditions.join(" and ")}` : ""}
     order by
       dimensao.sequencial
   `
@@ -61,10 +60,9 @@ export const atualizarDre = async (sequencial: number, ano: number, mes: number,
       sequencial = $3
       and ano = $4
       and mes = $5
-      and data >= $6
   `
 
-  const result = await drePool.query(query, [dados.realizado, dados.orcado, sequencial, ano, mes, "2025-10-01"])
+  const result = await drePool.query(query, [dados.realizado, dados.orcado, sequencial, ano, mes])
 
   if (result.rowCount === 0) {
     throw new Error("Registro DRE não encontrado para atualização")
