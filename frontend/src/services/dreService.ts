@@ -16,5 +16,6 @@ export const atualizarDre = async (
   sequencial: number,
   payload: { ano: number; mes: number; realizado: number | null; orcado: number | null },
 ): Promise<void> => {
-  await api.put(`/dre/${sequencial}`, payload)
+  const { ano, mes, ...dados } = payload
+  await api.put(`/dre/${sequencial}/${ano}/${mes}`, dados)
 }

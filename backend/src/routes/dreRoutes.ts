@@ -6,6 +6,7 @@ const router = Router()
 
 router.use(verificarAutenticacao)
 router.get("/", verificarPermissao("dre", "visualizar"), getDre)
+router.put("/:sequencial/:ano/:mes", verificarPermissao("dre", "editar"), putDre)
 router.put("/:sequencial", verificarPermissao("dre", "editar"), putDre)
 
 export default router

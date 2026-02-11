@@ -18,8 +18,8 @@ export const getDre = async (req: Request, res: Response) => {
 export const putDre = async (req: Request, res: Response) => {
   try {
     const sequencial = Number(req.params.sequencial)
-    const ano = Number(req.body.ano)
-    const mes = Number(req.body.mes)
+    const ano = Number(req.params.ano ?? req.body.ano)
+    const mes = Number(req.params.mes ?? req.body.mes)
 
     if (Number.isNaN(sequencial) || Number.isNaN(ano) || Number.isNaN(mes)) {
       return res.status(400).json({ message: "Sequencial, ano e mês são obrigatórios" })
