@@ -7,6 +7,7 @@ import {
   Button,
   FormControl,
   InputLabel,
+  Menu,
   MenuItem,
   Paper,
   Select,
@@ -18,6 +19,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material"
+import MoreVertIcon from "@mui/icons-material/MoreVert"
 import * as XLSX from "xlsx"
 import type { DreRegistro } from "../types"
 import { atualizarDre, getDre } from "../services/dreService"
@@ -38,8 +40,10 @@ const Dre: React.FC = () => {
   const [mensagem, setMensagem] = useState<{ tipo: "success" | "error"; texto: string } | null>(null)
   const [filtroAplicado, setFiltroAplicado] = useState(false)
   const [valoresEditando, setValoresEditando] = useState<Record<string, string>>({})
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const { temPermissaoModulo } = useAuth()
   const podeEditar = temPermissaoModulo("dre", "editar")
+  const menuAberto = Boolean(menuAnchorEl)
 
   const getRegistroKey = (registro: DreRegistro, campo: "realizado" | "orcado") =>
     `${registro.sequencial}-${registro.ano}-${registro.mes}-${campo}`
@@ -59,6 +63,13 @@ const Dre: React.FC = () => {
 
     return Number.isNaN(numeroConvertido) ? null : numeroConvertido
   }
+
+  const normalizarCabecalho = (cabecalho: string) =>
+    cabecalho
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, "")
 
   const formatarParaEdicao = (valor: number | string | null) => {
     const numero = converterParaNumero(valor)
@@ -267,10 +278,24 @@ const Dre: React.FC = () => {
       let atualizados = 0
 
       for (const linha of linhas) {
-        const sequencial = Number(linha.sequencial ?? linha.Sequencial)
-        const ano = Number(linha.ano ?? linha.Ano)
-        const mes = Number(linha.mes ?? linha.Mês ?? linha.Mes)
-        const valorBruto = String(linha.valor ?? linha.Valor ?? "").replace(/\./g, "").replace(",", ".")
+        const linhaNormalizada = Object.entries(linha).reduce<Record<string, unknown>>((acc, [chave, valor]) => {
+          acc[normalizarCabecalho(chave)] = valor
+          return acc
+        }, {})
+
+        const sequencial = Number(linhaNormalizada.sequencial)
+        const ano = Number(linhaNormalizada.ano)
+        const mes = Number(linhaNormalizada.mes)
+
+        const valorImportacao =
+          linhaNormalizada.valor ??
+          linhaNormalizada[campo] ??
+          (campo === "orcado" ? linhaNormalizada.orcado : linhaNormalizada.realizado)
+
+        const valorBruto = String(valorImportacao ?? "")
+          .trim()
+          .replace(/\./g, "")
+          .replace(",", ".")
         const valor = valorBruto === "" ? null : Number(valorBruto)
 
         if (
@@ -313,6 +338,19 @@ const Dre: React.FC = () => {
     } finally {
       setImportando(false)
     }
+  }
+
+  const abrirMenuOpcoes = (event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl(event.currentTarget)
+  }
+
+  const fecharMenuOpcoes = () => {
+    setMenuAnchorEl(null)
+  }
+
+  const acaoMenuOpcoes = (acao: () => void) => {
+    fecharMenuOpcoes()
+    acao()
   }
 
   const exportarLayoutImportacao = () => {
@@ -390,32 +428,35 @@ const Dre: React.FC = () => {
           <Button variant="contained" onClick={carregar} disabled={carregando || !filtros.ano || !filtros.mes}>
             Filtrar
           </Button>
-          <Button variant="outlined" onClick={exportarFiltrado} disabled={!filtroAplicado || !registros.length || importando}>
-            Exportar filtrado
+          <Button
+            variant="outlined"
+            startIcon={<MoreVertIcon />}
+            onClick={abrirMenuOpcoes}
+            disabled={!filtroAplicado || carregando || importando}
+            sx={{ minWidth: 120 }}
+          >
+            Opções
           </Button>
-          {podeEditar && (
-            <Button variant="outlined" onClick={exportarLayoutImportacao} disabled={!filtroAplicado || !registros.length || importando}>
-              Baixar layout de importação
-            </Button>
-          )}
-          {podeEditar && (
-            <>
-              <Button
-                variant="outlined"
-                onClick={() => abrirImportacao("realizado")}
-                disabled={!filtroAplicado || importando || carregando}
-              >
+          <Menu id="opcoes-dre" anchorEl={menuAnchorEl} open={menuAberto} onClose={fecharMenuOpcoes}>
+            <MenuItem onClick={() => acaoMenuOpcoes(exportarFiltrado)} disabled={!registros.length || importando}>
+              Exportar filtrado
+            </MenuItem>
+            {podeEditar && (
+              <MenuItem onClick={() => acaoMenuOpcoes(exportarLayoutImportacao)} disabled={!registros.length || importando}>
+                Baixar layout de importação
+              </MenuItem>
+            )}
+            {podeEditar && (
+              <MenuItem onClick={() => acaoMenuOpcoes(() => abrirImportacao("realizado"))} disabled={importando || carregando}>
                 Importar Realizado
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => abrirImportacao("orcado")}
-                disabled={!filtroAplicado || importando || carregando}
-              >
+              </MenuItem>
+            )}
+            {podeEditar && (
+              <MenuItem onClick={() => acaoMenuOpcoes(() => abrirImportacao("orcado"))} disabled={importando || carregando}>
                 Importar Orçado
-              </Button>
-            </>
-          )}
+              </MenuItem>
+            )}
+          </Menu>
         </Box>
         {mensagem && (
           <Box mt={2}>
