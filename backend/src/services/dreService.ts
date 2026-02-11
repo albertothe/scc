@@ -51,20 +51,82 @@ export const listarDre = async (filtros: DreFiltros): Promise<DreRegistro[]> => 
 }
 
 export const atualizarDre = async (sequencial: number, ano: number, mes: number, dados: AtualizarDreInput): Promise<void> => {
-  const query = `
-    update fato
-    set
-      realizado = $1,
-      orcado = $2
-    where
-      sequencial = $3
-      and ano = $4
-      and cast(mes as integer) = $5
-  `
+  const client = await drePool.connect()
 
-  const result = await drePool.query(query, [dados.realizado, dados.orcado, sequencial, ano, mes])
+  try {
+    await client.query("begin")
 
-  if (result.rowCount === 0) {
-    throw new Error("Registro DRE não encontrado para atualização")
+    const valorAnteriorQuery = `
+      select
+        realizado
+      from
+        fato
+      where
+        sequencial = $1
+        and ano = $2
+        and cast(mes as integer) = $3
+      for update
+    `
+
+    const valorAnteriorResult = await client.query<{ realizado: number | string | null }>(valorAnteriorQuery, [sequencial, ano, mes])
+
+    if (valorAnteriorResult.rowCount === 0) {
+      throw new Error("Registro DRE não encontrado para atualização")
+    }
+
+    const valorAnteriorRealizadoRaw = valorAnteriorResult.rows[0]?.realizado ?? null
+    const valorAnteriorRealizado = valorAnteriorRealizadoRaw === null ? null : Number(valorAnteriorRealizadoRaw)
+
+    const updateFatoQuery = `
+      update fato
+      set
+        realizado = $1,
+        orcado = $2
+      where
+        sequencial = $3
+        and ano = $4
+        and cast(mes as integer) = $5
+    `
+
+    await client.query(updateFatoQuery, [dados.realizado, dados.orcado, sequencial, ano, mes])
+
+    const realizadoFoiAlterado = valorAnteriorRealizado !== dados.realizado
+
+    if (realizadoFoiAlterado) {
+      const updateDespesasQuery = `
+        update despesas_f360
+        set
+          realizado = $1
+        where
+          sequencial = $2
+          and data = make_date($3, $4, 1)
+      `
+
+      const updateDespesasResult = await client.query(updateDespesasQuery, [dados.realizado, sequencial, ano, mes])
+
+      if (updateDespesasResult.rowCount === 0) {
+        const insertDespesasQuery = `
+          insert into despesas_f360 (
+            sequencial,
+            data,
+            realizado
+          )
+          values (
+            $1,
+            make_date($2, $3, 1),
+            $4
+          )
+        `
+
+        await client.query(insertDespesasQuery, [sequencial, ano, mes, dados.realizado])
+      }
+    }
+
+    await client.query("commit")
+  } catch (error) {
+    await client.query("rollback")
+    throw error
+  } finally {
+    client.release()
   }
 }
