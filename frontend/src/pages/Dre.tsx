@@ -48,7 +48,19 @@ const Dre: React.FC = () => {
   const getRegistroKey = (registro: DreRegistro, campo: "realizado" | "orcado") =>
     `${registro.sequencial}-${registro.ano}-${registro.mes}-${campo}`
 
-  const gerarChaveComposta = (sequencial: number, ano: number, mes: number) => `${sequencial}-${ano}-${mes}`
+  const normalizarValorChave = (valor: number | string) => {
+    const valorTexto = String(valor).trim()
+    const valorNumerico = Number(valorTexto)
+
+    if (!Number.isNaN(valorNumerico)) {
+      return String(valorNumerico)
+    }
+
+    return valorTexto
+  }
+
+  const gerarChaveComposta = (sequencial: number | string, ano: number | string, mes: number | string) =>
+    `${normalizarValorChave(sequencial)}-${normalizarValorChave(ano)}-${normalizarValorChave(mes)}`
 
   const converterParaNumero = (valor: number | string | null) => {
     if (valor === null || valor === "") {
