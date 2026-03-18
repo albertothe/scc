@@ -106,9 +106,12 @@ export const atualizarDre = async (sequencial: number, ano: number, mes: number,
       const updateDespesasResult = await client.query(updateDespesasQuery, [dados.realizado, sequencial, dataReferencia])
 
       if (updateDespesasResult.rowCount === 0) {
-        console.warn(
-          `Nenhum registro em despesas_f360 encontrado para o sequencial ${sequencial} no mês ${dataReferencia}. Atualização aplicada apenas em fato.`,
-        )
+        const insertDespesasQuery = `
+          insert into despesas_f360 (sequencial, data, realizado)
+          values ($1, $2, $3)
+        `
+
+        await client.query(insertDespesasQuery, [sequencial, dataReferencia, dados.realizado])
       }
     }
 
