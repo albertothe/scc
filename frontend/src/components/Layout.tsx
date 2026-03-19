@@ -44,6 +44,9 @@ import {
   People as NiveisIcon,
   VpnKey as PermissoesIcon,
   TableChart as DreIcon,
+  SupportAgent as HelpDeskIcon,
+  ConfirmationNumber as ChamadosIcon,
+  Computer as AtivosIcon,
 } from "@mui/icons-material"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
@@ -139,6 +142,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       subItems: [
         { text: "Autorização Compra", icon: <AutorizacaoIcon />, path: "/controladoria/autorizacao-compra" },
         { text: "DRE", icon: <DreIcon />, path: "/controladoria/dre" },
+      ],
+    },
+    {
+      text: "Help Desk",
+      icon: <HelpDeskIcon />,
+      subItems: [
+        { text: "Chamados", icon: <ChamadosIcon />, path: "/help-desk/chamados" },
+        { text: "Ativos", icon: <AtivosIcon />, path: "/help-desk/ativos" },
       ],
     },
     {

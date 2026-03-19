@@ -19,6 +19,8 @@ import ControleAcessoModulos from "./pages/ControleAcessoModulos"
 import ControleAcessoNiveis from "./pages/ControleAcessoNiveis"
 import ControleAcessoPermissoes from "./pages/ControleAcessoPermissoes"
 import Dre from "./pages/Dre"
+import HelpDeskChamados from "./pages/HelpDeskChamados"
+import HelpDeskAtivos from "./pages/HelpDeskAtivos"
 import { AuthProvider } from "./contexts/AuthContext"
 import { ThemeProvider } from "./contexts/ThemeContext"
 
@@ -207,6 +209,26 @@ function App() {
                 <ProtectedRoute rota="autorizacao-compra">
                   <Layout>
                     <AutorizacaoCompraDetalhes />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/help-desk/chamados"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <HelpDeskChamados />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/help-desk/ativos"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <HelpDeskAtivos />
                   </Layout>
                 </ProtectedRoute>
               }
