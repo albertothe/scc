@@ -303,6 +303,54 @@ export class HelpDeskService {
     return result.rows
   }
 
+  async atualizarAtivo(id: number, ativo: Ativo): Promise<Ativo | null> {
+    const result = await this.db.query(
+      `UPDATE scc_ativos
+          SET nome = $1,
+              nome_pc = $2,
+              nome_estacao_erp = $3,
+              ip = $4,
+              tipo = $5,
+              marca = $6,
+              modelo = $7,
+              numero_serie = $8,
+              status = COALESCE($9, 'ativo'),
+              usuario_responsavel = $10,
+              localizacao = $11,
+              data_compra = $12,
+              valor = $13,
+              observacoes = $14
+        WHERE id = $15
+      RETURNING id, nome, nome_pc, nome_estacao_erp, ip, tipo, marca, modelo,
+                numero_serie, status, usuario_responsavel, localizacao, data_compra,
+                valor, observacoes, data_criacao`,
+      [
+        ativo.nome,
+        ativo.nome_pc ?? null,
+        ativo.nome_estacao_erp ?? null,
+        ativo.ip ?? null,
+        ativo.tipo ?? null,
+        ativo.marca ?? null,
+        ativo.modelo ?? null,
+        ativo.numero_serie ?? null,
+        ativo.status ?? "ativo",
+        ativo.usuario_responsavel ?? null,
+        ativo.localizacao ?? null,
+        ativo.data_compra ?? null,
+        ativo.valor ?? null,
+        ativo.observacoes ?? null,
+        id,
+      ],
+    )
+
+    return result.rows[0] ?? null
+  }
+
+  async excluirAtivo(id: number): Promise<boolean> {
+    const result = await this.db.query(`DELETE FROM scc_ativos WHERE id = $1`, [id])
+    return (result.rowCount ?? 0) > 0
+  }
+
   async criarAtivo(ativo: Ativo): Promise<Ativo> {
     const result = await this.db.query(
       `INSERT INTO scc_ativos (

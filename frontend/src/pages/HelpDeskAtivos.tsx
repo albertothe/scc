@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Alert,
   Box,
@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -20,10 +21,14 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material"
 import AddIcon from "@mui/icons-material/Add"
+import DeleteIcon from "@mui/icons-material/Delete"
+import EditIcon from "@mui/icons-material/Edit"
 import RefreshIcon from "@mui/icons-material/Refresh"
+import { useAuth } from "../contexts/AuthContext"
 import * as helpDeskService from "../services/helpDeskService"
 import type { AtivoHelpDesk } from "../types"
 import { formatarMoeda } from "../utils/formatters"
@@ -31,29 +36,41 @@ import { formatarMoeda } from "../utils/formatters"
 const statusOptions = ["ativo", "manutencao", "baixado"]
 const tipoOptions = ["computador", "notebook", "impressora"]
 
+const formInicial: AtivoHelpDesk = {
+  nome: "",
+  nome_pc: "",
+  nome_estacao_erp: "",
+  ip: "",
+  tipo: "computador",
+  marca: "",
+  modelo: "",
+  numero_serie: "",
+  status: "ativo",
+  usuario_responsavel: "",
+  localizacao: "",
+  data_compra: "",
+  valor: null,
+  observacoes: "",
+}
+
 const HelpDeskAtivos: React.FC = () => {
+  const { temPermissaoModulo } = useAuth()
+  const podeIncluir = temPermissaoModulo("help-desk", "incluir")
+  const podeEditar = temPermissaoModulo("help-desk", "editar")
+  const podeExcluir = temPermissaoModulo("help-desk", "excluir")
+
   const [ativos, setAtivos] = useState<AtivoHelpDesk[]>([])
   const [erro, setErro] = useState("")
   const [busca, setBusca] = useState("")
   const [statusFiltro, setStatusFiltro] = useState("")
   const [tipoFiltro, setTipoFiltro] = useState("")
   const [dialogAberto, setDialogAberto] = useState(false)
-  const [form, setForm] = useState<AtivoHelpDesk>({
-    nome: "",
-    nome_pc: "",
-    nome_estacao_erp: "",
-    ip: "",
-    tipo: "computador",
-    marca: "",
-    modelo: "",
-    numero_serie: "",
-    status: "ativo",
-    usuario_responsavel: "",
-    localizacao: "",
-    data_compra: "",
-    valor: null,
-    observacoes: "",
-  })
+  const [salvando, setSalvando] = useState(false)
+  const [excluindoId, setExcluindoId] = useState<number | null>(null)
+  const [ativoEmEdicao, setAtivoEmEdicao] = useState<AtivoHelpDesk | null>(null)
+  const [form, setForm] = useState<AtivoHelpDesk>(formInicial)
+
+  const exibeColunaAcoes = useMemo(() => podeEditar || podeExcluir, [podeEditar, podeExcluir])
 
   const carregarAtivos = useCallback(async () => {
     try {
@@ -74,27 +91,72 @@ const HelpDeskAtivos: React.FC = () => {
     carregarAtivos()
   }, [carregarAtivos])
 
-  const salvarAtivo = async () => {
-    if (!form.nome.trim()) return
-    await helpDeskService.criarAtivo(form)
+  const fecharDialog = () => {
     setDialogAberto(false)
+    setAtivoEmEdicao(null)
+    setForm(formInicial)
+  }
+
+  const abrirNovoAtivo = () => {
+    setAtivoEmEdicao(null)
+    setForm(formInicial)
+    setDialogAberto(true)
+  }
+
+  const abrirEdicaoAtivo = (ativo: AtivoHelpDesk) => {
+    setAtivoEmEdicao(ativo)
     setForm({
-      nome: "",
-      nome_pc: "",
-      nome_estacao_erp: "",
-      ip: "",
-      tipo: "computador",
-      marca: "",
-      modelo: "",
-      numero_serie: "",
-      status: "ativo",
-      usuario_responsavel: "",
-      localizacao: "",
-      data_compra: "",
-      valor: null,
-      observacoes: "",
+      ...formInicial,
+      ...ativo,
+      data_compra: ativo.data_compra ? String(ativo.data_compra).slice(0, 10) : "",
+      valor: ativo.valor ?? null,
     })
-    await carregarAtivos()
+    setDialogAberto(true)
+  }
+
+  const salvarAtivo = async () => {
+    if (!form.nome.trim()) {
+      setErro("Informe o nome do ativo.")
+      return
+    }
+
+    try {
+      setSalvando(true)
+      setErro("")
+
+      if (ativoEmEdicao?.id) {
+        await helpDeskService.atualizarAtivo(ativoEmEdicao.id, form)
+      } else {
+        await helpDeskService.criarAtivo(form)
+      }
+
+      fecharDialog()
+      await carregarAtivos()
+    } catch (error) {
+      console.error(error)
+      setErro("Não foi possível salvar o ativo.")
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const excluirAtivo = async (ativo: AtivoHelpDesk) => {
+    if (!ativo.id) return
+
+    const confirmou = window.confirm(`Deseja excluir o ativo "${ativo.nome}"?`)
+    if (!confirmou) return
+
+    try {
+      setExcluindoId(ativo.id)
+      setErro("")
+      await helpDeskService.excluirAtivo(ativo.id)
+      await carregarAtivos()
+    } catch (error) {
+      console.error(error)
+      setErro("Não foi possível excluir o ativo.")
+    } finally {
+      setExcluindoId(null)
+    }
   }
 
   return (
@@ -110,7 +172,9 @@ const HelpDeskAtivos: React.FC = () => {
             </Box>
             <Stack direction="row" spacing={1}>
               <Button variant="outlined" startIcon={<RefreshIcon />} onClick={carregarAtivos}>Atualizar</Button>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogAberto(true)}>Novo ativo</Button>
+              {podeIncluir && (
+                <Button variant="contained" startIcon={<AddIcon />} onClick={abrirNovoAtivo}>Novo ativo</Button>
+              )}
             </Stack>
           </Stack>
 
@@ -146,6 +210,7 @@ const HelpDeskAtivos: React.FC = () => {
                 <TableCell>Hostname</TableCell>
                 <TableCell>IP</TableCell>
                 <TableCell>Valor</TableCell>
+                {exibeColunaAcoes && <TableCell align="center">Ações</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -161,11 +226,35 @@ const HelpDeskAtivos: React.FC = () => {
                   <TableCell>{ativo.nome_pc || "-"}</TableCell>
                   <TableCell>{ativo.ip || "-"}</TableCell>
                   <TableCell>{ativo.valor ? formatarMoeda(Number(ativo.valor)) : "-"}</TableCell>
+                  {exibeColunaAcoes && (
+                    <TableCell align="center">
+                      {podeEditar && (
+                        <Tooltip title="Editar ativo">
+                          <IconButton color="primary" onClick={() => abrirEdicaoAtivo(ativo)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {podeExcluir && (
+                        <Tooltip title="Excluir ativo">
+                          <span>
+                            <IconButton
+                              color="error"
+                              onClick={() => excluirAtivo(ativo)}
+                              disabled={excluindoId === ativo.id}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
               {ativos.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">Nenhum ativo encontrado.</TableCell>
+                  <TableCell colSpan={exibeColunaAcoes ? 8 : 7} align="center">Nenhum ativo encontrado.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -173,8 +262,8 @@ const HelpDeskAtivos: React.FC = () => {
         </Paper>
       </Stack>
 
-      <Dialog open={dialogAberto} onClose={() => setDialogAberto(false)} fullWidth maxWidth="md">
-        <DialogTitle>Novo ativo</DialogTitle>
+      <Dialog open={dialogAberto} onClose={fecharDialog} fullWidth maxWidth="md">
+        <DialogTitle>{ativoEmEdicao ? "Editar ativo" : "Novo ativo"}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} mt={0.5}>
             <Grid item xs={12} md={6}><TextField label="Nome" fullWidth value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></Grid>
@@ -185,7 +274,7 @@ const HelpDeskAtivos: React.FC = () => {
             <Grid item xs={12} md={4}><TextField label="Marca" fullWidth value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} /></Grid>
             <Grid item xs={12} md={4}><TextField label="Modelo" fullWidth value={form.modelo} onChange={(e) => setForm({ ...form, modelo: e.target.value })} /></Grid>
             <Grid item xs={12} md={4}><TextField label="Número de série" fullWidth value={form.numero_serie} onChange={(e) => setForm({ ...form, numero_serie: e.target.value })} /></Grid>
-            <Grid item xs={12} md={4}><TextField select label="Status" fullWidth value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AtivoHelpDesk['status'] })}>{statusOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField></Grid>
+            <Grid item xs={12} md={4}><TextField select label="Status" fullWidth value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AtivoHelpDesk["status"] })}>{statusOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField></Grid>
             <Grid item xs={12} md={4}><TextField label="Usuário responsável" fullWidth value={form.usuario_responsavel} onChange={(e) => setForm({ ...form, usuario_responsavel: e.target.value })} /></Grid>
             <Grid item xs={12} md={4}><TextField label="Localização" fullWidth value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} /></Grid>
             <Grid item xs={12} md={4}><TextField label="Data compra" type="date" fullWidth InputLabelProps={{ shrink: true }} value={form.data_compra || ""} onChange={(e) => setForm({ ...form, data_compra: e.target.value })} /></Grid>
@@ -194,8 +283,8 @@ const HelpDeskAtivos: React.FC = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogAberto(false)}>Cancelar</Button>
-          <Button onClick={salvarAtivo} variant="contained">Salvar</Button>
+          <Button onClick={fecharDialog}>Cancelar</Button>
+          <Button onClick={salvarAtivo} variant="contained" disabled={salvando}>{ativoEmEdicao ? "Salvar alterações" : "Salvar"}</Button>
         </DialogActions>
       </Dialog>
     </Box>
