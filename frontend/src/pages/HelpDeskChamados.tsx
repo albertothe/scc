@@ -6,6 +6,9 @@ import {
   Alert,
   Box,
   Button,
+  Card,
+  CardActionArea,
+  CardContent,
   Chip,
   Dialog,
   DialogActions,
@@ -34,10 +37,41 @@ import * as helpDeskService from "../services/helpDeskService"
 import type { ChamadoHelpDesk, ChamadoHelpDeskDetalhado, InteracaoChamado } from "../types"
 import { formatarDataHora } from "../utils/formatters"
 
-const statusOptions = ["aberto", "em_andamento", "resolvido", "fechado"]
-const prioridadeOptions = ["baixa", "media", "alta", "urgente"]
-const tipoOptions: ChamadoHelpDesk["tipo"][] = ["incidente", "requisicao"]
+const statusOptions: ChamadoHelpDesk["status"][] = ["ABERTO", "EM ANDAMENTO", "RESOLVIDO", "FECHADO"]
+const prioridadeOptions: ChamadoHelpDesk["prioridade"][] = ["BAIXO", "MÉDIO", "ALTA", "URGENTE"]
+const tipoOptions: ChamadoHelpDesk["tipo"][] = ["INCIDENTE", "REQUISICAO"]
 const responsaveis: NonNullable<ChamadoHelpDesk["responsavel"]>[] = ["", "ALBERTO", "WALLYSON"]
+const setorOptions = [
+  "ADMINISTRATIVO",
+  "TRANSPORTADORA",
+  "DEPOSITO",
+  "RH",
+  "CONTABILIDADE",
+  "MARKETING",
+  "COMPRAS",
+  "CREDITO",
+  "FINANCEIRO",
+  "DIRETORIA",
+  "VENDAS",
+  "LABORATORIO",
+  "FATURAMENTO",
+]
+
+const prioridadeStyles: Record<ChamadoHelpDesk["prioridade"], { label: string; sx: object }> = {
+  URGENTE: { label: "Urgente", sx: { bgcolor: "#b71c1c", color: "#fff" } },
+  ALTA: { label: "Alta", sx: { bgcolor: "#ef6c00", color: "#fff" } },
+  "MÉDIO": { label: "Médio", sx: { bgcolor: "#f9a825", color: "#111" } },
+  BAIXO: { label: "Baixo", sx: { bgcolor: "#1565c0", color: "#fff" } },
+}
+
+const statusStyles: Record<ChamadoHelpDesk["status"], "default" | "primary" | "warning" | "success" | "error"> = {
+  ABERTO: "primary",
+  "EM ANDAMENTO": "warning",
+  RESOLVIDO: "success",
+  FECHADO: "default",
+}
+
+const autoRefreshMs = 5 * 60 * 1000
 
 const HelpDeskChamados: React.FC = () => {
   const { usuario } = useAuth()
@@ -45,19 +79,21 @@ const HelpDeskChamados: React.FC = () => {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState("")
   const [busca, setBusca] = useState("")
-  const [statusFiltro, setStatusFiltro] = useState("")
-  const [prioridadeFiltro, setPrioridadeFiltro] = useState("")
+  const [statusFiltro, setStatusFiltro] = useState<"" | ChamadoHelpDesk["status"]>("")
+  const [prioridadeFiltro, setPrioridadeFiltro] = useState<"" | ChamadoHelpDesk["prioridade"]>("")
+  const [statusCardFiltro, setStatusCardFiltro] = useState<"" | ChamadoHelpDesk["status"]>("")
   const [dialogAberto, setDialogAberto] = useState(false)
   const [detalhe, setDetalhe] = useState<ChamadoHelpDeskDetalhado | null>(null)
   const [formChamado, setFormChamado] = useState<Partial<ChamadoHelpDesk>>({
     titulo: "",
     descricao: "",
-    tipo: "incidente",
-    prioridade: "media",
-    categoria: "",
+    tipo: "INCIDENTE",
+    prioridade: "MÉDIO",
+    loja: "",
+    setor: "ADMINISTRATIVO",
     responsavel: "",
   })
-  const [novaInteracao, setNovaInteracao] = useState<Partial<InteracaoChamado>>({ mensagem: "", tipo: "comentario", status_novo: "" })
+  const [novaInteracao, setNovaInteracao] = useState<Partial<InteracaoChamado>>({ mensagem: "", tipo: "COMENTARIO", status_novo: "" })
 
   const carregarChamados = useCallback(async () => {
     try {
@@ -81,11 +117,28 @@ const HelpDeskChamados: React.FC = () => {
     carregarChamados()
   }, [carregarChamados])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      carregarChamados()
+    }, autoRefreshMs)
+
+    return () => window.clearInterval(interval)
+  }, [carregarChamados])
+
   const resumo = useMemo(() => ({
-    abertos: chamados.filter((item) => item.status === "aberto").length,
-    andamento: chamados.filter((item) => item.status === "em_andamento").length,
-    fechados: chamados.filter((item) => item.status === "fechado").length,
+    ABERTO: chamados.filter((item) => item.status === "ABERTO").length,
+    "EM ANDAMENTO": chamados.filter((item) => item.status === "EM ANDAMENTO").length,
+    RESOLVIDO: chamados.filter((item) => item.status === "RESOLVIDO").length,
+    FECHADO: chamados.filter((item) => item.status === "FECHADO").length,
   }), [chamados])
+
+  const chamadosVisiveis = useMemo(() => {
+    if (statusCardFiltro) {
+      return chamados.filter((item) => item.status === statusCardFiltro)
+    }
+
+    return chamados.filter((item) => item.status !== "FECHADO")
+  }, [chamados, statusCardFiltro])
 
   const abrirDetalhe = async (id?: number) => {
     if (!id) return
@@ -99,11 +152,21 @@ const HelpDeskChamados: React.FC = () => {
     await helpDeskService.criarChamado({
       ...formChamado,
       nome_usuario_abertura: usuario?.usuario ?? "",
-      status: "aberto",
+      status: "ABERTO",
+      loja: formChamado.loja?.trim() || null,
+      setor: formChamado.setor || "ADMINISTRATIVO",
     })
 
     setDialogAberto(false)
-    setFormChamado({ titulo: "", descricao: "", tipo: "incidente", prioridade: "media", categoria: "", responsavel: "" })
+    setFormChamado({
+      titulo: "",
+      descricao: "",
+      tipo: "INCIDENTE",
+      prioridade: "MÉDIO",
+      loja: "",
+      setor: "ADMINISTRATIVO",
+      responsavel: "",
+    })
     await carregarChamados()
   }
 
@@ -113,8 +176,12 @@ const HelpDeskChamados: React.FC = () => {
     await helpDeskService.adicionarInteracao(detalhe.id, novaInteracao)
     const atualizado = await helpDeskService.obterChamado(detalhe.id)
     setDetalhe(atualizado)
-    setNovaInteracao({ mensagem: "", tipo: "comentario", status_novo: "" })
+    setNovaInteracao({ mensagem: "", tipo: "COMENTARIO", status_novo: "" })
     await carregarChamados()
+  }
+
+  const toggleStatusCard = (status: ChamadoHelpDesk["status"]) => {
+    setStatusCardFiltro((current) => (current === status ? "" : status))
   }
 
   return (
@@ -125,7 +192,7 @@ const HelpDeskChamados: React.FC = () => {
             <Box>
               <Typography variant="h4">Help Desk - Chamados</Typography>
               <Typography color="text.secondary">
-                Gestão interna de incidentes e requisições, sem dependência do GLPI.
+                Gestão interna de incidentes e requisições, com atualização automática a cada 5 minutos.
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
@@ -138,10 +205,40 @@ const HelpDeskChamados: React.FC = () => {
             </Stack>
           </Stack>
 
+          <Grid container spacing={2} mt={1}>
+            {statusOptions.map((status) => {
+              const ativo = statusCardFiltro === status
+              const quantidade = resumo[status]
+
+              return (
+                <Grid item xs={12} sm={6} md={3} key={status}>
+                  <Card variant={ativo ? "elevation" : "outlined"} sx={{ borderColor: ativo ? "primary.main" : undefined }}>
+                    <CardActionArea onClick={() => toggleStatusCard(status)}>
+                      <CardContent>
+                        <Stack spacing={1}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            {status}
+                          </Typography>
+                          <Typography variant="h4">{quantidade}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {ativo ? "Clique para remover o filtro" : "Clique para filtrar por este status"}
+                          </Typography>
+                        </Stack>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              )
+            })}
+          </Grid>
+
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={2}>
-            <Chip label={`Abertos: ${resumo.abertos}`} color="primary" variant="outlined" />
-            <Chip label={`Em andamento: ${resumo.andamento}`} color="warning" variant="outlined" />
-            <Chip label={`Fechados: ${resumo.fechados}`} color="success" variant="outlined" />
+            <Chip
+              label={statusCardFiltro ? `Filtro rápido: ${statusCardFiltro}` : "Filtro rápido: ocultando fechados"}
+              color={statusCardFiltro ? "primary" : "default"}
+              variant={statusCardFiltro ? "filled" : "outlined"}
+            />
+            {statusCardFiltro && <Chip label="Limpar filtro rápido" onClick={() => setStatusCardFiltro("")} />}
           </Stack>
 
           <Grid container spacing={2} mt={1}>
@@ -149,13 +246,13 @@ const HelpDeskChamados: React.FC = () => {
               <TextField fullWidth label="Buscar" value={busca} onChange={(e) => setBusca(e.target.value)} />
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField select fullWidth label="Status" value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)}>
+              <TextField select fullWidth label="Status" value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value as typeof statusFiltro)}>
                 <MenuItem value="">Todos</MenuItem>
                 {statusOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} md={4}>
-              <TextField select fullWidth label="Prioridade" value={prioridadeFiltro} onChange={(e) => setPrioridadeFiltro(e.target.value)}>
+              <TextField select fullWidth label="Prioridade" value={prioridadeFiltro} onChange={(e) => setPrioridadeFiltro(e.target.value as typeof prioridadeFiltro)}>
                 <MenuItem value="">Todas</MenuItem>
                 {prioridadeOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
@@ -174,12 +271,13 @@ const HelpDeskChamados: React.FC = () => {
                 <TableCell>Tipo</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Prioridade</TableCell>
+                <TableCell>Loja / Setor</TableCell>
                 <TableCell>Responsável</TableCell>
                 <TableCell>Abertura</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {chamados.map((chamado) => (
+              {chamadosVisiveis.map((chamado) => (
                 <TableRow key={chamado.id} hover sx={{ cursor: "pointer" }} onClick={() => abrirDetalhe(chamado.id)}>
                   <TableCell>{chamado.id}</TableCell>
                   <TableCell>
@@ -187,15 +285,23 @@ const HelpDeskChamados: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">{chamado.nome_usuario_abertura}</Typography>
                   </TableCell>
                   <TableCell>{chamado.tipo}</TableCell>
-                  <TableCell>{chamado.status}</TableCell>
-                  <TableCell>{chamado.prioridade}</TableCell>
+                  <TableCell>
+                    <Chip size="small" label={chamado.status} color={statusStyles[chamado.status]} variant="outlined" />
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" label={prioridadeStyles[chamado.prioridade].label} sx={prioridadeStyles[chamado.prioridade].sx} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{chamado.loja || "-"}</Typography>
+                    <Typography variant="caption" color="text.secondary">{chamado.setor}</Typography>
+                  </TableCell>
                   <TableCell>{chamado.responsavel || "-"}</TableCell>
                   <TableCell>{formatarDataHora(chamado.data_abertura || "")}</TableCell>
                 </TableRow>
               ))}
-              {!carregando && chamados.length === 0 && (
+              {!carregando && chamadosVisiveis.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">Nenhum chamado encontrado.</TableCell>
+                  <TableCell colSpan={8} align="center">Nenhum chamado encontrado.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -215,7 +321,10 @@ const HelpDeskChamados: React.FC = () => {
             <TextField select label="Prioridade" value={formChamado.prioridade} onChange={(e) => setFormChamado({ ...formChamado, prioridade: e.target.value as ChamadoHelpDesk["prioridade"] })} fullWidth>
               {prioridadeOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
-            <TextField label="Categoria" value={formChamado.categoria} onChange={(e) => setFormChamado({ ...formChamado, categoria: e.target.value })} fullWidth />
+            <TextField label="Loja" value={formChamado.loja} onChange={(e) => setFormChamado({ ...formChamado, loja: e.target.value })} fullWidth />
+            <TextField select label="Setor" value={formChamado.setor} onChange={(e) => setFormChamado({ ...formChamado, setor: e.target.value })} fullWidth>
+              {setorOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+            </TextField>
             <TextField select label="Responsável" value={formChamado.responsavel} onChange={(e) => setFormChamado({ ...formChamado, responsavel: e.target.value as ChamadoHelpDesk["responsavel"] })} fullWidth>
               <MenuItem value="">Não atribuído</MenuItem>
               {responsaveis.filter(Boolean).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
@@ -238,9 +347,11 @@ const HelpDeskChamados: React.FC = () => {
                 <Typography color="text.secondary">{detalhe.descricao || "Sem descrição."}</Typography>
               </Box>
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                <Chip label={`Status: ${detalhe.status}`} />
-                <Chip label={`Prioridade: ${detalhe.prioridade}`} />
-                <Chip label={`Responsável: ${detalhe.responsavel || "não definido"}`} />
+                <Chip label={`Status: ${detalhe.status}`} color={statusStyles[detalhe.status]} variant="outlined" />
+                <Chip label={`Prioridade: ${prioridadeStyles[detalhe.prioridade].label}`} sx={prioridadeStyles[detalhe.prioridade].sx} />
+                <Chip label={`Loja: ${detalhe.loja || "-"}`} variant="outlined" />
+                <Chip label={`Setor: ${detalhe.setor}`} variant="outlined" />
+                <Chip label={`Responsável: ${detalhe.responsavel || "não definido"}`} variant="outlined" />
               </Stack>
               <Divider />
               <Typography variant="subtitle1">Histórico</Typography>
@@ -261,9 +372,9 @@ const HelpDeskChamados: React.FC = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <TextField select label="Tipo" value={novaInteracao.tipo} onChange={(e) => setNovaInteracao({ ...novaInteracao, tipo: e.target.value as InteracaoChamado["tipo"] })} fullWidth>
-                    <MenuItem value="comentario">comentario</MenuItem>
-                    <MenuItem value="interno">interno</MenuItem>
-                    <MenuItem value="status">status</MenuItem>
+                    <MenuItem value="COMENTARIO">COMENTARIO</MenuItem>
+                    <MenuItem value="INTERNO">INTERNO</MenuItem>
+                    <MenuItem value="STATUS">STATUS</MenuItem>
                   </TextField>
                 </Grid>
                 <Grid item xs={12} md={6}>

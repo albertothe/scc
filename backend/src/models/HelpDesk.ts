@@ -2,10 +2,11 @@ export interface Chamado {
   id?: number
   titulo: string
   descricao?: string
-  tipo: "incidente" | "requisicao"
-  status?: "aberto" | "em_andamento" | "resolvido" | "fechado"
-  prioridade: "baixa" | "media" | "alta" | "urgente"
-  categoria?: string
+  tipo: "INCIDENTE" | "REQUISICAO"
+  status?: "ABERTO" | "EM ANDAMENTO" | "RESOLVIDO" | "FECHADO"
+  prioridade: "BAIXO" | "MÉDIO" | "ALTA" | "URGENTE"
+  loja?: string | null
+  setor: string
   nome_usuario_abertura: string
   responsavel?: "ALBERTO" | "WALLYSON" | null
   data_abertura?: string
@@ -18,8 +19,8 @@ export interface InteracaoChamado {
   id_chamado: number
   nome_usuario: string
   mensagem: string
-  tipo?: "comentario" | "interno" | "status"
-  status_novo?: "aberto" | "em_andamento" | "resolvido" | "fechado" | null
+  tipo?: "COMENTARIO" | "INTERNO" | "STATUS"
+  status_novo?: "ABERTO" | "EM ANDAMENTO" | "RESOLVIDO" | "FECHADO" | null
   data_criacao?: string
 }
 
