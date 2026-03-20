@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { verificarAutenticacao } from "../middlewares/authMiddleware"
+import { verificarAutenticacao, verificarPermissao } from "../middlewares/authMiddleware"
 import * as helpDeskController from "../controllers/helpDeskController"
 
 const router = Router()
@@ -11,7 +11,9 @@ router.put("/chamados/:id", verificarAutenticacao, helpDeskController.atualizarC
 router.post("/chamados/:id/interacoes", verificarAutenticacao, helpDeskController.adicionarInteracao)
 router.get("/lojas", verificarAutenticacao, helpDeskController.listarLojas)
 
-router.get("/ativos", verificarAutenticacao, helpDeskController.listarAtivos)
-router.post("/ativos", verificarAutenticacao, helpDeskController.criarAtivo)
+router.get("/ativos", verificarPermissao("help-desk", "visualizar"), helpDeskController.listarAtivos)
+router.post("/ativos", verificarPermissao("help-desk", "incluir"), helpDeskController.criarAtivo)
+router.put("/ativos/:id", verificarPermissao("help-desk", "editar"), helpDeskController.atualizarAtivo)
+router.delete("/ativos/:id", verificarPermissao("help-desk", "excluir"), helpDeskController.excluirAtivo)
 
 export default router

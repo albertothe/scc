@@ -121,6 +121,38 @@ export const criarAtivo = async (req: Request, res: Response): Promise<void> => 
   }
 }
 
+export const atualizarAtivo = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ativo = await helpDeskService.atualizarAtivo(Number(req.params.id), req.body)
+
+    if (!ativo) {
+      res.status(404).json({ error: "Ativo não encontrado" })
+      return
+    }
+
+    res.json(ativo)
+  } catch (error) {
+    console.error("Erro ao atualizar ativo:", error)
+    res.status(500).json({ error: "Erro ao atualizar ativo" })
+  }
+}
+
+export const excluirAtivo = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const excluido = await helpDeskService.excluirAtivo(Number(req.params.id))
+
+    if (!excluido) {
+      res.status(404).json({ error: "Ativo não encontrado" })
+      return
+    }
+
+    res.status(204).send()
+  } catch (error) {
+    console.error("Erro ao excluir ativo:", error)
+    res.status(500).json({ error: "Erro ao excluir ativo" })
+  }
+}
+
 export const listarLojas = async (_req: Request, res: Response): Promise<void> => {
   try {
     const lojas = await helpDeskService.listarLojas()
