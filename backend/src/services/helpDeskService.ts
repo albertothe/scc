@@ -2,6 +2,8 @@ import type { Pool } from "pg"
 import pool from "../config/database"
 import type { Ativo, Chamado, ChamadoDetalhado, InteracaoChamado } from "../models/HelpDesk"
 
+const NIVEIS_SUPORTE = new Set(["00", "11"])
+
 export class HelpDeskService {
   private db: Pool
 
@@ -14,6 +16,8 @@ export class HelpDeskService {
     prioridade?: string
     responsavel?: string
     busca?: string
+    nomeUsuario?: string
+    nivelUsuario?: string
   }): Promise<Chamado[]> {
     let query = `
       SELECT id, titulo, descricao, tipo, status, prioridade, loja, setor,
@@ -37,6 +41,11 @@ export class HelpDeskService {
     if (filtros.responsavel) {
       values.push(filtros.responsavel)
       where.push(`responsavel = $${values.length}`)
+    }
+
+    if (filtros.nomeUsuario && !NIVEIS_SUPORTE.has(filtros.nivelUsuario ?? "")) {
+      values.push(filtros.nomeUsuario)
+      where.push(`nome_usuario_abertura = $${values.length}`)
     }
 
     if (filtros.busca) {
@@ -71,14 +80,19 @@ export class HelpDeskService {
     return result.rows
   }
 
-  async obterChamado(id: number): Promise<ChamadoDetalhado | null> {
-    const chamadoResult = await this.db.query(
-      `SELECT id, titulo, descricao, tipo, status, prioridade, loja, setor,
+  async obterChamado(id: number, usuario?: { usuario: string; nivel: string }): Promise<ChamadoDetalhado | null> {
+    const values: Array<number | string> = [id]
+    let query = `SELECT id, titulo, descricao, tipo, status, prioridade, loja, setor,
               nome_usuario_abertura, responsavel, data_abertura, data_atualizacao, data_fechamento
          FROM scc_chamados
-        WHERE id = $1`,
-      [id],
-    )
+        WHERE id = $1`
+
+    if (usuario?.usuario && !NIVEIS_SUPORTE.has(usuario.nivel)) {
+      values.push(usuario.usuario)
+      query += ` AND nome_usuario_abertura = $${values.length}`
+    }
+
+    const chamadoResult = await this.db.query(query, values)
 
     if (chamadoResult.rows.length === 0) {
       return null
@@ -219,6 +233,39 @@ export class HelpDeskService {
     }
   }
 
+
+  async listarLojas(): Promise<string[]> {
+    const result = await this.db.query(
+      `SELECT DISTINCT TRIM(loja) AS loja
+         FROM vs_scc_dlojas
+        WHERE loja IS NOT NULL
+          AND TRIM(loja) <> ''
+        ORDER BY TRIM(loja) ASC`,
+    )
+
+    return result.rows.map((row) => row.loja)
+  }
+
+  async usuarioPodeAcessarChamado(id: number, usuario?: { usuario: string; nivel: string }): Promise<boolean> {
+    if (!usuario?.usuario) {
+      return false
+    }
+
+    if (NIVEIS_SUPORTE.has(usuario.nivel)) {
+      return true
+    }
+
+    const result = await this.db.query(
+      `SELECT 1
+         FROM scc_chamados
+        WHERE id = $1
+          AND nome_usuario_abertura = $2`,
+      [id, usuario.usuario],
+    )
+
+    return result.rows.length > 0
+  }
+
   async listarAtivos(filtros: { status?: string; tipo?: string; busca?: string }): Promise<Ativo[]> {
     let query = `
       SELECT id, nome, nome_pc, nome_estacao_erp, ip, tipo, marca, modelo,
@@ -239,6 +286,7 @@ export class HelpDeskService {
       values.push(filtros.tipo)
       where.push(`tipo = $${values.length}`)
     }
+
 
     if (filtros.busca) {
       values.push(`%${filtros.busca}%`)

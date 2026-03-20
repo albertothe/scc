@@ -9,6 +9,7 @@ router.get("/chamados/:id", verificarAutenticacao, helpDeskController.obterChama
 router.post("/chamados", verificarAutenticacao, helpDeskController.criarChamado)
 router.put("/chamados/:id", verificarAutenticacao, helpDeskController.atualizarChamado)
 router.post("/chamados/:id/interacoes", verificarAutenticacao, helpDeskController.adicionarInteracao)
+router.get("/lojas", verificarAutenticacao, helpDeskController.listarLojas)
 
 router.get("/ativos", verificarAutenticacao, helpDeskController.listarAtivos)
 router.post("/ativos", verificarAutenticacao, helpDeskController.criarAtivo)
