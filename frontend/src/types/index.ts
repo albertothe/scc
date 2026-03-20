@@ -169,3 +169,52 @@ export interface DreRegistro {
   realizado: number | null
   orcado: number | null
 }
+
+
+export interface ChamadoHelpDesk {
+  id?: number
+  titulo: string
+  descricao?: string
+  tipo: "incidente" | "requisicao"
+  status: "aberto" | "em_andamento" | "resolvido" | "fechado"
+  prioridade: "baixa" | "media" | "alta" | "urgente"
+  categoria?: string
+  nome_usuario_abertura: string
+  responsavel?: "ALBERTO" | "WALLYSON" | ""
+  data_abertura?: string
+  data_atualizacao?: string | null
+  data_fechamento?: string | null
+}
+
+export interface InteracaoChamado {
+  id?: number
+  id_chamado: number
+  nome_usuario: string
+  mensagem: string
+  tipo: "comentario" | "interno" | "status"
+  status_novo?: "aberto" | "em_andamento" | "resolvido" | "fechado" | ""
+  data_criacao?: string
+}
+
+export interface ChamadoHelpDeskDetalhado extends ChamadoHelpDesk {
+  interacoes: InteracaoChamado[]
+}
+
+export interface AtivoHelpDesk {
+  id?: number
+  nome: string
+  nome_pc?: string
+  nome_estacao_erp?: string
+  ip?: string
+  tipo?: string
+  marca?: string
+  modelo?: string
+  numero_serie?: string
+  status?: "ativo" | "manutencao" | "baixado"
+  usuario_responsavel?: string
+  localizacao?: string
+  data_compra?: string | null
+  valor?: number | null
+  observacoes?: string
+  data_criacao?: string
+}
