@@ -1,15 +1,28 @@
 import axios from "axios"
 
+const getApiBaseUrl = (): string => {
+  const configuredBaseUrl = process.env.REACT_APP_API_URL?.trim()
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/$/, "")
+  }
+
+  if (typeof window !== "undefined") {
+    const { hostname, protocol } = window.location
+    return `${protocol}//${hostname}:8601/api`
+  }
+
+  return "http://localhost:8601/api"
+}
+
 // Configuração do axios para a API utilizando variáveis de ambiente
 const api = axios.create({
-  // A URL base é obtida do arquivo .env
-  baseURL: process.env.REACT_APP_API_URL ?? "http://localhost:8601/api",
+  baseURL: getApiBaseUrl(),
 })
 
 // Adicionar logs para depuração
 api.interceptors.request.use(
   (config) => {
-    // Log da requisição completa para diagnóstico
     console.log(
       `API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
       config.params || config.data,
@@ -50,7 +63,6 @@ api.interceptors.response.use(
     )
 
     if (error.response && error.response.status === 401) {
-      // Redirecionar para login se o token for inválido
       localStorage.removeItem("auth_token")
       localStorage.removeItem("usuario")
       window.location.href = "/login"
