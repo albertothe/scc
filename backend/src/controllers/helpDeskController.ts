@@ -10,6 +10,8 @@ export const listarChamados = async (req: Request, res: Response): Promise<void>
       prioridade: req.query.prioridade as string | undefined,
       responsavel: req.query.responsavel as string | undefined,
       busca: req.query.busca as string | undefined,
+      nomeUsuario: req.usuario?.usuario,
+      nivelUsuario: req.usuario?.nivel,
     })
 
     res.json(chamados)
@@ -21,7 +23,7 @@ export const listarChamados = async (req: Request, res: Response): Promise<void>
 
 export const obterChamado = async (req: Request, res: Response): Promise<void> => {
   try {
-    const chamado = await helpDeskService.obterChamado(Number(req.params.id))
+    const chamado = await helpDeskService.obterChamado(Number(req.params.id), req.usuario)
 
     if (!chamado) {
       res.status(404).json({ error: "Chamado não encontrado" })
@@ -51,6 +53,13 @@ export const criarChamado = async (req: Request, res: Response): Promise<void> =
 
 export const atualizarChamado = async (req: Request, res: Response): Promise<void> => {
   try {
+    const permitido = await helpDeskService.usuarioPodeAcessarChamado(Number(req.params.id), req.usuario)
+
+    if (!permitido) {
+      res.status(403).json({ error: "Acesso negado ao chamado" })
+      return
+    }
+
     const chamado = await helpDeskService.atualizarChamado(Number(req.params.id), req.body)
 
     if (!chamado) {
@@ -67,6 +76,13 @@ export const atualizarChamado = async (req: Request, res: Response): Promise<voi
 
 export const adicionarInteracao = async (req: Request, res: Response): Promise<void> => {
   try {
+    const permitido = await helpDeskService.usuarioPodeAcessarChamado(Number(req.params.id), req.usuario)
+
+    if (!permitido) {
+      res.status(403).json({ error: "Acesso negado ao chamado" })
+      return
+    }
+
     const interacao = await helpDeskService.adicionarInteracao({
       ...req.body,
       id_chamado: Number(req.params.id),
@@ -102,5 +118,15 @@ export const criarAtivo = async (req: Request, res: Response): Promise<void> => 
   } catch (error) {
     console.error("Erro ao criar ativo:", error)
     res.status(500).json({ error: "Erro ao criar ativo" })
+  }
+}
+
+export const listarLojas = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const lojas = await helpDeskService.listarLojas()
+    res.json(lojas)
+  } catch (error) {
+    console.error("Erro ao listar lojas do help desk:", error)
+    res.status(500).json({ error: "Erro ao listar lojas" })
   }
 }

@@ -51,3 +51,8 @@ export const criarAtivo = async (payload: Partial<AtivoHelpDesk>): Promise<Ativo
   const response = await api.post("/help-desk/ativos", payload)
   return response.data
 }
+
+export const listarLojas = async (): Promise<string[]> => {
+  const response = await api.get("/help-desk/lojas")
+  return response.data
+}

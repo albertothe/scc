@@ -76,6 +76,7 @@ const autoRefreshMs = 5 * 60 * 1000
 const HelpDeskChamados: React.FC = () => {
   const { usuario } = useAuth()
   const [chamados, setChamados] = useState<ChamadoHelpDesk[]>([])
+  const [lojas, setLojas] = useState<string[]>([])
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState("")
   const [busca, setBusca] = useState("")
@@ -124,6 +125,19 @@ const HelpDeskChamados: React.FC = () => {
 
     return () => window.clearInterval(interval)
   }, [carregarChamados])
+
+  useEffect(() => {
+    const carregarLojas = async () => {
+      try {
+        const data = await helpDeskService.listarLojas()
+        setLojas(data)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    carregarLojas()
+  }, [])
 
   const resumo = useMemo(() => ({
     ABERTO: chamados.filter((item) => item.status === "ABERTO").length,
@@ -321,7 +335,16 @@ const HelpDeskChamados: React.FC = () => {
             <TextField select label="Prioridade" value={formChamado.prioridade} onChange={(e) => setFormChamado({ ...formChamado, prioridade: e.target.value as ChamadoHelpDesk["prioridade"] })} fullWidth>
               {prioridadeOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
-            <TextField label="Loja" value={formChamado.loja} onChange={(e) => setFormChamado({ ...formChamado, loja: e.target.value })} fullWidth />
+            <TextField
+              select
+              label="Loja"
+              value={formChamado.loja}
+              onChange={(e) => setFormChamado({ ...formChamado, loja: e.target.value })}
+              fullWidth
+            >
+              <MenuItem value="">Selecione</MenuItem>
+              {lojas.map((loja) => <MenuItem key={loja} value={loja}>{loja}</MenuItem>)}
+            </TextField>
             <TextField select label="Setor" value={formChamado.setor} onChange={(e) => setFormChamado({ ...formChamado, setor: e.target.value })} fullWidth>
               {setorOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
