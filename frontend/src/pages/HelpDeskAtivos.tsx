@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Alert,
   Box,
@@ -26,7 +26,7 @@ import AddIcon from "@mui/icons-material/Add"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import * as helpDeskService from "../services/helpDeskService"
 import type { AtivoHelpDesk } from "../types"
-import { formatarData, formatarMoeda } from "../utils/formatters"
+import { formatarMoeda } from "../utils/formatters"
 
 const statusOptions = ["ativo", "manutencao", "baixado"]
 const tipoOptions = ["computador", "notebook", "impressora"]
@@ -55,7 +55,7 @@ const HelpDeskAtivos: React.FC = () => {
     observacoes: "",
   })
 
-  const carregarAtivos = async () => {
+  const carregarAtivos = useCallback(async () => {
     try {
       setErro("")
       const data = await helpDeskService.listarAtivos({
@@ -68,11 +68,11 @@ const HelpDeskAtivos: React.FC = () => {
       console.error(error)
       setErro("Não foi possível carregar os ativos.")
     }
-  }
+  }, [busca, statusFiltro, tipoFiltro])
 
   useEffect(() => {
     carregarAtivos()
-  }, [busca, statusFiltro, tipoFiltro])
+  }, [carregarAtivos])
 
   const salvarAtivo = async () => {
     if (!form.nome.trim()) return
@@ -181,7 +181,7 @@ const HelpDeskAtivos: React.FC = () => {
             <Grid item xs={12} md={6}><TextField label="Hostname" fullWidth value={form.nome_pc} onChange={(e) => setForm({ ...form, nome_pc: e.target.value })} /></Grid>
             <Grid item xs={12} md={6}><TextField label="Estação ERP" fullWidth value={form.nome_estacao_erp} onChange={(e) => setForm({ ...form, nome_estacao_erp: e.target.value })} /></Grid>
             <Grid item xs={12} md={6}><TextField label="IP" fullWidth value={form.ip} onChange={(e) => setForm({ ...form, ip: e.target.value })} /></Grid>
-            <Grid item xs={12} md={4}><TextField select label="Tipo" fullWidth value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>{tipoOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField></Grid>
+            <Grid item xs={12} md={4}><TextField select label="Tipo" fullWidth value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as AtivoHelpDesk["tipo"] })}>{tipoOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}</TextField></Grid>
             <Grid item xs={12} md={4}><TextField label="Marca" fullWidth value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} /></Grid>
             <Grid item xs={12} md={4}><TextField label="Modelo" fullWidth value={form.modelo} onChange={(e) => setForm({ ...form, modelo: e.target.value })} /></Grid>
             <Grid item xs={12} md={4}><TextField label="Número de série" fullWidth value={form.numero_serie} onChange={(e) => setForm({ ...form, numero_serie: e.target.value })} /></Grid>

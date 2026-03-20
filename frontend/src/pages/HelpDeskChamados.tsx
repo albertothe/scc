@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Alert,
   Box,
@@ -31,13 +31,13 @@ import AddIcon from "@mui/icons-material/Add"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import { useAuth } from "../contexts/AuthContext"
 import * as helpDeskService from "../services/helpDeskService"
-import type { ChamadoHelpDesk, ChamadoHelpDeskDetalhado } from "../types"
+import type { ChamadoHelpDesk, ChamadoHelpDeskDetalhado, InteracaoChamado } from "../types"
 import { formatarDataHora } from "../utils/formatters"
 
 const statusOptions = ["aberto", "em_andamento", "resolvido", "fechado"]
 const prioridadeOptions = ["baixa", "media", "alta", "urgente"]
-const tipoOptions = ["incidente", "requisicao"]
-const responsaveis = ["", "ALBERTO", "WALLYSON"]
+const tipoOptions: ChamadoHelpDesk["tipo"][] = ["incidente", "requisicao"]
+const responsaveis: NonNullable<ChamadoHelpDesk["responsavel"]>[] = ["", "ALBERTO", "WALLYSON"]
 
 const HelpDeskChamados: React.FC = () => {
   const { usuario } = useAuth()
@@ -49,7 +49,7 @@ const HelpDeskChamados: React.FC = () => {
   const [prioridadeFiltro, setPrioridadeFiltro] = useState("")
   const [dialogAberto, setDialogAberto] = useState(false)
   const [detalhe, setDetalhe] = useState<ChamadoHelpDeskDetalhado | null>(null)
-  const [formChamado, setFormChamado] = useState({
+  const [formChamado, setFormChamado] = useState<Partial<ChamadoHelpDesk>>({
     titulo: "",
     descricao: "",
     tipo: "incidente",
@@ -57,9 +57,9 @@ const HelpDeskChamados: React.FC = () => {
     categoria: "",
     responsavel: "",
   })
-  const [novaInteracao, setNovaInteracao] = useState({ mensagem: "", tipo: "comentario", status_novo: "" })
+  const [novaInteracao, setNovaInteracao] = useState<Partial<InteracaoChamado>>({ mensagem: "", tipo: "comentario", status_novo: "" })
 
-  const carregarChamados = async () => {
+  const carregarChamados = useCallback(async () => {
     try {
       setCarregando(true)
       setErro("")
@@ -75,11 +75,11 @@ const HelpDeskChamados: React.FC = () => {
     } finally {
       setCarregando(false)
     }
-  }
+  }, [busca, prioridadeFiltro, statusFiltro])
 
   useEffect(() => {
     carregarChamados()
-  }, [busca, statusFiltro, prioridadeFiltro])
+  }, [carregarChamados])
 
   const resumo = useMemo(() => ({
     abertos: chamados.filter((item) => item.status === "aberto").length,
@@ -94,7 +94,7 @@ const HelpDeskChamados: React.FC = () => {
   }
 
   const salvarChamado = async () => {
-    if (!formChamado.titulo.trim()) return
+    if (!formChamado.titulo?.trim()) return
 
     await helpDeskService.criarChamado({
       ...formChamado,
@@ -108,7 +108,7 @@ const HelpDeskChamados: React.FC = () => {
   }
 
   const salvarInteracao = async () => {
-    if (!detalhe?.id || !novaInteracao.mensagem.trim()) return
+    if (!detalhe?.id || !novaInteracao.mensagem?.trim()) return
 
     await helpDeskService.adicionarInteracao(detalhe.id, novaInteracao)
     const atualizado = await helpDeskService.obterChamado(detalhe.id)
@@ -209,14 +209,14 @@ const HelpDeskChamados: React.FC = () => {
           <Stack spacing={2} mt={1}>
             <TextField label="Título" value={formChamado.titulo} onChange={(e) => setFormChamado({ ...formChamado, titulo: e.target.value })} fullWidth />
             <TextField label="Descrição" value={formChamado.descricao} onChange={(e) => setFormChamado({ ...formChamado, descricao: e.target.value })} fullWidth multiline minRows={4} />
-            <TextField select label="Tipo" value={formChamado.tipo} onChange={(e) => setFormChamado({ ...formChamado, tipo: e.target.value })} fullWidth>
+            <TextField select label="Tipo" value={formChamado.tipo} onChange={(e) => setFormChamado({ ...formChamado, tipo: e.target.value as ChamadoHelpDesk["tipo"] })} fullWidth>
               {tipoOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
-            <TextField select label="Prioridade" value={formChamado.prioridade} onChange={(e) => setFormChamado({ ...formChamado, prioridade: e.target.value })} fullWidth>
+            <TextField select label="Prioridade" value={formChamado.prioridade} onChange={(e) => setFormChamado({ ...formChamado, prioridade: e.target.value as ChamadoHelpDesk["prioridade"] })} fullWidth>
               {prioridadeOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
             <TextField label="Categoria" value={formChamado.categoria} onChange={(e) => setFormChamado({ ...formChamado, categoria: e.target.value })} fullWidth />
-            <TextField select label="Responsável" value={formChamado.responsavel} onChange={(e) => setFormChamado({ ...formChamado, responsavel: e.target.value })} fullWidth>
+            <TextField select label="Responsável" value={formChamado.responsavel} onChange={(e) => setFormChamado({ ...formChamado, responsavel: e.target.value as ChamadoHelpDesk["responsavel"] })} fullWidth>
               <MenuItem value="">Não atribuído</MenuItem>
               {responsaveis.filter(Boolean).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
@@ -260,14 +260,14 @@ const HelpDeskChamados: React.FC = () => {
               <TextField label="Mensagem" multiline minRows={3} value={novaInteracao.mensagem} onChange={(e) => setNovaInteracao({ ...novaInteracao, mensagem: e.target.value })} fullWidth />
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                  <TextField select label="Tipo" value={novaInteracao.tipo} onChange={(e) => setNovaInteracao({ ...novaInteracao, tipo: e.target.value })} fullWidth>
+                  <TextField select label="Tipo" value={novaInteracao.tipo} onChange={(e) => setNovaInteracao({ ...novaInteracao, tipo: e.target.value as InteracaoChamado["tipo"] })} fullWidth>
                     <MenuItem value="comentario">comentario</MenuItem>
                     <MenuItem value="interno">interno</MenuItem>
                     <MenuItem value="status">status</MenuItem>
                   </TextField>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField select label="Novo status" value={novaInteracao.status_novo} onChange={(e) => setNovaInteracao({ ...novaInteracao, status_novo: e.target.value })} fullWidth>
+                  <TextField select label="Novo status" value={novaInteracao.status_novo} onChange={(e) => setNovaInteracao({ ...novaInteracao, status_novo: e.target.value as InteracaoChamado["status_novo"] })} fullWidth>
                     <MenuItem value="">Manter status</MenuItem>
                     {statusOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
                   </TextField>
