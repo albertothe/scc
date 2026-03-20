@@ -56,6 +56,7 @@ const setorOptions = [
   "LABORATORIO",
   "FATURAMENTO",
 ]
+const NIVEIS_SUPORTE = new Set(["00", "11"])
 
 const prioridadeStyles: Record<ChamadoHelpDesk["prioridade"], { label: string; sx: object }> = {
   URGENTE: { label: "Urgente", sx: { bgcolor: "#b71c1c", color: "#fff" } },
@@ -75,6 +76,7 @@ const autoRefreshMs = 5 * 60 * 1000
 
 const HelpDeskChamados: React.FC = () => {
   const { usuario } = useAuth()
+  const canManageResponsible = NIVEIS_SUPORTE.has(usuario?.nivel ?? "")
   const [chamados, setChamados] = useState<ChamadoHelpDesk[]>([])
   const [lojas, setLojas] = useState<string[]>([])
   const [carregando, setCarregando] = useState(false)
@@ -94,7 +96,7 @@ const HelpDeskChamados: React.FC = () => {
     setor: "ADMINISTRATIVO",
     responsavel: "",
   })
-  const [novaInteracao, setNovaInteracao] = useState<Partial<InteracaoChamado>>({ mensagem: "", tipo: "COMENTARIO", status_novo: "" })
+  const [novaInteracao, setNovaInteracao] = useState<Partial<InteracaoChamado>>({ mensagem: "", tipo: "COMENTARIO", status_novo: "", responsavel: "" })
 
   const carregarChamados = useCallback(async () => {
     try {
@@ -154,10 +156,19 @@ const HelpDeskChamados: React.FC = () => {
     return chamados.filter((item) => item.status !== "FECHADO")
   }, [chamados, statusCardFiltro])
 
+  const detalhePermiteEditarResponsavel = canManageResponsible && detalhe?.status === "ABERTO"
+  const detalheBloqueado = detalhe?.status === "FECHADO"
+
   const abrirDetalhe = async (id?: number) => {
     if (!id) return
     const data = await helpDeskService.obterChamado(id)
     setDetalhe(data)
+    setNovaInteracao({
+      mensagem: "",
+      tipo: "COMENTARIO",
+      status_novo: "",
+      responsavel: data.responsavel || "",
+    })
   }
 
   const salvarChamado = async () => {
@@ -169,6 +180,7 @@ const HelpDeskChamados: React.FC = () => {
       status: "ABERTO",
       loja: formChamado.loja?.trim() || null,
       setor: formChamado.setor || "ADMINISTRATIVO",
+      responsavel: canManageResponsible ? formChamado.responsavel || undefined : undefined,
     })
 
     setDialogAberto(false)
@@ -185,12 +197,15 @@ const HelpDeskChamados: React.FC = () => {
   }
 
   const salvarInteracao = async () => {
-    if (!detalhe?.id || !novaInteracao.mensagem?.trim()) return
+    if (!detalhe?.id || !novaInteracao.mensagem?.trim() || detalheBloqueado) return
 
-    await helpDeskService.adicionarInteracao(detalhe.id, novaInteracao)
+    await helpDeskService.adicionarInteracao(detalhe.id, {
+      ...novaInteracao,
+      responsavel: detalhePermiteEditarResponsavel ? novaInteracao.responsavel || "" : undefined,
+    })
     const atualizado = await helpDeskService.obterChamado(detalhe.id)
     setDetalhe(atualizado)
-    setNovaInteracao({ mensagem: "", tipo: "COMENTARIO", status_novo: "" })
+    setNovaInteracao({ mensagem: "", tipo: "COMENTARIO", status_novo: "", responsavel: atualizado.responsavel || "" })
     await carregarChamados()
   }
 
@@ -348,10 +363,12 @@ const HelpDeskChamados: React.FC = () => {
             <TextField select label="Setor" value={formChamado.setor} onChange={(e) => setFormChamado({ ...formChamado, setor: e.target.value })} fullWidth>
               {setorOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
             </TextField>
-            <TextField select label="Responsável" value={formChamado.responsavel} onChange={(e) => setFormChamado({ ...formChamado, responsavel: e.target.value as ChamadoHelpDesk["responsavel"] })} fullWidth>
-              <MenuItem value="">Não atribuído</MenuItem>
-              {responsaveis.filter(Boolean).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
-            </TextField>
+            {canManageResponsible && (
+              <TextField select label="Responsável" value={formChamado.responsavel} onChange={(e) => setFormChamado({ ...formChamado, responsavel: e.target.value as ChamadoHelpDesk["responsavel"] })} fullWidth>
+                <MenuItem value="">Não atribuído</MenuItem>
+                {responsaveis.filter(Boolean).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+              </TextField>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -391,28 +408,37 @@ const HelpDeskChamados: React.FC = () => {
               </List>
               <Divider />
               <Typography variant="subtitle1">Nova interação</Typography>
-              <TextField label="Mensagem" multiline minRows={3} value={novaInteracao.mensagem} onChange={(e) => setNovaInteracao({ ...novaInteracao, mensagem: e.target.value })} fullWidth />
+              {detalheBloqueado && <Alert severity="warning">Chamados fechados não podem mais receber alterações ou interações.</Alert>}
+              <TextField label="Mensagem" multiline minRows={3} value={novaInteracao.mensagem} onChange={(e) => setNovaInteracao({ ...novaInteracao, mensagem: e.target.value })} fullWidth disabled={detalheBloqueado} />
               <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField select label="Tipo" value={novaInteracao.tipo} onChange={(e) => setNovaInteracao({ ...novaInteracao, tipo: e.target.value as InteracaoChamado["tipo"] })} fullWidth>
+                <Grid item xs={12} md={4}>
+                  <TextField select label="Tipo" value={novaInteracao.tipo} onChange={(e) => setNovaInteracao({ ...novaInteracao, tipo: e.target.value as InteracaoChamado["tipo"] })} fullWidth disabled={detalheBloqueado}>
                     <MenuItem value="COMENTARIO">COMENTARIO</MenuItem>
                     <MenuItem value="INTERNO">INTERNO</MenuItem>
                     <MenuItem value="STATUS">STATUS</MenuItem>
                   </TextField>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField select label="Novo status" value={novaInteracao.status_novo} onChange={(e) => setNovaInteracao({ ...novaInteracao, status_novo: e.target.value as InteracaoChamado["status_novo"] })} fullWidth>
+                <Grid item xs={12} md={4}>
+                  <TextField select label="Novo status" value={novaInteracao.status_novo} onChange={(e) => setNovaInteracao({ ...novaInteracao, status_novo: e.target.value as InteracaoChamado["status_novo"] })} fullWidth disabled={detalheBloqueado}>
                     <MenuItem value="">Manter status</MenuItem>
                     {statusOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
                   </TextField>
                 </Grid>
+                {detalhePermiteEditarResponsavel && (
+                  <Grid item xs={12} md={4}>
+                    <TextField select label="Responsável" value={novaInteracao.responsavel} onChange={(e) => setNovaInteracao({ ...novaInteracao, responsavel: e.target.value as InteracaoChamado["responsavel"] })} fullWidth disabled={detalheBloqueado}>
+                      <MenuItem value="">Não atribuído</MenuItem>
+                      {responsaveis.filter(Boolean).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+                    </TextField>
+                  </Grid>
+                )}
               </Grid>
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetalhe(null)}>Fechar</Button>
-          <Button onClick={salvarInteracao} variant="contained">Adicionar interação</Button>
+          <Button onClick={salvarInteracao} variant="contained" disabled={detalheBloqueado}>Adicionar interação</Button>
         </DialogActions>
       </Dialog>
     </Box>
