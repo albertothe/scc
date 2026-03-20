@@ -11,7 +11,7 @@ interface GlpiModulePageProps {
   highlights: string[]
 }
 
-const GLPI_BASE_URL = (process.env.REACT_APP_GLPI_URL || "http://localhost/glpi").replace(/\/$/, "")
+const GLPI_BASE_URL = (process.env.REACT_APP_GLPI_URL || "http://10.5.59.107/glpi").replace(/\/$/, "")
 
 const GlpiModulePage: React.FC<GlpiModulePageProps> = ({ title, description, glpiPath, highlights }) => {
   const normalizedPath = glpiPath.startsWith("/") ? glpiPath : `/${glpiPath}`
