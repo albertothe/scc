@@ -16,7 +16,7 @@ export class HelpDeskService {
     busca?: string
   }): Promise<Chamado[]> {
     let query = `
-      SELECT id, titulo, descricao, tipo, status, prioridade, categoria,
+      SELECT id, titulo, descricao, tipo, status, prioridade, loja, setor,
              nome_usuario_abertura, responsavel, data_abertura, data_atualizacao, data_fechamento
       FROM scc_chamados
     `
@@ -41,14 +41,31 @@ export class HelpDeskService {
 
     if (filtros.busca) {
       values.push(`%${filtros.busca}%`)
-      where.push(`(titulo ILIKE $${values.length} OR descricao ILIKE $${values.length} OR nome_usuario_abertura ILIKE $${values.length})`)
+      where.push(`(
+        titulo ILIKE $${values.length}
+        OR descricao ILIKE $${values.length}
+        OR nome_usuario_abertura ILIKE $${values.length}
+        OR COALESCE(loja, '') ILIKE $${values.length}
+        OR setor ILIKE $${values.length}
+      )`)
     }
 
     if (where.length > 0) {
       query += ` WHERE ${where.join(" AND ")}`
     }
 
-    query += " ORDER BY data_abertura DESC, id DESC"
+    query += `
+      ORDER BY
+        CASE prioridade
+          WHEN 'URGENTE' THEN 1
+          WHEN 'ALTA' THEN 2
+          WHEN 'MÉDIO' THEN 3
+          WHEN 'BAIXO' THEN 4
+          ELSE 5
+        END,
+        data_abertura DESC,
+        id DESC
+    `
 
     const result = await this.db.query(query, values)
     return result.rows
@@ -56,7 +73,7 @@ export class HelpDeskService {
 
   async obterChamado(id: number): Promise<ChamadoDetalhado | null> {
     const chamadoResult = await this.db.query(
-      `SELECT id, titulo, descricao, tipo, status, prioridade, categoria,
+      `SELECT id, titulo, descricao, tipo, status, prioridade, loja, setor,
               nome_usuario_abertura, responsavel, data_abertura, data_atualizacao, data_fechamento
          FROM scc_chamados
         WHERE id = $1`,
@@ -84,18 +101,19 @@ export class HelpDeskService {
   async criarChamado(chamado: Chamado): Promise<ChamadoDetalhado> {
     const result = await this.db.query(
       `INSERT INTO scc_chamados (
-        titulo, descricao, tipo, status, prioridade, categoria,
+        titulo, descricao, tipo, status, prioridade, loja, setor,
         nome_usuario_abertura, responsavel, data_abertura, data_atualizacao
-      ) VALUES ($1, $2, $3, COALESCE($4, 'aberto'), $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id, titulo, descricao, tipo, status, prioridade, categoria,
+      ) VALUES ($1, $2, $3, COALESCE($4, 'ABERTO'), $5, $6, COALESCE($7, 'ADMINISTRATIVO'), $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id, titulo, descricao, tipo, status, prioridade, loja, setor,
                 nome_usuario_abertura, responsavel, data_abertura, data_atualizacao, data_fechamento`,
       [
         chamado.titulo,
         chamado.descricao ?? null,
         chamado.tipo,
-        chamado.status ?? "aberto",
+        chamado.status ?? "ABERTO",
         chamado.prioridade,
-        chamado.categoria ?? null,
+        chamado.loja ?? null,
+        chamado.setor,
         chamado.nome_usuario_abertura,
         chamado.responsavel ?? null,
       ],
@@ -121,12 +139,13 @@ export class HelpDeskService {
     if (dados.tipo !== undefined) adicionarCampo("tipo", dados.tipo)
     if (dados.status !== undefined) adicionarCampo("status", dados.status)
     if (dados.prioridade !== undefined) adicionarCampo("prioridade", dados.prioridade)
-    if (dados.categoria !== undefined) adicionarCampo("categoria", dados.categoria)
+    if (dados.loja !== undefined) adicionarCampo("loja", dados.loja)
+    if (dados.setor !== undefined) adicionarCampo("setor", dados.setor)
     if (dados.responsavel !== undefined) adicionarCampo("responsavel", dados.responsavel)
 
     campos.push("data_atualizacao = CURRENT_TIMESTAMP")
 
-    if (dados.status === "fechado") {
+    if (dados.status === "FECHADO") {
       campos.push("data_fechamento = CURRENT_TIMESTAMP")
     } else if (dados.status !== undefined) {
       campos.push("data_fechamento = NULL")
@@ -138,7 +157,7 @@ export class HelpDeskService {
       `UPDATE scc_chamados
           SET ${campos.join(", ")}
         WHERE id = $${valores.length}
-      RETURNING id, titulo, descricao, tipo, status, prioridade, categoria,
+      RETURNING id, titulo, descricao, tipo, status, prioridade, loja, setor,
                 nome_usuario_abertura, responsavel, data_abertura, data_atualizacao, data_fechamento`,
       valores,
     )
@@ -154,13 +173,13 @@ export class HelpDeskService {
 
       const interacaoResult = await client.query(
         `INSERT INTO scc_interacoes (id_chamado, nome_usuario, mensagem, tipo, status_novo, data_criacao)
-         VALUES ($1, $2, $3, COALESCE($4, 'comentario'), $5, CURRENT_TIMESTAMP)
+         VALUES ($1, $2, $3, COALESCE($4, 'COMENTARIO'), $5, CURRENT_TIMESTAMP)
          RETURNING id, id_chamado, nome_usuario, mensagem, tipo, status_novo, data_criacao`,
         [
           interacao.id_chamado,
           interacao.nome_usuario,
           interacao.mensagem,
-          interacao.tipo ?? "comentario",
+          interacao.tipo ?? "COMENTARIO",
           interacao.status_novo ?? null,
         ],
       )
@@ -169,7 +188,7 @@ export class HelpDeskService {
         const updateFields = ["status = $1", "data_atualizacao = CURRENT_TIMESTAMP"]
         const updateValues: unknown[] = [interacao.status_novo, interacao.id_chamado]
 
-        if (interacao.status_novo === "fechado") {
+        if (interacao.status_novo === "FECHADO") {
           updateFields.push("data_fechamento = CURRENT_TIMESTAMP")
         } else {
           updateFields.push("data_fechamento = NULL")
