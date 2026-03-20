@@ -2,6 +2,7 @@ import type { Request, Response } from "express"
 import { HelpDeskService } from "../services/helpDeskService"
 
 const helpDeskService = new HelpDeskService()
+const NIVEIS_SUPORTE = new Set(["00", "11"])
 
 export const listarChamados = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -42,12 +43,13 @@ export const criarChamado = async (req: Request, res: Response): Promise<void> =
     const novoChamado = await helpDeskService.criarChamado({
       ...req.body,
       nome_usuario_abertura: req.usuario?.usuario ?? req.body.nome_usuario_abertura,
-    })
+      responsavel: req.body.responsavel || null,
+    }, req.usuario)
 
     res.status(201).json(novoChamado)
   } catch (error) {
     console.error("Erro ao criar chamado:", error)
-    res.status(500).json({ error: "Erro ao criar chamado" })
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao criar chamado" })
   }
 }
 
@@ -60,7 +62,7 @@ export const atualizarChamado = async (req: Request, res: Response): Promise<voi
       return
     }
 
-    const chamado = await helpDeskService.atualizarChamado(Number(req.params.id), req.body)
+    const chamado = await helpDeskService.atualizarChamado(Number(req.params.id), req.body, req.usuario)
 
     if (!chamado) {
       res.status(404).json({ error: "Chamado não encontrado" })
@@ -70,7 +72,7 @@ export const atualizarChamado = async (req: Request, res: Response): Promise<voi
     res.json(chamado)
   } catch (error) {
     console.error("Erro ao atualizar chamado:", error)
-    res.status(500).json({ error: "Erro ao atualizar chamado" })
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao atualizar chamado" })
   }
 }
 
@@ -83,16 +85,22 @@ export const adicionarInteracao = async (req: Request, res: Response): Promise<v
       return
     }
 
+    if (req.body.responsavel !== undefined && !NIVEIS_SUPORTE.has(req.usuario?.nivel ?? "")) {
+      res.status(403).json({ error: "Somente os níveis 00 e 11 podem atribuir responsável" })
+      return
+    }
+
     const interacao = await helpDeskService.adicionarInteracao({
       ...req.body,
       id_chamado: Number(req.params.id),
       nome_usuario: req.usuario?.usuario ?? req.body.nome_usuario,
-    })
+      responsavel: req.body.responsavel === undefined ? undefined : req.body.responsavel || null,
+    }, req.usuario)
 
     res.status(201).json(interacao)
   } catch (error) {
     console.error("Erro ao adicionar interação:", error)
-    res.status(500).json({ error: "Erro ao adicionar interação" })
+    res.status(500).json({ error: error instanceof Error ? error.message : "Erro ao adicionar interação" })
   }
 }
 

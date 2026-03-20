@@ -3,6 +3,10 @@ import pool from "../config/database"
 import type { Ativo, Chamado, ChamadoDetalhado, InteracaoChamado } from "../models/HelpDesk"
 
 const NIVEIS_SUPORTE = new Set(["00", "11"])
+const STATUS_PERMITE_ALTERAR_RESPONSAVEL = "ABERTO"
+const STATUS_BLOQUEADO = "FECHADO"
+
+const usuarioPodeAtribuirResponsavel = (nivel?: string): boolean => NIVEIS_SUPORTE.has(nivel ?? "")
 
 export class HelpDeskService {
   private db: Pool
@@ -112,7 +116,11 @@ export class HelpDeskService {
     }
   }
 
-  async criarChamado(chamado: Chamado): Promise<ChamadoDetalhado> {
+  async criarChamado(chamado: Chamado, usuario?: { usuario: string; nivel: string }): Promise<ChamadoDetalhado> {
+    if (chamado.responsavel !== undefined && chamado.responsavel !== null && !usuarioPodeAtribuirResponsavel(usuario?.nivel)) {
+      throw new Error("Somente os níveis 00 e 11 podem atribuir responsável")
+    }
+
     const result = await this.db.query(
       `INSERT INTO scc_chamados (
         titulo, descricao, tipo, status, prioridade, loja, setor,
@@ -139,7 +147,27 @@ export class HelpDeskService {
     }
   }
 
-  async atualizarChamado(id: number, dados: Partial<Chamado>): Promise<Chamado | null> {
+  async atualizarChamado(id: number, dados: Partial<Chamado>, usuario?: { usuario: string; nivel: string }): Promise<Chamado | null> {
+    const chamadoAtual = await this.obterChamado(id, usuarioPodeAtribuirResponsavel(usuario?.nivel) ? undefined : usuario)
+
+    if (!chamadoAtual) {
+      return null
+    }
+
+    if (chamadoAtual.status === STATUS_BLOQUEADO) {
+      throw new Error("Chamados fechados não podem mais ser alterados")
+    }
+
+    if (dados.responsavel !== undefined) {
+      if (!usuarioPodeAtribuirResponsavel(usuario?.nivel)) {
+        throw new Error("Somente os níveis 00 e 11 podem atribuir responsável")
+      }
+
+      if (chamadoAtual.status !== STATUS_PERMITE_ALTERAR_RESPONSAVEL) {
+        throw new Error("O responsável só pode ser alterado enquanto o chamado estiver ABERTO")
+      }
+    }
+
     const campos: string[] = []
     const valores: unknown[] = []
 
@@ -179,7 +207,27 @@ export class HelpDeskService {
     return result.rows[0] ?? null
   }
 
-  async adicionarInteracao(interacao: InteracaoChamado): Promise<InteracaoChamado> {
+  async adicionarInteracao(interacao: InteracaoChamado, usuario?: { usuario: string; nivel: string }): Promise<InteracaoChamado> {
+    const chamadoAtual = await this.obterChamado(interacao.id_chamado, usuarioPodeAtribuirResponsavel(usuario?.nivel) ? undefined : usuario)
+
+    if (!chamadoAtual) {
+      throw new Error("Chamado não encontrado")
+    }
+
+    if (chamadoAtual.status === STATUS_BLOQUEADO) {
+      throw new Error("Chamados fechados não podem receber interações")
+    }
+
+    if (interacao.responsavel !== undefined) {
+      if (!usuarioPodeAtribuirResponsavel(usuario?.nivel)) {
+        throw new Error("Somente os níveis 00 e 11 podem atribuir responsável")
+      }
+
+      if (chamadoAtual.status !== STATUS_PERMITE_ALTERAR_RESPONSAVEL) {
+        throw new Error("O responsável só pode ser alterado enquanto o chamado estiver ABERTO")
+      }
+    }
+
     const client = await this.db.connect()
 
     try {
@@ -198,30 +246,34 @@ export class HelpDeskService {
         ],
       )
 
+      const updateFields = ["data_atualizacao = CURRENT_TIMESTAMP"]
+      const updateValues: unknown[] = []
+
       if (interacao.status_novo) {
-        const updateFields = ["status = $1", "data_atualizacao = CURRENT_TIMESTAMP"]
-        const updateValues: unknown[] = [interacao.status_novo, interacao.id_chamado]
-
-        if (interacao.status_novo === "FECHADO") {
-          updateFields.push("data_fechamento = CURRENT_TIMESTAMP")
-        } else {
-          updateFields.push("data_fechamento = NULL")
-        }
-
-        await client.query(
-          `UPDATE scc_chamados
-              SET ${updateFields.join(", ")}
-            WHERE id = $2`,
-          updateValues,
-        )
-      } else {
-        await client.query(
-          `UPDATE scc_chamados
-              SET data_atualizacao = CURRENT_TIMESTAMP
-            WHERE id = $1`,
-          [interacao.id_chamado],
-        )
+        updateValues.push(interacao.status_novo)
+        updateFields.unshift(`status = $${updateValues.length}`)
       }
+
+      if (interacao.responsavel !== undefined) {
+        updateValues.push(interacao.responsavel || null)
+        updateFields.push(`responsavel = $${updateValues.length}`)
+      }
+
+      updateValues.push(interacao.id_chamado)
+      const idPlaceholder = `$${updateValues.length}`
+
+      if (interacao.status_novo === "FECHADO") {
+        updateFields.push("data_fechamento = CURRENT_TIMESTAMP")
+      } else if (interacao.status_novo !== undefined) {
+        updateFields.push("data_fechamento = NULL")
+      }
+
+      await client.query(
+        `UPDATE scc_chamados
+            SET ${updateFields.join(", ")}
+          WHERE id = ${idPlaceholder}`,
+        updateValues,
+      )
 
       await client.query("COMMIT")
       return interacaoResult.rows[0]

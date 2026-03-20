@@ -21,6 +21,7 @@ export interface InteracaoChamado {
   mensagem: string
   tipo?: "COMENTARIO" | "INTERNO" | "STATUS"
   status_novo?: "ABERTO" | "EM ANDAMENTO" | "RESOLVIDO" | "FECHADO" | null
+  responsavel?: "ALBERTO" | "WALLYSON" | null
   data_criacao?: string
 }
 
