@@ -55,9 +55,9 @@ const formInicial: AtivoHelpDesk = {
 
 const HelpDeskAtivos: React.FC = () => {
   const { temPermissaoModulo } = useAuth()
-  const podeIncluir = temPermissaoModulo("help-desk", "incluir")
-  const podeEditar = temPermissaoModulo("help-desk", "editar")
-  const podeExcluir = temPermissaoModulo("help-desk", "excluir")
+  const podeIncluir = temPermissaoModulo("ativos", "incluir")
+  const podeEditar = temPermissaoModulo("ativos", "editar")
+  const podeExcluir = temPermissaoModulo("ativos", "excluir")
 
   const [ativos, setAtivos] = useState<AtivoHelpDesk[]>([])
   const [erro, setErro] = useState("")

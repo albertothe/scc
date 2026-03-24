@@ -226,7 +226,7 @@ function App() {
             <Route
               path="/help-desk/ativos"
               element={
-                <ProtectedRoute rota="help-desk">
+                <ProtectedRoute rota="ativos">
                   <Layout>
                     <HelpDeskAtivos />
                   </Layout>
