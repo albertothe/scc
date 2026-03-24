@@ -232,10 +232,18 @@ const HelpDeskChamados: React.FC = () => {
   }
 
   const salvarInteracao = async () => {
-    if (!detalhe?.id || !novaInteracao.mensagem?.trim() || detalheBloqueado) return
+    if (!detalhe?.id || detalheBloqueado) return
+
+    const responsavelAnterior = detalhe.responsavel || ""
+    const responsavelNovo = detalhePermiteEditarResponsavel ? novaInteracao.responsavel || "" : responsavelAnterior
+    const responsavelAtribuido = responsavelNovo !== responsavelAnterior && Boolean(responsavelNovo)
+    const mensagem = novaInteracao.mensagem?.trim() || (responsavelAtribuido ? "Responsável atribuído." : "")
+
+    if (!mensagem) return
 
     await helpDeskService.adicionarInteracao(detalhe.id, {
       ...novaInteracao,
+      mensagem,
       responsavel: detalhePermiteEditarResponsavel ? novaInteracao.responsavel || "" : undefined,
     })
     const atualizado = await helpDeskService.obterChamado(detalhe.id)
@@ -290,9 +298,6 @@ const HelpDeskChamados: React.FC = () => {
                             {status}
                           </Typography>
                           <Typography variant="h5" sx={{ lineHeight: 1.1 }}>{quantidade}</Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
-                            {ativo ? "Clique para remover o filtro" : "Clique para filtrar por este status"}
-                          </Typography>
                         </Stack>
                       </CardContent>
                     </CardActionArea>

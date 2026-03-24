@@ -228,6 +228,14 @@ export class HelpDeskService {
       }
     }
 
+    const responsavelAlterado = interacao.responsavel !== undefined && interacao.responsavel !== chamadoAtual.responsavel
+    const responsavelAtribuido = responsavelAlterado && Boolean(interacao.responsavel)
+    const mensagem = interacao.mensagem?.trim() || (responsavelAtribuido ? "Responsável atribuído." : "")
+
+    if (!mensagem) {
+      throw new Error("Informe uma mensagem para a interação")
+    }
+
     const client = await this.db.connect()
 
     try {
@@ -240,7 +248,7 @@ export class HelpDeskService {
         [
           interacao.id_chamado,
           interacao.nome_usuario,
-          interacao.mensagem,
+          mensagem,
           interacao.tipo ?? "COMENTARIO",
           interacao.status_novo ?? null,
         ],
