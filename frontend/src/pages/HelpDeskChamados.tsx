@@ -73,6 +73,26 @@ const statusStyles: Record<ChamadoHelpDesk["status"], "default" | "primary" | "w
 }
 
 const autoRefreshMs = 5 * 60 * 1000
+const HORA_EM_MS = 1000 * 60 * 60
+const LIMITE_CHAMADO_ABERTO_EM_HORAS = 48
+
+const normalizarStatusChamado = (status?: string) => status?.trim().toUpperCase()
+
+const parseDataChamado = (data?: string) => {
+  if (!data) return null
+
+  const tentativaPadrao = new Date(data)
+  if (!Number.isNaN(tentativaPadrao.getTime())) {
+    return tentativaPadrao
+  }
+
+  const tentativaIsoSemTimezone = new Date(data.replace(" ", "T"))
+  if (!Number.isNaN(tentativaIsoSemTimezone.getTime())) {
+    return tentativaIsoSemTimezone
+  }
+
+  return null
+}
 
 const HelpDeskChamados: React.FC = () => {
   const { usuario } = useAuth()
@@ -157,17 +177,19 @@ const HelpDeskChamados: React.FC = () => {
     })
   }, [chamados, responsavelFiltro, statusCardFiltro])
 
-  const chamadoAbertoHaMaisDe48h = (chamado: ChamadoHelpDesk) => {
-    if (chamado.status !== "ABERTO" || !chamado.data_abertura) {
+  const chamadoAbertoHaMaisDe48h = useCallback((chamado: ChamadoHelpDesk) => {
+    if (normalizarStatusChamado(chamado.status) !== "ABERTO") {
       return false
     }
-    const dataAbertura = new Date(chamado.data_abertura)
-    if (Number.isNaN(dataAbertura.getTime())) {
+
+    const dataAbertura = parseDataChamado(chamado.data_abertura)
+    if (!dataAbertura) {
       return false
     }
-    const horasAberto = (Date.now() - dataAbertura.getTime()) / (1000 * 60 * 60)
-    return horasAberto >= 48
-  }
+
+    const horasAberto = (Date.now() - dataAbertura.getTime()) / HORA_EM_MS
+    return horasAberto >= LIMITE_CHAMADO_ABERTO_EM_HORAS
+  }, [])
 
   const detalhePermiteEditarResponsavel = canManageResponsible && detalhe?.status === "ABERTO"
   const detalheBloqueado = detalhe?.status === "FECHADO"
