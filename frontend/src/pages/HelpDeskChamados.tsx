@@ -229,7 +229,7 @@ const HelpDeskChamados: React.FC = () => {
   return (
     <Box p={3}>
       <Stack spacing={3}>
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: { xs: 2, md: 2.5 } }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between">
             <Box>
               <Typography variant="h4">Help Desk - Chamados</Typography>
@@ -247,22 +247,28 @@ const HelpDeskChamados: React.FC = () => {
             </Stack>
           </Stack>
 
-          <Grid container spacing={2} mt={1}>
+          <Grid container spacing={1.5} mt={1}>
             {statusOptions.map((status) => {
               const ativo = statusCardFiltro === status
               const quantidade = resumo[status]
 
               return (
                 <Grid item xs={12} sm={6} md={3} key={status}>
-                  <Card variant={ativo ? "elevation" : "outlined"} sx={{ borderColor: ativo ? "primary.main" : undefined }}>
+                  <Card
+                    variant={ativo ? "elevation" : "outlined"}
+                    sx={{
+                      borderColor: ativo ? "primary.main" : undefined,
+                      height: "100%",
+                    }}
+                  >
                     <CardActionArea onClick={() => toggleStatusCard(status)}>
-                      <CardContent>
-                        <Stack spacing={1}>
-                          <Typography variant="subtitle2" color="text.secondary">
+                      <CardContent sx={{ py: 1.25, "&:last-child": { pb: 1.25 } }}>
+                        <Stack spacing={0.35}>
+                          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
                             {status}
                           </Typography>
-                          <Typography variant="h4">{quantidade}</Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="h5" sx={{ lineHeight: 1.1 }}>{quantidade}</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
                             {ativo ? "Clique para remover o filtro" : "Clique para filtrar por este status"}
                           </Typography>
                         </Stack>
@@ -311,17 +317,17 @@ const HelpDeskChamados: React.FC = () => {
         {erro && <Alert severity="error">{erro}</Alert>}
 
         <Paper sx={{ overflow: "hidden" }}>
-          <Table>
+          <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Título</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Prioridade</TableCell>
-                <TableCell>Loja / Setor</TableCell>
-                <TableCell>Responsável</TableCell>
-                <TableCell>Abertura</TableCell>
+                <TableCell sx={{ py: 1 }}>ID</TableCell>
+                <TableCell sx={{ py: 1 }}>Título</TableCell>
+                <TableCell sx={{ py: 1 }}>Tipo</TableCell>
+                <TableCell sx={{ py: 1 }}>Status</TableCell>
+                <TableCell sx={{ py: 1 }}>Prioridade</TableCell>
+                <TableCell sx={{ py: 1 }}>Loja / Setor</TableCell>
+                <TableCell sx={{ py: 1 }}>Responsável</TableCell>
+                <TableCell sx={{ py: 1 }}>Abertura</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -338,24 +344,30 @@ const HelpDeskChamados: React.FC = () => {
                   }}
                   onClick={() => abrirDetalhe(chamado.id)}
                 >
-                  <TableCell>{chamado.id}</TableCell>
-                  <TableCell>
-                    <Typography fontWeight={600}>{chamado.titulo}</Typography>
-                    <Typography variant="body2" color="text.secondary">{chamado.nome_usuario_abertura}</Typography>
+                  <TableCell sx={{ py: 0.75 }}>{chamado.id}</TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
+                    <Typography fontWeight={600} variant="body2" sx={{ lineHeight: 1.2 }}>{chamado.titulo}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>{chamado.nome_usuario_abertura}</Typography>
                   </TableCell>
-                  <TableCell>{chamado.tipo}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
+                    <Typography variant="body2">{chamado.tipo}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
                     <Chip size="small" label={chamado.status} color={statusStyles[chamado.status]} variant="outlined" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
                     <Chip size="small" label={prioridadeStyles[chamado.prioridade].label} sx={prioridadeStyles[chamado.prioridade].sx} />
                   </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{chamado.loja || "-"}</Typography>
+                  <TableCell sx={{ py: 0.75 }}>
+                    <Typography variant="body2" sx={{ lineHeight: 1.2 }}>{chamado.loja || "-"}</Typography>
                     <Typography variant="caption" color="text.secondary">{chamado.setor}</Typography>
                   </TableCell>
-                  <TableCell>{chamado.responsavel || "-"}</TableCell>
-                  <TableCell>{formatarDataHora(chamado.data_abertura || "")}</TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
+                    <Typography variant="body2">{chamado.responsavel || "-"}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 0.75 }}>
+                    <Typography variant="body2">{formatarDataHora(chamado.data_abertura || "")}</Typography>
+                  </TableCell>
                 </TableRow>
               ))}
               {!carregando && chamadosVisiveis.length === 0 && (
