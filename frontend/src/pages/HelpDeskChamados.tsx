@@ -331,9 +331,9 @@ const HelpDeskChamados: React.FC = () => {
                   hover
                   sx={{
                     cursor: "pointer",
-                    backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(239, 83, 80, 0.12)" : undefined,
+                    backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(211, 47, 47, 0.2)" : undefined,
                     "&:hover": {
-                      backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(239, 83, 80, 0.2)" : undefined,
+                      backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(183, 28, 28, 0.28)" : undefined,
                     },
                   }}
                   onClick={() => abrirDetalhe(chamado.id)}
