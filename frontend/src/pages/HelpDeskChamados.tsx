@@ -82,6 +82,7 @@ const HelpDeskChamados: React.FC = () => {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState("")
   const [busca, setBusca] = useState("")
+  const [responsavelFiltro, setResponsavelFiltro] = useState<"" | NonNullable<ChamadoHelpDesk["responsavel"]>>("")
   const [statusFiltro, setStatusFiltro] = useState<"" | ChamadoHelpDesk["status"]>("")
   const [prioridadeFiltro, setPrioridadeFiltro] = useState<"" | ChamadoHelpDesk["prioridade"]>("")
   const [statusCardFiltro, setStatusCardFiltro] = useState<"" | ChamadoHelpDesk["status"]>("")
@@ -149,12 +150,24 @@ const HelpDeskChamados: React.FC = () => {
   }), [chamados])
 
   const chamadosVisiveis = useMemo(() => {
-    if (statusCardFiltro) {
-      return chamados.filter((item) => item.status === statusCardFiltro)
-    }
+    return chamados.filter((item) => {
+      const passaStatusCard = statusCardFiltro ? item.status === statusCardFiltro : item.status !== "FECHADO"
+      const passaResponsavel = responsavelFiltro ? item.responsavel === responsavelFiltro : true
+      return passaStatusCard && passaResponsavel
+    })
+  }, [chamados, responsavelFiltro, statusCardFiltro])
 
-    return chamados.filter((item) => item.status !== "FECHADO")
-  }, [chamados, statusCardFiltro])
+  const chamadoAbertoHaMaisDe48h = (chamado: ChamadoHelpDesk) => {
+    if (chamado.status !== "ABERTO" || !chamado.data_abertura) {
+      return false
+    }
+    const dataAbertura = new Date(chamado.data_abertura)
+    if (Number.isNaN(dataAbertura.getTime())) {
+      return false
+    }
+    const horasAberto = (Date.now() - dataAbertura.getTime()) / (1000 * 60 * 60)
+    return horasAberto >= 48
+  }
 
   const detalhePermiteEditarResponsavel = canManageResponsible && detalhe?.status === "ABERTO"
   const detalheBloqueado = detalhe?.status === "FECHADO"
@@ -271,16 +284,22 @@ const HelpDeskChamados: React.FC = () => {
           </Stack>
 
           <Grid container spacing={2} mt={1}>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={6}>
               <TextField fullWidth label="Buscar" value={busca} onChange={(e) => setBusca(e.target.value)} />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={2}>
+              <TextField select fullWidth label="Responsável" value={responsavelFiltro} onChange={(e) => setResponsavelFiltro(e.target.value as typeof responsavelFiltro)}>
+                <MenuItem value="">Todos</MenuItem>
+                {responsaveis.filter(Boolean).map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2}>
               <TextField select fullWidth label="Status" value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value as typeof statusFiltro)}>
                 <MenuItem value="">Todos</MenuItem>
                 {statusOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={2}>
               <TextField select fullWidth label="Prioridade" value={prioridadeFiltro} onChange={(e) => setPrioridadeFiltro(e.target.value as typeof prioridadeFiltro)}>
                 <MenuItem value="">Todas</MenuItem>
                 {prioridadeOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
@@ -307,7 +326,18 @@ const HelpDeskChamados: React.FC = () => {
             </TableHead>
             <TableBody>
               {chamadosVisiveis.map((chamado) => (
-                <TableRow key={chamado.id} hover sx={{ cursor: "pointer" }} onClick={() => abrirDetalhe(chamado.id)}>
+                <TableRow
+                  key={chamado.id}
+                  hover
+                  sx={{
+                    cursor: "pointer",
+                    backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(239, 83, 80, 0.12)" : undefined,
+                    "&:hover": {
+                      backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(239, 83, 80, 0.2)" : undefined,
+                    },
+                  }}
+                  onClick={() => abrirDetalhe(chamado.id)}
+                >
                   <TableCell>{chamado.id}</TableCell>
                   <TableCell>
                     <Typography fontWeight={600}>{chamado.titulo}</Typography>

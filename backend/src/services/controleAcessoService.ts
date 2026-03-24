@@ -4,6 +4,11 @@ import type { NivelAcesso } from "../models/NivelAcesso"
 import type { PermissaoNivel } from "../models/PermissaoNivel"
 
 export const getModulos = async (): Promise<Modulo[]> => {
+    await pool.query(`
+        INSERT INTO scc_modulos (nome, rota, icone, ordem, ativo)
+        SELECT 'Ativos', 'ativos', 'Computer', 31, true
+        WHERE NOT EXISTS (SELECT 1 FROM scc_modulos WHERE rota = 'ativos')
+    `)
     const query = `SELECT id, nome, rota, icone, ordem, ativo FROM scc_modulos ORDER BY ordem, nome`
     const result = await pool.query(query)
     return result.rows
@@ -193,9 +198,18 @@ export const verificarPermissaoModulo = async (
         WHERE p.codigo_nivel = $1 AND m.rota = $2
     `
     const result = await pool.query(query, [codigo, rota])
-    if (result.rows.length === 0) {
-        return false
+    if (result.rows.length > 0) {
+        const permissao = result.rows[0] as PermissaoNivel
+        return Boolean(permissao[acao])
     }
-    const permissao = result.rows[0] as PermissaoNivel
-    return Boolean(permissao[acao])
+
+    if (rota === "ativos") {
+        const fallback = await pool.query(query, [codigo, "help-desk"])
+        if (fallback.rows.length > 0) {
+            const permissao = fallback.rows[0] as PermissaoNivel
+            return Boolean(permissao[acao])
+        }
+    }
+
+    return false
 }

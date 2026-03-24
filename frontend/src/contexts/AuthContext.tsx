@@ -159,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         rota: string,
         acao: "visualizar" | "incluir" | "editar" | "excluir" = "visualizar",
     ): boolean => {
-        const perm = permissoesModulo[rota]
+        const perm = permissoesModulo[rota] ?? (rota === "ativos" ? permissoesModulo["help-desk"] : undefined)
         if (!perm) return false
         return Boolean(perm[acao])
     }
