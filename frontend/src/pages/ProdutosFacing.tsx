@@ -230,13 +230,13 @@ const ProdutosFacing: React.FC = () => {
                   <CloseIcon />
                 </IconButton>
               </Box>
-              <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
-                <Grid item xs={12}><Typography variant="body2"><strong>Código:</strong> {produtoSelecionado.resumo.codproduto}</Typography></Grid>
-                <Grid item xs={12}><Typography variant="body2"><strong>Produto:</strong> {produtoSelecionado.resumo.produto}</Typography></Grid>
-                <Grid item xs={12}><Typography variant="body2"><strong>Fornecedor:</strong> {produtoSelecionado.resumo.fornecedor}</Typography></Grid>
-                <Grid item xs={12}><Typography variant="body2"><strong>Grupo/Subgrupo:</strong> {produtoSelecionado.resumo.grupo} / {produtoSelecionado.resumo.subgrupo}</Typography></Grid>
-                <Grid item xs={12}><Typography variant="body2"><strong>Comprador:</strong> {produtoSelecionado.resumo.comprador}</Typography></Grid>
-                <Grid item xs={12}><Typography variant="body2"><strong>Total de lojas:</strong> {produtoSelecionado.lojas.length}</Typography></Grid>
+              <Grid container spacing={0.5} sx={{ mt: 0.5 }}>
+                <Grid item xs={12}><Typography variant="body2" sx={{ lineHeight: 1.2 }}><strong>Código:</strong> {produtoSelecionado.resumo.codproduto}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2" sx={{ lineHeight: 1.2 }}><strong>Produto:</strong> {produtoSelecionado.resumo.produto}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2" sx={{ lineHeight: 1.2 }}><strong>Fornecedor:</strong> {produtoSelecionado.resumo.fornecedor}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2" sx={{ lineHeight: 1.2 }}><strong>Grupo/Subgrupo:</strong> {produtoSelecionado.resumo.grupo} / {produtoSelecionado.resumo.subgrupo}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2" sx={{ lineHeight: 1.2 }}><strong>Comprador:</strong> {produtoSelecionado.resumo.comprador}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2" sx={{ lineHeight: 1.2 }}><strong>Total de lojas:</strong> {produtoSelecionado.lojas.length}</Typography></Grid>
               </Grid>
             </Box>
             <Divider />
@@ -246,10 +246,10 @@ const ProdutosFacing: React.FC = () => {
                 size="small"
                 sx={{
                   "& .MuiTableCell-root": {
-                    py: 0.45,
+                    py: 0.3,
                     px: 0.9,
                     fontSize: "0.72rem",
-                    lineHeight: 1.1,
+                    lineHeight: 1,
                     whiteSpace: "nowrap",
                   },
                   "& .MuiTableCell-head": {
