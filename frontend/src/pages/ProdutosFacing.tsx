@@ -242,7 +242,22 @@ const ProdutosFacing: React.FC = () => {
             <Divider />
             <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Lojas e números</Typography>
-              <Table size="small">
+              <Table
+                size="small"
+                sx={{
+                  "& .MuiTableCell-root": {
+                    py: 0.45,
+                    px: 0.9,
+                    fontSize: "0.72rem",
+                    lineHeight: 1.1,
+                    whiteSpace: "nowrap",
+                  },
+                  "& .MuiTableCell-head": {
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                  },
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     <TableCell>Loja</TableCell>
@@ -260,7 +275,7 @@ const ProdutosFacing: React.FC = () => {
                     const isEditing = editingKey === key
                     return (
                       <TableRow key={key}>
-                        <TableCell>{row.codloja} - {row.loja}</TableCell>
+                        <TableCell>{row.loja}</TableCell>
                         <TableCell>{row.status_estoque || row.status_produto || "-"}</TableCell>
                         <TableCell>{formatarNumeroBrasil(row.qtde_estoque)}</TableCell>
                         <TableCell>{formatarNumeroBrasil(row.qtde_reserva)}</TableCell>
@@ -272,6 +287,7 @@ const ProdutosFacing: React.FC = () => {
                               type="number"
                               value={novoFacing}
                               onChange={(e) => setNovoFacing(Number(e.target.value))}
+                              sx={{ "& .MuiInputBase-input": { fontSize: "0.72rem", py: 0.6 } }}
                             />
                           ) : (
                             formatarNumeroBrasil(row.qtde_estoque_facing)
@@ -279,15 +295,16 @@ const ProdutosFacing: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           {isEditing ? (
-                            <IconButton color="primary" onClick={() => salvar(row)}><SaveIcon /></IconButton>
+                            <IconButton size="small" color="primary" onClick={() => salvar(row)}><SaveIcon fontSize="small" /></IconButton>
                           ) : (
                             <IconButton
+                              size="small"
                               onClick={() => {
                                 setEditingKey(key)
                                 setNovoFacing(Number(row.qtde_estoque_facing || 0))
                               }}
                             >
-                              <EditIcon />
+                              <EditIcon fontSize="small" />
                             </IconButton>
                           )}
                         </TableCell>
