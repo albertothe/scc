@@ -182,6 +182,8 @@ const ProdutosFacing: React.FC = () => {
                                 <TableRow>
                                   <TableCell>Loja</TableCell>
                                   <TableCell>Status</TableCell>
+                                  <TableCell>Estoque total</TableCell>
+                                  <TableCell>Qtde reservada</TableCell>
                                   <TableCell>Saldo estoque</TableCell>
                                   <TableCell>Prç custo</TableCell>
                                   <TableCell>Prç custo médio</TableCell>
@@ -197,6 +199,8 @@ const ProdutosFacing: React.FC = () => {
                                     <TableRow key={key}>
                                       <TableCell>{row.codloja} - {row.loja}</TableCell>
                                       <TableCell>{row.status_estoque || row.status_produto || "-"}</TableCell>
+                                      <TableCell>{formatarNumeroBrasil(row.qtde_estoque)}</TableCell>
+                                      <TableCell>{formatarNumeroBrasil(row.qtde_reserva)}</TableCell>
                                       <TableCell>{formatarNumeroBrasil(row.saldo_estoque)}</TableCell>
                                       <TableCell>{formatarNumeroBrasil(obterPrecoCusto(row))}</TableCell>
                                       <TableCell>{formatarNumeroBrasil(obterPrecoCustoMedio(row))}</TableCell>
