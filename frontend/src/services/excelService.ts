@@ -203,3 +203,13 @@ export const exportarModeloFacing = () => {
 
     XLSX.writeFile(workbook, "modelo_importacao_facing.xlsx")
 }
+
+export const exportarModeloCustos = () => {
+    const data = [{ codproduto: "00001", valor: 1.0 }]
+    const worksheet = XLSX.utils.json_to_sheet(data)
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Custos")
+
+    XLSX.writeFile(workbook, "modelo_importacao_custos.xlsx")
+}

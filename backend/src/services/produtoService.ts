@@ -634,6 +634,8 @@ export const getProdutosFacing = async (params: ProdutoFacingFiltroParams) => {
 }
 
 export const atualizarProdutoFacing = async (codloja: string, codproduto: string, qtdeFacing: number): Promise<void> => {
+  const codlojaFormatado = codloja.toString().trim().padStart(2, "0")
+  const codprodutoFormatado = codproduto.toString().trim().padStart(5, "0")
   const query = `
     UPDATE a_estfil
     SET c_estideal = $3
@@ -641,7 +643,7 @@ export const atualizarProdutoFacing = async (codloja: string, codproduto: string
       AND c_codprod = $2
   `
 
-  const result = await pool.query(query, [codloja, codproduto, qtdeFacing])
+  const result = await pool.query(query, [codlojaFormatado, codprodutoFormatado, qtdeFacing])
 
   if (!result.rowCount) {
     throw new Error("Nenhum registro encontrado para atualizar")
@@ -695,6 +697,67 @@ export const importarProdutosFacing = async (
       } catch (error) {
         resultado.errors.push({
           codigo: `${item.codloja || ""}-${item.codproduto || ""}`,
+          motivo: "Erro ao processar linha",
+        })
+      }
+    }
+
+    await client.query("COMMIT")
+    return resultado
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export const importarProdutosCustos = async (
+  produtos: { codproduto: string; valor: number }[],
+): Promise<{ success: string[]; errors: { codigo: string; motivo: string }[] }> => {
+  const client = await pool.connect()
+  const resultado = {
+    success: [] as string[],
+    errors: [] as { codigo: string; motivo: string }[],
+  }
+
+  try {
+    await client.query("BEGIN")
+
+    for (const item of produtos) {
+      try {
+        const codproduto = item.codproduto?.toString().trim().padStart(5, "0")
+        const valor = Number(item.valor)
+
+        if (!codproduto || Number.isNaN(valor)) {
+          resultado.errors.push({
+            codigo: `${item.codproduto || ""}`,
+            motivo: "Dados inválidos para atualização",
+          })
+          continue
+        }
+
+        const updateQuery = `
+          UPDATE a_estfil
+          SET c_prcusto = $2,
+              c_customed = $2
+          WHERE c_codprod = $1
+        `
+
+        const updateResult = await client.query(updateQuery, [codproduto, valor])
+
+        if (!updateResult.rowCount) {
+          resultado.errors.push({
+            codigo: `${codproduto}`,
+            motivo: "Registro não encontrado",
+          })
+          continue
+        }
+
+        resultado.success.push(`${codproduto}`)
+      } catch (error) {
+        resultado.errors.push({
+          codigo: `${item.codproduto || ""}`,
           motivo: "Erro ao processar linha",
         })
       }

@@ -39,5 +39,6 @@ router.post(
 )
 router.put("/facing", verificarPermissao("produtos", "editar"), produtoController.atualizarProdutoFacing)
 router.post("/facing/importar", verificarPermissao("produtos", "editar"), produtoController.importarProdutosFacing)
+router.post("/custos/importar", verificarPermissao("produtos", "editar"), produtoController.importarProdutosCustos)
 
 export default router
