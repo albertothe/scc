@@ -608,7 +608,11 @@ export const getProdutosFacing = async (params: ProdutoFacingFiltroParams) => {
       g.comprador,
       p.status AS status_produto,
       f.status AS status_estoque,
-      f.qtde_estoque AS saldo_estoque,
+      f.qtde_estoque,
+      f.qtde_reserva,
+      f.saldo_estoque,
+      f.prc_custo,
+      f.prc_custo_medio,
       f.qtde_estoque_facing
     FROM vs_scc_festoques f
     INNER JOIN vs_scc_dprodutos p ON p.codproduto = f.codproduto
