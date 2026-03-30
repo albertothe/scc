@@ -125,6 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { text: "Produtos Enco-Fora", icon: <LocalShipping />, path: "/produtos-fora" },
         { text: "Produtos Etiquetas", icon: <Label />, path: "/produtos-etiquetas" },
         { text: "Produtos Promoção", icon: <LocalOffer />, path: "/promocao" },
+        { text: "Produtos Facing", icon: <LocalOffer />, path: "/produtos-facing" },
       ],
     },
     {

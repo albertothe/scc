@@ -220,3 +220,29 @@ export interface AtivoHelpDesk {
   observacoes?: string
   data_criacao?: string
 }
+
+export interface ProdutoFacing {
+  codloja: string
+  loja?: string
+  codproduto: string
+  produto?: string
+  codbarra?: string
+  referencia?: string
+  codfornecedor?: string
+  fornecedor?: string
+  codgrupo?: string
+  grupo?: string
+  subgrupo?: string
+  comprador?: string
+  status_produto?: string
+  status_estoque?: string
+  qtde_estoque_facing: number
+}
+
+export interface FacingFiltros {
+  fornecedores: { codfornecedor: string; fornecedor: string }[]
+  grupos: { codgrupo: string; grupo: string; subgrupo: string }[]
+  compradores: { comprador: string }[]
+  statusProdutos: string[]
+  lojas: { codloja: string; loja: string }[]
+}
