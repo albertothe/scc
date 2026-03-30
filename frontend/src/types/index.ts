@@ -237,6 +237,10 @@ export interface ProdutoFacing {
   status_produto?: string
   status_estoque?: string
   saldo_estoque?: number
+  preco_custo?: number
+  preco_custo_medio?: number
+  prc_custo?: number
+  prc_custo_medio?: number
   qtde_estoque_facing: number
 }
 
