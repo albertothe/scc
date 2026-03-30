@@ -267,6 +267,23 @@ export const importarProdutosFacing = async (req: Request, res: Response): Promi
   }
 }
 
+export const importarProdutosCustos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { produtos } = req.body
+
+    if (!Array.isArray(produtos)) {
+      res.status(400).json({ error: "Parâmetro produtos (array) é obrigatório" })
+      return
+    }
+
+    const resultado = await produtoService.importarProdutosCustos(produtos)
+    res.status(200).json(resultado)
+  } catch (error) {
+    console.error("Erro ao importar custos de produtos:", error)
+    res.status(500).json({ error: "Erro ao importar custos de produtos", details: (error as Error).message })
+  }
+}
+
 export const getFiltrosFacing = async (req: Request, res: Response): Promise<void> => {
   try {
     const filtros = await produtoService.getFiltrosFacing()

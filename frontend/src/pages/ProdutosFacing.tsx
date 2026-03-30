@@ -10,6 +10,7 @@ import {
   Grid,
   IconButton,
   MenuItem,
+  Menu,
   Paper,
   CircularProgress,
   Table,
@@ -27,11 +28,14 @@ import SaveIcon from "@mui/icons-material/Save"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp"
+import MoreVertIcon from "@mui/icons-material/MoreVert"
 import Paginacao from "../components/Paginacao"
 import ImportacaoFacing from "../components/ImportacaoFacing"
-import { exportarModeloFacing } from "../services/excelService"
+import ImportacaoCustos from "../components/ImportacaoCustos"
+import { exportarModeloCustos, exportarModeloFacing } from "../services/excelService"
 import {
   atualizarProdutoFacing,
+  importarProdutosCustos,
   getFiltrosFacing,
   getProdutosFacing,
   importarProdutosFacing,
@@ -53,6 +57,8 @@ const ProdutosFacing: React.FC = () => {
   const [page, setPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(25)
   const [openImport, setOpenImport] = useState(false)
+  const [openImportCustos, setOpenImportCustos] = useState(false)
+  const [moreActionsAnchor, setMoreActionsAnchor] = useState<null | HTMLElement>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [novoFacing, setNovoFacing] = useState<number>(0)
   const [loading, setLoading] = useState(false)
@@ -124,6 +130,21 @@ const ProdutosFacing: React.FC = () => {
               <Button startIcon={<RefreshIcon />} variant="outlined" onClick={carregar}>Atualizar</Button>
               <Button startIcon={<UploadFileIcon />} variant="outlined" onClick={exportarModeloFacing}>Baixar layout</Button>
               <Button startIcon={<UploadFileIcon />} variant="contained" onClick={() => setOpenImport(true)}>Importar planilha</Button>
+              <IconButton onClick={(event) => setMoreActionsAnchor(event.currentTarget)}>
+                <MoreVertIcon />
+              </IconButton>
+              <Menu
+                anchorEl={moreActionsAnchor}
+                open={Boolean(moreActionsAnchor)}
+                onClose={() => setMoreActionsAnchor(null)}
+              >
+                <MenuItem onClick={() => { exportarModeloCustos(); setMoreActionsAnchor(null) }}>
+                  Baixar layout custos
+                </MenuItem>
+                <MenuItem onClick={() => { setOpenImportCustos(true); setMoreActionsAnchor(null) }}>
+                  Importar custos
+                </MenuItem>
+              </Menu>
             </Grid>
           </Grid>
         </CardContent>
@@ -260,6 +281,16 @@ const ProdutosFacing: React.FC = () => {
         onDownloadLayout={exportarModeloFacing}
         onImport={async (produtos) => {
           const r = await importarProdutosFacing(produtos)
+          await carregar()
+          return r
+        }}
+      />
+      <ImportacaoCustos
+        open={openImportCustos}
+        onClose={() => setOpenImportCustos(false)}
+        onDownloadLayout={exportarModeloCustos}
+        onImport={async (produtos) => {
+          const r = await importarProdutosCustos(produtos)
           await carregar()
           return r
         }}

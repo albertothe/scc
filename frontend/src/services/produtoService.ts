@@ -201,3 +201,15 @@ export const importarProdutosFacing = async (
     return { success: [], errors: [{ codigo: "", motivo: "Erro desconhecido" }] }
   }
 }
+
+export const importarProdutosCustos = async (
+  produtos: { codproduto: string; valor: number }[],
+): Promise<{ success: string[]; errors: { codigo: string; motivo: string }[] }> => {
+  try {
+    const response = await api.post("/produtos/custos/importar", { produtos })
+    return response.data
+  } catch (error) {
+    handleApiError(error, "Erro ao importar custos")
+    return { success: [], errors: [{ codigo: "", motivo: "Erro desconhecido" }] }
+  }
+}
