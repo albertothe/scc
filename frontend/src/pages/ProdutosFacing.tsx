@@ -36,6 +36,14 @@ import {
 } from "../services/produtoService"
 import type { FacingFiltros, ProdutoFacing } from "../types"
 
+const formatarNumeroBrasil = (valor?: number | null) => {
+  if (valor === null || valor === undefined) return "-"
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor)
+}
+
 const ProdutosFacing: React.FC = () => {
   const [filtros, setFiltros] = useState<FacingFiltros>({ fornecedores: [], grupos: [], compradores: [], statusProdutos: [], lojas: [] })
   const [items, setItems] = useState<ProdutoFacing[]>([])
@@ -130,9 +138,13 @@ const ProdutosFacing: React.FC = () => {
                     <TableCell>{row.grupo} / {row.subgrupo}</TableCell>
                     <TableCell>{row.comprador}</TableCell>
                     <TableCell>{row.status_produto}</TableCell>
-                    <TableCell>{row.saldo_estoque ?? "-"}</TableCell>
+                    <TableCell>{formatarNumeroBrasil(row.saldo_estoque)}</TableCell>
                     <TableCell>
-                      {isEditing ? <TextField size="small" type="number" value={novoFacing} onChange={(e) => setNovoFacing(Number(e.target.value))} /> : row.qtde_estoque_facing}
+                      {isEditing ? (
+                        <TextField size="small" type="number" value={novoFacing} onChange={(e) => setNovoFacing(Number(e.target.value))} />
+                      ) : (
+                        formatarNumeroBrasil(row.qtde_estoque_facing)
+                      )}
                     </TableCell>
                     <TableCell>
                       {isEditing ? (
