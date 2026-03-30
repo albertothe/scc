@@ -6,6 +6,7 @@ import Layout from "./components/Layout"
 import ProdutosFora from "./pages/ProdutosFora"
 import ProdutosEtiquetas from "./pages/ProdutosEtiquetas"
 import ProdutosPromocao from "./pages/ProdutosPromocao"
+import ProdutosFacing from "./pages/ProdutosFacing"
 import Precificacao from "./pages/Precificacao" // Importar o componente de Precificação
 import ComissaoFaixas from "./pages/ComissaoFaixas"
 import ComissaoFormulario from "./pages/ComissaoFormulario"
@@ -68,6 +69,16 @@ function App() {
                 <ProtectedRoute rota="produtos">
                   <Layout>
                     <ProdutosEtiquetas />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/produtos-facing"
+              element={
+                <ProtectedRoute rota="produtos">
+                  <Layout>
+                    <ProdutosFacing />
                   </Layout>
                 </ProtectedRoute>
               }

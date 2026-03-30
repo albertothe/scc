@@ -499,3 +499,202 @@ export const importarProdutosEtiquetas = async (
     throw error
   }
 }
+
+interface ProdutoFacingFiltroParams {
+  fornecedor?: string
+  grupo?: string
+  comprador?: string
+  status?: string
+  loja?: string
+  busca?: string
+  page?: number
+  limit?: number
+}
+
+export const getProdutosFacing = async (params: ProdutoFacingFiltroParams) => {
+  const page = Math.max(1, Number(params.page || 1))
+  const limit = Math.max(1, Number(params.limit || 25))
+  const offset = (page - 1) * limit
+
+  const where: string[] = []
+  const values: any[] = []
+
+  if (params.fornecedor) {
+    values.push(params.fornecedor)
+    where.push(`f.codfornecedor = $${values.length}`)
+  }
+
+  if (params.grupo) {
+    values.push(params.grupo)
+    where.push(`f.codgrupo = $${values.length}`)
+  }
+
+  if (params.comprador) {
+    values.push(params.comprador)
+    where.push(`g.comprador = $${values.length}`)
+  }
+
+  if (params.status) {
+    values.push(params.status)
+    where.push(`p.status = $${values.length}`)
+  }
+
+  if (params.loja) {
+    values.push(params.loja)
+    where.push(`f.codloja = $${values.length}`)
+  }
+
+  if (params.busca) {
+    values.push(`%${params.busca.trim()}%`)
+    const index = values.length
+    where.push(`(
+      f.codproduto ILIKE $${index}
+      OR p.codbarra ILIKE $${index}
+      OR p.referencia ILIKE $${index}
+      OR p.produto ILIKE $${index}
+    )`)
+  }
+
+  const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""
+
+  const baseFrom = `
+    FROM vs_scc_festoques f
+    INNER JOIN vs_scc_dprodutos p ON p.codproduto = f.codproduto
+    LEFT JOIN vs_scc_dfornecedores forn ON forn.codfornecedor = f.codfornecedor
+    LEFT JOIN vs_scc_dgrupos g ON g.codgrupo = f.codgrupo
+    LEFT JOIN vs_scc_dlojas l ON l.codloja = f.codloja
+    ${whereClause}
+  `
+
+  const totalResult = await pool.query(`SELECT COUNT(*) ${baseFrom}`, values)
+
+  values.push(limit)
+  values.push(offset)
+
+  const dataQuery = `
+    SELECT
+      f.codloja,
+      l.loja,
+      f.codproduto,
+      p.produto,
+      p.codbarra,
+      p.referencia,
+      f.codfornecedor,
+      forn.fornecedor,
+      f.codgrupo,
+      g.grupo,
+      g.subgrupo,
+      g.comprador,
+      p.status AS status_produto,
+      f.status AS status_estoque,
+      f.qtde_estoque_facing
+    ${baseFrom}
+    ORDER BY p.produto, f.codproduto, f.codloja
+    LIMIT $${values.length - 1}
+    OFFSET $${values.length}
+  `
+
+  const rows = await pool.query(dataQuery, values)
+
+  return {
+    items: rows.rows,
+    total: Number(totalResult.rows[0].count || 0),
+    page,
+    limit,
+  }
+}
+
+export const atualizarProdutoFacing = async (codloja: string, codproduto: string, qtdeFacing: number): Promise<void> => {
+  const query = `
+    UPDATE a_estfil
+    SET c_estideal = $3
+    WHERE c_fil = $1
+      AND c_codprod = $2
+  `
+
+  const result = await pool.query(query, [codloja, codproduto, qtdeFacing])
+
+  if (!result.rowCount) {
+    throw new Error("Nenhum registro encontrado para atualizar")
+  }
+}
+
+export const importarProdutosFacing = async (
+  produtos: { codloja: string; codproduto: string; qtde_facing: number }[],
+): Promise<{ success: string[]; errors: { codigo: string; motivo: string }[] }> => {
+  const client = await pool.connect()
+  const resultado = {
+    success: [] as string[],
+    errors: [] as { codigo: string; motivo: string }[],
+  }
+
+  try {
+    await client.query("BEGIN")
+
+    for (const item of produtos) {
+      try {
+        const codloja = item.codloja?.toString().trim().padStart(2, "0")
+        const codproduto = item.codproduto?.toString().trim().padStart(5, "0")
+        const qtdeFacing = Number(item.qtde_facing)
+
+        if (!codloja || !codproduto || Number.isNaN(qtdeFacing)) {
+          resultado.errors.push({
+            codigo: `${item.codloja || ""}-${item.codproduto || ""}`,
+            motivo: "Dados inválidos para atualização",
+          })
+          continue
+        }
+
+        const updateQuery = `
+          UPDATE a_estfil
+          SET c_estideal = $3
+          WHERE c_fil = $1
+            AND c_codprod = $2
+        `
+
+        const updateResult = await client.query(updateQuery, [codloja, codproduto, qtdeFacing])
+
+        if (!updateResult.rowCount) {
+          resultado.errors.push({
+            codigo: `${codloja}-${codproduto}`,
+            motivo: "Registro não encontrado",
+          })
+          continue
+        }
+
+        resultado.success.push(`${codloja}-${codproduto}`)
+      } catch (error) {
+        resultado.errors.push({
+          codigo: `${item.codloja || ""}-${item.codproduto || ""}`,
+          motivo: "Erro ao processar linha",
+        })
+      }
+    }
+
+    await client.query("COMMIT")
+    return resultado
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export const getFiltrosFacing = async () => {
+  const [fornecedores, grupos, compradores, statuses, lojas] = await Promise.all([
+    pool.query("SELECT codfornecedor, fornecedor FROM vs_scc_dfornecedores ORDER BY fornecedor"),
+    pool.query("SELECT codgrupo, grupo, subgrupo FROM vs_scc_dgrupos ORDER BY grupo, subgrupo"),
+    pool.query("SELECT DISTINCT comprador FROM vs_scc_dgrupos ORDER BY comprador"),
+    pool.query("SELECT DISTINCT status FROM vs_scc_dprodutos ORDER BY status"),
+    pool.query("SELECT codloja, loja FROM vs_scc_dlojas WHERE codloja IN ('00','01','02','03','04','05','06','07','08','09','10','11','12','15') ORDER BY codloja"),
+  ])
+
+  return {
+    fornecedores: fornecedores.rows,
+    grupos: grupos.rows,
+    compradores: compradores.rows,
+    statusProdutos: statuses.rows.map((row) => row.status),
+    lojas: lojas.rows,
+  }
+}

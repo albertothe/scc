@@ -205,3 +205,74 @@ export const importarProdutosEtiquetas = async (req: Request, res: Response): Pr
     res.status(500).json({ error: "Erro ao importar produtos com etiquetas", details: (error as Error).message })
   }
 }
+
+export const getProdutosFacing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fornecedor, grupo, comprador, status, loja, busca, page, limit } = req.query
+
+    const resultado = await produtoService.getProdutosFacing({
+      fornecedor: fornecedor as string | undefined,
+      grupo: grupo as string | undefined,
+      comprador: comprador as string | undefined,
+      status: status as string | undefined,
+      loja: loja as string | undefined,
+      busca: busca as string | undefined,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 25,
+    })
+
+    res.json(resultado)
+  } catch (error) {
+    console.error("Erro ao buscar produtos facing:", error)
+    res.status(500).json({ error: "Erro ao buscar produtos facing", details: (error as Error).message })
+  }
+}
+
+export const atualizarProdutoFacing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { codloja, codproduto, qtdeFacing } = req.body
+
+    if (!codloja || !codproduto || qtdeFacing === undefined) {
+      res.status(400).json({ error: "Parâmetros codloja, codproduto e qtdeFacing são obrigatórios" })
+      return
+    }
+
+    await produtoService.atualizarProdutoFacing(
+      codloja.toString().padStart(2, "0"),
+      codproduto.toString().padStart(5, "0"),
+      Number(qtdeFacing),
+    )
+
+    res.json({ message: "Facing atualizado com sucesso" })
+  } catch (error) {
+    console.error("Erro ao atualizar produto facing:", error)
+    res.status(500).json({ error: "Erro ao atualizar produto facing", details: (error as Error).message })
+  }
+}
+
+export const importarProdutosFacing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { produtos } = req.body
+
+    if (!Array.isArray(produtos)) {
+      res.status(400).json({ error: "Parâmetro produtos (array) é obrigatório" })
+      return
+    }
+
+    const resultado = await produtoService.importarProdutosFacing(produtos)
+    res.status(200).json(resultado)
+  } catch (error) {
+    console.error("Erro ao importar produtos facing:", error)
+    res.status(500).json({ error: "Erro ao importar produtos facing", details: (error as Error).message })
+  }
+}
+
+export const getFiltrosFacing = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const filtros = await produtoService.getFiltrosFacing()
+    res.json(filtros)
+  } catch (error) {
+    console.error("Erro ao buscar filtros de facing:", error)
+    res.status(500).json({ error: "Erro ao buscar filtros de facing", details: (error as Error).message })
+  }
+}

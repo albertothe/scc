@@ -11,6 +11,8 @@ router.use(verificarAutenticacao)
 router.get("/fora", produtoController.getProdutosFora)
 router.get("/etiquetas", produtoController.getProdutosEtiquetas)
 router.get("/buscar", produtoController.buscarProdutos)
+router.get("/facing", produtoController.getProdutosFacing)
+router.get("/facing/filtros", produtoController.getFiltrosFacing)
 
 // Rotas que requerem nível específico
 router.post("/fora", verificarPermissao("produtos", "incluir"), produtoController.adicionarProdutoFora)
@@ -35,5 +37,7 @@ router.post(
     verificarPermissao("produtos", "incluir"),
     produtoController.importarProdutosEtiquetas,
 )
+router.put("/facing", verificarPermissao("produtos", "editar"), produtoController.atualizarProdutoFacing)
+router.post("/facing/importar", verificarPermissao("produtos", "editar"), produtoController.importarProdutosFacing)
 
 export default router

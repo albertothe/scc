@@ -152,3 +152,52 @@ export const importarProdutosEtiquetas = async (
     return { success: [], errors: [{ codigo: "", motivo: "Erro desconhecido" }] }
   }
 }
+
+export const getProdutosFacing = async (params: {
+  fornecedor?: string
+  grupo?: string
+  comprador?: string
+  status?: string
+  loja?: string
+  busca?: string
+  page?: number
+  limit?: number
+}): Promise<{ items: any[]; total: number; page: number; limit: number }> => {
+  try {
+    const response = await api.get("/produtos/facing", { params, timeout: 15000 })
+    return response.data
+  } catch (error) {
+    handleApiError(error, "Erro ao buscar produtos facing")
+    return { items: [], total: 0, page: 1, limit: 25 }
+  }
+}
+
+export const getFiltrosFacing = async () => {
+  try {
+    const response = await api.get("/produtos/facing/filtros", { timeout: 15000 })
+    return response.data
+  } catch (error) {
+    handleApiError(error, "Erro ao buscar filtros de facing")
+    return { fornecedores: [], grupos: [], compradores: [], statusProdutos: [], lojas: [] }
+  }
+}
+
+export const atualizarProdutoFacing = async (codloja: string, codproduto: string, qtdeFacing: number): Promise<void> => {
+  try {
+    await api.put("/produtos/facing", { codloja, codproduto, qtdeFacing })
+  } catch (error) {
+    handleApiError(error, "Erro ao atualizar facing")
+  }
+}
+
+export const importarProdutosFacing = async (
+  produtos: { codloja: string; codproduto: string; qtde_facing: number }[],
+): Promise<{ success: string[]; errors: { codigo: string; motivo: string }[] }> => {
+  try {
+    const response = await api.post("/produtos/facing/importar", { produtos })
+    return response.data
+  } catch (error) {
+    handleApiError(error, "Erro ao importar facing")
+    return { success: [], errors: [{ codigo: "", motivo: "Erro desconhecido" }] }
+  }
+}

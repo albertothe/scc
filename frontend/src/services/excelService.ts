@@ -193,3 +193,13 @@ export const exportarParaExcel = (dados: any[], nomeArquivo: string) => {
     // Gerar o arquivo e fazer o download
     XLSX.writeFile(workbook, nomeArquivo)
 }
+
+export const exportarModeloFacing = () => {
+    const data = [{ codloja: "06", codproduto: "09874", qtde_facing: 0 }]
+    const worksheet = XLSX.utils.json_to_sheet(data)
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Facing")
+
+    XLSX.writeFile(workbook, "modelo_importacao_facing.xlsx")
+}
