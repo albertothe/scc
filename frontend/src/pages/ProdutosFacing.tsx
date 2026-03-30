@@ -22,7 +22,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material"
-import UploadFileIcon from "@mui/icons-material/UploadFile"
 import EditIcon from "@mui/icons-material/Edit"
 import SaveIcon from "@mui/icons-material/Save"
 import RefreshIcon from "@mui/icons-material/Refresh"
@@ -128,8 +127,6 @@ const ProdutosFacing: React.FC = () => {
             <Grid item xs={12} md={2}><TextField fullWidth label="Pesquisa produto" value={busca} onChange={(e) => { setBusca(e.target.value); setPage(1) }} /></Grid>
             <Grid item xs={12} md={12} sx={{ display: "flex", gap: 1 }}>
               <Button startIcon={<RefreshIcon />} variant="outlined" onClick={carregar}>Atualizar</Button>
-              <Button startIcon={<UploadFileIcon />} variant="outlined" onClick={exportarModeloFacing}>Baixar layout</Button>
-              <Button startIcon={<UploadFileIcon />} variant="contained" onClick={() => setOpenImport(true)}>Importar planilha</Button>
               <IconButton onClick={(event) => setMoreActionsAnchor(event.currentTarget)}>
                 <MoreVertIcon />
               </IconButton>
@@ -138,8 +135,14 @@ const ProdutosFacing: React.FC = () => {
                 open={Boolean(moreActionsAnchor)}
                 onClose={() => setMoreActionsAnchor(null)}
               >
+                <MenuItem onClick={() => { exportarModeloFacing(); setMoreActionsAnchor(null) }}>
+                  Baixar layout facing
+                </MenuItem>
                 <MenuItem onClick={() => { exportarModeloCustos(); setMoreActionsAnchor(null) }}>
                   Baixar layout custos
+                </MenuItem>
+                <MenuItem onClick={() => { setOpenImport(true); setMoreActionsAnchor(null) }}>
+                  Importar facing
                 </MenuItem>
                 <MenuItem onClick={() => { setOpenImportCustos(true); setMoreActionsAnchor(null) }}>
                   Importar custos
