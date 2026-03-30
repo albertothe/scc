@@ -562,15 +562,36 @@ export const getProdutosFacing = async (params: ProdutoFacingFiltroParams) => {
     INNER JOIN vs_scc_dprodutos p ON p.codproduto = f.codproduto
     LEFT JOIN vs_scc_dfornecedores forn ON forn.codfornecedor = f.codfornecedor
     LEFT JOIN vs_scc_dgrupos g ON g.codgrupo = f.codgrupo
-    LEFT JOIN vs_scc_dlojas l ON l.codloja = f.codloja
     ${whereClause}
   `
 
-  const totalResult = await pool.query(`SELECT COUNT(*) ${baseFrom}`, values)
+  const totalResult = await pool.query(`SELECT COUNT(DISTINCT f.codproduto) ${baseFrom}`, values)
 
-  values.push(limit)
-  values.push(offset)
+  const pagedProductsValues = [...values, limit, offset]
+  const pagedProductsQuery = `
+    SELECT DISTINCT f.codproduto, p.produto
+    ${baseFrom}
+    ORDER BY p.produto, f.codproduto
+    LIMIT $${pagedProductsValues.length - 1}
+    OFFSET $${pagedProductsValues.length}
+  `
 
+  const pagedProductsResult = await pool.query(pagedProductsQuery, pagedProductsValues)
+  const codigosProdutoPagina = pagedProductsResult.rows.map((row) => row.codproduto)
+
+  if (codigosProdutoPagina.length === 0) {
+    return {
+      items: [],
+      total: Number(totalResult.rows[0].count || 0),
+      page,
+      limit,
+    }
+  }
+
+  const dataValues = [...values, codigosProdutoPagina]
+  const dataWhereClause = where.length > 0
+    ? `WHERE ${where.join(" AND ")} AND f.codproduto = ANY($${dataValues.length})`
+    : `WHERE f.codproduto = ANY($${dataValues.length})`
   const dataQuery = `
     SELECT
       f.codloja,
@@ -589,13 +610,16 @@ export const getProdutosFacing = async (params: ProdutoFacingFiltroParams) => {
       f.status AS status_estoque,
       f.qtde_estoque AS saldo_estoque,
       f.qtde_estoque_facing
-    ${baseFrom}
+    FROM vs_scc_festoques f
+    INNER JOIN vs_scc_dprodutos p ON p.codproduto = f.codproduto
+    LEFT JOIN vs_scc_dfornecedores forn ON forn.codfornecedor = f.codfornecedor
+    LEFT JOIN vs_scc_dgrupos g ON g.codgrupo = f.codgrupo
+    LEFT JOIN vs_scc_dlojas l ON l.codloja = f.codloja
+    ${dataWhereClause}
     ORDER BY p.produto, f.codproduto, f.codloja
-    LIMIT $${values.length - 1}
-    OFFSET $${values.length}
   `
 
-  const rows = await pool.query(dataQuery, values)
+  const rows = await pool.query(dataQuery, dataValues)
 
   return {
     items: rows.rows,
