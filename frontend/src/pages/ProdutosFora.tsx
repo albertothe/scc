@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState, useEffect, useCallback } from "react"
 import {
-  Container,
   Typography,
   Paper,
   Table,
@@ -397,7 +396,7 @@ const ProdutosFora: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" style={{ marginTop: 24, marginBottom: 24 }}>
+    <Box sx={{ p: 2 }}>
       <Typography variant="h4" component="h1" gutterBottom>
         Produtos Enco-Fora
       </Typography>
@@ -617,7 +616,7 @@ const ProdutosFora: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   )
 }
 
