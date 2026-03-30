@@ -11,6 +11,7 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  CircularProgress,
   Table,
   TableBody,
   TableCell,
@@ -44,6 +45,7 @@ const ProdutosFacing: React.FC = () => {
   const [openImport, setOpenImport] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [novoFacing, setNovoFacing] = useState<number>(0)
+  const [loading, setLoading] = useState(false)
 
   const [fornecedor, setFornecedor] = useState("")
   const [grupo, setGrupo] = useState("")
@@ -55,12 +57,14 @@ const ProdutosFacing: React.FC = () => {
   const params = useMemo(() => ({ fornecedor, grupo, comprador, status, loja, busca, page, limit: rowsPerPage }), [fornecedor, grupo, comprador, status, loja, busca, page, rowsPerPage])
 
   const carregar = async () => {
+    setLoading(true)
     try {
       const [filtrosResp, dataResp] = await Promise.all([getFiltrosFacing(), getProdutosFacing(params)])
       setFiltros(filtrosResp)
       setItems(dataResp.items)
       setTotal(dataResp.total)
     } finally {
+      setLoading(false)
     }
   }
 
@@ -101,11 +105,20 @@ const ProdutosFacing: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Loja</TableCell><TableCell>Cód. Produto</TableCell><TableCell>Produto</TableCell><TableCell>Fornecedor</TableCell><TableCell>Grupo</TableCell><TableCell>Comprador</TableCell><TableCell>Status</TableCell><TableCell>Facing</TableCell><TableCell>Ações</TableCell>
+                <TableCell>Loja</TableCell><TableCell>Cód. Produto</TableCell><TableCell>Produto</TableCell><TableCell>Fornecedor</TableCell><TableCell>Grupo</TableCell><TableCell>Comprador</TableCell><TableCell>Status</TableCell><TableCell>Saldo estoque</TableCell><TableCell>Facing</TableCell><TableCell>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {items.map((row) => {
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={10} align="center">
+                    <Box sx={{ py: 3, display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                      <CircularProgress size={20} />
+                      <Typography variant="body2">Carregando produtos... eles aparecerão em instantes.</Typography>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : items.map((row) => {
                 const key = `${row.codloja}-${row.codproduto}`
                 const isEditing = editingKey === key
                 return (
@@ -117,6 +130,7 @@ const ProdutosFacing: React.FC = () => {
                     <TableCell>{row.grupo} / {row.subgrupo}</TableCell>
                     <TableCell>{row.comprador}</TableCell>
                     <TableCell>{row.status_produto}</TableCell>
+                    <TableCell>{row.saldo_estoque ?? "-"}</TableCell>
                     <TableCell>
                       {isEditing ? <TextField size="small" type="number" value={novoFacing} onChange={(e) => setNovoFacing(Number(e.target.value))} /> : row.qtde_estoque_facing}
                     </TableCell>
