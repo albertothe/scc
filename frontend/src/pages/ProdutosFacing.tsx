@@ -6,7 +6,8 @@ import {
   Button,
   Card,
   CardContent,
-  Collapse,
+  Divider,
+  Drawer,
   Grid,
   IconButton,
   MenuItem,
@@ -25,9 +26,8 @@ import {
 import EditIcon from "@mui/icons-material/Edit"
 import SaveIcon from "@mui/icons-material/Save"
 import RefreshIcon from "@mui/icons-material/Refresh"
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp"
 import MoreVertIcon from "@mui/icons-material/MoreVert"
+import CloseIcon from "@mui/icons-material/Close"
 import Paginacao from "../components/Paginacao"
 import ImportacaoFacing from "../components/ImportacaoFacing"
 import ImportacaoCustos from "../components/ImportacaoCustos"
@@ -61,7 +61,7 @@ const ProdutosFacing: React.FC = () => {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [novoFacing, setNovoFacing] = useState<number>(0)
   const [loading, setLoading] = useState(false)
-  const [expandedProducts, setExpandedProducts] = useState<Record<string, boolean>>({})
+  const [produtoSelecionado, setProdutoSelecionado] = useState<{ codproduto: string; resumo: ProdutoFacing; lojas: ProdutoFacing[] } | null>(null)
 
   const [fornecedor, setFornecedor] = useState("")
   const [grupo, setGrupo] = useState("")
@@ -110,9 +110,6 @@ const ProdutosFacing: React.FC = () => {
     }))
   }, [items])
 
-  const obterPrecoCusto = (row: ProdutoFacing) => row.preco_custo ?? row.prc_custo
-  const obterPrecoCustoMedio = (row: ProdutoFacing) => row.preco_custo_medio ?? row.prc_custo_medio
-
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h4" gutterBottom>Produtos Facing</Typography>
@@ -158,7 +155,6 @@ const ProdutosFacing: React.FC = () => {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell width={56} />
                 <TableCell>Cód. Produto</TableCell>
                 <TableCell>Produto</TableCell>
                 <TableCell>Fornecedor</TableCell>
@@ -170,7 +166,7 @@ const ProdutosFacing: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={6} align="center">
                     <Box sx={{ py: 3, display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
                       <CircularProgress size={20} />
                       <Typography variant="body2">Carregando produtos... eles aparecerão em instantes.</Typography>
@@ -178,18 +174,16 @@ const ProdutosFacing: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : produtosAgrupados.map(({ codproduto, resumo, lojas }) => {
-                const isExpanded = expandedProducts[codproduto] ?? false
                 return (
-                  <React.Fragment key={codproduto}>
-                    <TableRow>
-                      <TableCell>
-                        <IconButton
-                          size="small"
-                          onClick={() => setExpandedProducts((prev) => ({ ...prev, [codproduto]: !isExpanded }))}
-                        >
-                          {isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-                        </IconButton>
-                      </TableCell>
+                  <TableRow
+                    key={codproduto}
+                    hover
+                    sx={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setProdutoSelecionado({ codproduto, resumo, lojas })
+                      setEditingKey(null)
+                    }}
+                  >
                       <TableCell>{resumo.codproduto}</TableCell>
                       <TableCell>{resumo.produto}</TableCell>
                       <TableCell>{resumo.fornecedor}</TableCell>
@@ -197,73 +191,6 @@ const ProdutosFacing: React.FC = () => {
                       <TableCell>{resumo.comprador}</TableCell>
                       <TableCell>{lojas.length}</TableCell>
                     </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ py: 0 }} colSpan={7}>
-                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                          <Box sx={{ py: 1, pl: 2 }}>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Loja</TableCell>
-                                  <TableCell>Status</TableCell>
-                                  <TableCell>Estoque total</TableCell>
-                                  <TableCell>Qtde reservada</TableCell>
-                                  <TableCell>Saldo estoque</TableCell>
-                                  <TableCell>Prç custo</TableCell>
-                                  <TableCell>Prç custo médio</TableCell>
-                                  <TableCell>Facing</TableCell>
-                                  <TableCell>Ações</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {lojas.map((row) => {
-                                  const key = `${row.codloja}-${row.codproduto}`
-                                  const isEditing = editingKey === key
-                                  return (
-                                    <TableRow key={key}>
-                                      <TableCell>{row.codloja} - {row.loja}</TableCell>
-                                      <TableCell>{row.status_estoque || row.status_produto || "-"}</TableCell>
-                                      <TableCell>{formatarNumeroBrasil(row.qtde_estoque)}</TableCell>
-                                      <TableCell>{formatarNumeroBrasil(row.qtde_reserva)}</TableCell>
-                                      <TableCell>{formatarNumeroBrasil(row.saldo_estoque)}</TableCell>
-                                      <TableCell>{formatarNumeroBrasil(obterPrecoCusto(row))}</TableCell>
-                                      <TableCell>{formatarNumeroBrasil(obterPrecoCustoMedio(row))}</TableCell>
-                                      <TableCell>
-                                        {isEditing ? (
-                                          <TextField
-                                            size="small"
-                                            type="number"
-                                            value={novoFacing}
-                                            onChange={(e) => setNovoFacing(Number(e.target.value))}
-                                          />
-                                        ) : (
-                                          formatarNumeroBrasil(row.qtde_estoque_facing)
-                                        )}
-                                      </TableCell>
-                                      <TableCell>
-                                        {isEditing ? (
-                                          <IconButton color="primary" onClick={() => salvar(row)}><SaveIcon /></IconButton>
-                                        ) : (
-                                          <IconButton
-                                            onClick={() => {
-                                              setEditingKey(key)
-                                              setNovoFacing(Number(row.qtde_estoque_facing || 0))
-                                            }}
-                                          >
-                                            <EditIcon />
-                                          </IconButton>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  )
-                                })}
-                              </TableBody>
-                            </Table>
-                          </Box>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  </React.Fragment>
                 )
               })}
             </TableBody>
@@ -277,6 +204,102 @@ const ProdutosFacing: React.FC = () => {
           onRowsPerPageChange={(value) => { setRowsPerPage(value); setPage(1) }}
         />
       </Paper>
+
+      <Drawer
+        anchor="right"
+        open={Boolean(produtoSelecionado)}
+        onClose={() => setProdutoSelecionado(null)}
+        hideBackdrop
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", md: "33.333vw" },
+            maxWidth: 560,
+            minWidth: { md: 420 },
+            top: { xs: 0, md: 220 },
+            height: { xs: "100%", md: "calc(100% - 220px)" },
+          },
+        }}
+      >
+        {produtoSelecionado && (
+          <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+            <Box sx={{ px: 2, pt: 1.5, pb: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Typography variant="h6">Detalhes do produto</Typography>
+                <IconButton onClick={() => setProdutoSelecionado(null)}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
+                <Grid item xs={12}><Typography variant="body2"><strong>Código:</strong> {produtoSelecionado.resumo.codproduto}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2"><strong>Produto:</strong> {produtoSelecionado.resumo.produto}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2"><strong>Fornecedor:</strong> {produtoSelecionado.resumo.fornecedor}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2"><strong>Grupo/Subgrupo:</strong> {produtoSelecionado.resumo.grupo} / {produtoSelecionado.resumo.subgrupo}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2"><strong>Comprador:</strong> {produtoSelecionado.resumo.comprador}</Typography></Grid>
+                <Grid item xs={12}><Typography variant="body2"><strong>Total de lojas:</strong> {produtoSelecionado.lojas.length}</Typography></Grid>
+              </Grid>
+            </Box>
+            <Divider />
+            <Box sx={{ p: 2, overflow: "auto", flex: 1 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Lojas e números</Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Loja</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Estoque</TableCell>
+                    <TableCell>Reserva</TableCell>
+                    <TableCell>Saldo</TableCell>
+                    <TableCell>Facing</TableCell>
+                    <TableCell>Ações</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {produtoSelecionado.lojas.map((row) => {
+                    const key = `${row.codloja}-${row.codproduto}`
+                    const isEditing = editingKey === key
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>{row.codloja} - {row.loja}</TableCell>
+                        <TableCell>{row.status_estoque || row.status_produto || "-"}</TableCell>
+                        <TableCell>{formatarNumeroBrasil(row.qtde_estoque)}</TableCell>
+                        <TableCell>{formatarNumeroBrasil(row.qtde_reserva)}</TableCell>
+                        <TableCell>{formatarNumeroBrasil(row.saldo_estoque)}</TableCell>
+                        <TableCell>
+                          {isEditing ? (
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={novoFacing}
+                              onChange={(e) => setNovoFacing(Number(e.target.value))}
+                            />
+                          ) : (
+                            formatarNumeroBrasil(row.qtde_estoque_facing)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isEditing ? (
+                            <IconButton color="primary" onClick={() => salvar(row)}><SaveIcon /></IconButton>
+                          ) : (
+                            <IconButton
+                              onClick={() => {
+                                setEditingKey(key)
+                                setNovoFacing(Number(row.qtde_estoque_facing || 0))
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </Box>
+          </Box>
+        )}
+      </Drawer>
 
       <ImportacaoFacing
         open={openImport}
