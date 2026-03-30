@@ -587,6 +587,7 @@ export const getProdutosFacing = async (params: ProdutoFacingFiltroParams) => {
       g.comprador,
       p.status AS status_produto,
       f.status AS status_estoque,
+      f.qtde_estoque AS saldo_estoque,
       f.qtde_estoque_facing
     ${baseFrom}
     ORDER BY p.produto, f.codproduto, f.codloja

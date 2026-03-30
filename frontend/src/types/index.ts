@@ -236,6 +236,7 @@ export interface ProdutoFacing {
   comprador?: string
   status_produto?: string
   status_estoque?: string
+  saldo_estoque?: number
   qtde_estoque_facing: number
 }
 
