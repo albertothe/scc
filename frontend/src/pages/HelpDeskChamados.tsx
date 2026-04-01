@@ -4,11 +4,13 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
   CardActionArea,
   CardContent,
+  IconButton,
   Chip,
   Dialog,
   DialogActions,
@@ -28,9 +30,12 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material"
 import AddIcon from "@mui/icons-material/Add"
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
+import MarkChatUnreadIcon from "@mui/icons-material/MarkChatUnread"
 import RefreshIcon from "@mui/icons-material/Refresh"
 import { useAuth } from "../contexts/AuthContext"
 import * as helpDeskService from "../services/helpDeskService"
@@ -75,6 +80,7 @@ const statusStyles: Record<ChamadoHelpDesk["status"], "default" | "primary" | "w
 const autoRefreshMs = 5 * 60 * 1000
 const HORA_EM_MS = 1000 * 60 * 60
 const LIMITE_CHAMADO_ABERTO_EM_HORAS = 48
+const CHAMADOS_VISUALIZADOS_STORAGE_KEY = "helpdesk_chamados_visualizados"
 
 const normalizarStatusChamado = (status?: string) => status?.trim().toUpperCase()
 
@@ -118,6 +124,25 @@ const HelpDeskChamados: React.FC = () => {
     responsavel: "",
   })
   const [novaInteracao, setNovaInteracao] = useState<Partial<InteracaoChamado>>({ mensagem: "", tipo: "COMENTARIO", status_novo: "", responsavel: "" })
+  const [chamadosVisualizados, setChamadosVisualizados] = useState<Record<number, number>>({})
+
+  useEffect(() => {
+    try {
+      const dadosSalvos = localStorage.getItem(CHAMADOS_VISUALIZADOS_STORAGE_KEY)
+      if (!dadosSalvos) return
+      const parsed = JSON.parse(dadosSalvos) as Record<string, number>
+      const saneado = Object.entries(parsed).reduce<Record<number, number>>((acc, [id, timestamp]) => {
+        const idNumerico = Number(id)
+        if (!Number.isNaN(idNumerico) && Number.isFinite(timestamp)) {
+          acc[idNumerico] = timestamp
+        }
+        return acc
+      }, {})
+      setChamadosVisualizados(saneado)
+    } catch (error) {
+      console.error("Erro ao carregar estado de comentários visualizados:", error)
+    }
+  }, [])
 
   const carregarChamados = useCallback(async () => {
     try {
@@ -198,6 +223,11 @@ const HelpDeskChamados: React.FC = () => {
     if (!id) return
     const data = await helpDeskService.obterChamado(id)
     setDetalhe(data)
+    setChamadosVisualizados((anterior) => {
+      const atualizado = { ...anterior, [id]: Date.now() }
+      localStorage.setItem(CHAMADOS_VISUALIZADOS_STORAGE_KEY, JSON.stringify(atualizado))
+      return atualizado
+    })
     setNovaInteracao({
       mensagem: "",
       tipo: "COMENTARIO",
@@ -255,6 +285,21 @@ const HelpDeskChamados: React.FC = () => {
   const toggleStatusCard = (status: ChamadoHelpDesk["status"]) => {
     setStatusCardFiltro((current) => (current === status ? "" : status))
   }
+
+  const possuiNovoComentario = useCallback((chamado: ChamadoHelpDesk) => {
+    if (!chamado.id || !chamado.data_atualizacao) return false
+
+    const dataAtualizacao = parseDataChamado(chamado.data_atualizacao)
+    if (!dataAtualizacao) return false
+
+    const visualizadoEm = chamadosVisualizados[chamado.id]
+    if (!visualizadoEm) {
+      const dataAbertura = parseDataChamado(chamado.data_abertura)
+      return Boolean(dataAbertura && dataAtualizacao.getTime() > dataAbertura.getTime())
+    }
+
+    return dataAtualizacao.getTime() > visualizadoEm
+  }, [chamadosVisualizados])
 
   return (
     <Box p={3}>
@@ -355,22 +400,26 @@ const HelpDeskChamados: React.FC = () => {
                 <TableCell sx={{ py: 1 }}>Loja / Setor</TableCell>
                 <TableCell sx={{ py: 1 }}>Responsável</TableCell>
                 <TableCell sx={{ py: 1 }}>Abertura</TableCell>
+                <TableCell sx={{ py: 1 }} align="center">Comentários</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {chamadosVisiveis.map((chamado) => (
-                <TableRow
-                  key={chamado.id}
-                  hover
-                  sx={{
-                    cursor: "pointer",
-                    backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(211, 47, 47, 0.2)" : undefined,
-                    "&:hover": {
-                      backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(183, 28, 28, 0.28)" : undefined,
-                    },
-                  }}
-                  onClick={() => abrirDetalhe(chamado.id)}
-                >
+              {chamadosVisiveis.map((chamado) => {
+                const novoComentario = possuiNovoComentario(chamado)
+
+                return (
+                  <TableRow
+                    key={chamado.id}
+                    hover
+                    sx={{
+                      cursor: "pointer",
+                      backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(211, 47, 47, 0.2)" : undefined,
+                      "&:hover": {
+                        backgroundColor: chamadoAbertoHaMaisDe48h(chamado) ? "rgba(183, 28, 28, 0.28)" : undefined,
+                      },
+                    }}
+                    onClick={() => abrirDetalhe(chamado.id)}
+                  >
                   <TableCell sx={{ py: 0.75 }}>{chamado.id}</TableCell>
                   <TableCell sx={{ py: 0.75 }}>
                     <Typography fontWeight={600} variant="body2" sx={{ lineHeight: 1.2 }}>{chamado.titulo}</Typography>
@@ -395,11 +444,28 @@ const HelpDeskChamados: React.FC = () => {
                   <TableCell sx={{ py: 0.75 }}>
                     <Typography variant="body2">{formatarDataHora(chamado.data_abertura || "")}</Typography>
                   </TableCell>
-                </TableRow>
-              ))}
+                    <TableCell sx={{ py: 0.75 }} align="center">
+                      <Tooltip title={novoComentario ? "Há novos comentários neste chamado" : "Ver comentários do chamado"}>
+                        <IconButton
+                          size="small"
+                          color={novoComentario ? "warning" : "default"}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            abrirDetalhe(chamado.id)
+                          }}
+                        >
+                          <Badge color="error" variant="dot" invisible={!novoComentario}>
+                            {novoComentario ? <MarkChatUnreadIcon fontSize="small" /> : <ChatBubbleOutlineIcon fontSize="small" />}
+                          </Badge>
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
               {!carregando && chamadosVisiveis.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">Nenhum chamado encontrado.</TableCell>
+                  <TableCell colSpan={9} align="center">Nenhum chamado encontrado.</TableCell>
                 </TableRow>
               )}
             </TableBody>
