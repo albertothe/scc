@@ -3,21 +3,33 @@ import type { UsuarioAutenticado } from "../models/Usuario"
 import jwt from "jsonwebtoken"
 import crypto from "crypto"
 
-// Função para gerar hash MD5
+const getJwtSecret = (): string => {
+    const secret = process.env.JWT_SECRET
+    if (!secret) {
+        throw new Error("JWT_SECRET não definido. Defina a variável de ambiente JWT_SECRET antes de iniciar o servidor.")
+    }
+    return secret
+}
+
+// Mantido para compatibilidade com senhas legadas no banco (MD5).
+// Para migrar: obter a tabela subjacente de vs_pwb_usuarios e substituir
+// os hashes MD5 por PBKDF2 usando gerarHashSenha() abaixo.
 const gerarMD5 = (texto: string): string => {
     return crypto.createHash("md5").update(texto).digest("hex")
 }
 
-// Função para autenticar usuário
+// Hash seguro para novas senhas (substituto do MD5 quando a migração do banco ocorrer).
+export const gerarHashSenha = (senha: string, salt?: string): { hash: string; salt: string } => {
+    const s = salt ?? crypto.randomBytes(16).toString("hex")
+    const hash = crypto.pbkdf2Sync(senha, s, 310000, 32, "sha256").toString("hex")
+    return { hash, salt: s }
+}
+
 export const autenticarUsuario = async (usuario: string, senha: string): Promise<UsuarioAutenticado> => {
     try {
-        // Converter usuário para maiúsculo
         const usuarioUpper = usuario.toUpperCase()
-
-        // Gerar hash MD5 da combinação usuário+senha
         const senhaMD5 = gerarMD5(usuarioUpper + senha)
 
-        // Consultar usuário na view
         const query = `
       SELECT usuario, codusuario, nivel
       FROM vs_pwb_usuarios
@@ -32,14 +44,13 @@ export const autenticarUsuario = async (usuario: string, senha: string): Promise
 
         const usuarioEncontrado = result.rows[0]
 
-        // Gerar token JWT
         const token = jwt.sign(
             {
                 usuario: usuarioEncontrado.usuario,
                 codusuario: usuarioEncontrado.codusuario,
                 nivel: usuarioEncontrado.nivel,
             },
-            process.env.JWT_SECRET || "secret_temporario",
+            getJwtSecret(),
             { expiresIn: "8h" },
         )
 
@@ -55,10 +66,9 @@ export const autenticarUsuario = async (usuario: string, senha: string): Promise
     }
 }
 
-// Update the verificarToken function to include codusuario in the return type
 export const verificarToken = (token: string): { usuario: string; codusuario: string; nivel: string } => {
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret_temporario")
+        const decoded = jwt.verify(token, getJwtSecret())
         return decoded as { usuario: string; codusuario: string; nivel: string }
     } catch (error) {
         throw new Error("Token inválido ou expirado")
