@@ -5,10 +5,16 @@ import crypto from "crypto"
 
 const getJwtSecret = (): string => {
     const secret = process.env.JWT_SECRET
-    if (!secret) {
-        throw new Error("JWT_SECRET não definido. Defina a variável de ambiente JWT_SECRET antes de iniciar o servidor.")
+    if (secret) {
+        return secret
     }
-    return secret
+
+    if (process.env.NODE_ENV !== "production") {
+        console.warn("JWT_SECRET não definido. Usando segredo padrão de desenvolvimento (inseguro).")
+        return "dev-jwt-secret-insecure-change-me"
+    }
+
+    throw new Error("JWT_SECRET não definido. Defina a variável de ambiente JWT_SECRET antes de iniciar o servidor.")
 }
 
 // Mantido para compatibilidade com senhas legadas no banco (MD5).
