@@ -49,13 +49,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 palette: {
                     mode: darkMode ? "dark" : "light",
                     primary: {
-                        main: darkMode ? "#818CF8" : "#4F46E5",
-                        light: darkMode ? "#A5B4FC" : "#6366F1",
-                        dark: darkMode ? "#6366F1" : "#4338CA",
+                        main: darkMode ? "#EF9A9A" : "#8B0000",
+                        light: darkMode ? "#FFCDD2" : "#B71C1C",
+                        dark: darkMode ? "#E57373" : "#7B0000",
                         contrastText: "#FFFFFF",
                     },
                     secondary: {
-                        main: darkMode ? "#38BDF8" : "#0EA5E9",
+                        main: darkMode ? "#FFAB91" : "#BF360C",
                         contrastText: "#FFFFFF",
                     },
                     background: {
@@ -77,9 +77,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                 borderRadius: 8,
                             },
                             containedPrimary: {
-                                boxShadow: "0 1px 3px rgba(79, 70, 229, 0.3)",
+                                boxShadow: "0 1px 3px rgba(139, 0, 0, 0.3)",
                                 "&:hover": {
-                                    boxShadow: "0 4px 12px rgba(79, 70, 229, 0.4)",
+                                    boxShadow: "0 4px 12px rgba(139, 0, 0, 0.4)",
                                 },
                             },
                         },
@@ -137,7 +137,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                 "&:hover": {
                                     backgroundColor: darkMode
                                         ? "rgba(255, 255, 255, 0.05) !important"
-                                        : "rgba(79, 70, 229, 0.04) !important",
+                                        : "rgba(139, 0, 0, 0.04) !important",
                                 },
                             },
                         },
