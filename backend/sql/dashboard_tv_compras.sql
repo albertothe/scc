@@ -4,9 +4,7 @@ WITH periodos AS (
     date_trunc('month', CURRENT_DATE)::date AS inicio_atual,
     CURRENT_DATE::date AS fim_atual,
     date_trunc('month', CURRENT_DATE - interval '1 year')::date AS inicio_ano_passado,
-    (CURRENT_DATE - interval '1 year')::date AS fim_ano_passado,
-    EXTRACT(YEAR FROM CURRENT_DATE)::int AS ano_atual,
-    EXTRACT(MONTH FROM CURRENT_DATE)::int AS mes_atual
+    (CURRENT_DATE - interval '1 year')::date AS fim_ano_passado
 ),
 base_atual AS (
   SELECT
@@ -34,9 +32,14 @@ base_ano_passado AS (
   GROUP BY v.codgrp
 ),
 meta AS (
-  SELECT m.codgrp, m.meta_vendas, m.meta_lb, m.meta_produtos_fora
+  SELECT
+    m.codgrp,
+    m.meta_vendas,
+    m.meta_lb,
+    m.meta_produtos_fora,
+    m.mes,
+    m.ano
   FROM scc_metas_compradores m
-  JOIN periodos p ON m.ano = p.ano_atual AND m.mes = p.mes_atual
 )
 SELECT
   a.codgrp,
@@ -47,6 +50,9 @@ SELECT
   CASE WHEN COALESCE(py.venda_prev, 0) = 0 THEN 0 ELSE (((a.venda_bruta - a.devolucao) / py.venda_prev) - 1) * 100 END AS evolucao_percentual,
   CASE WHEN COALESCE(m.meta_produtos_fora, 0) = 0 THEN 0 ELSE (a.venda_fora / m.meta_produtos_fora) * 100 END AS produtos_fora_percentual
 FROM base_atual a
+JOIN periodos p ON true
 LEFT JOIN base_ano_passado py ON py.codgrp = a.codgrp
 LEFT JOIN meta m ON m.codgrp = a.codgrp
+  AND m.mes = EXTRACT(MONTH FROM p.inicio_atual)::int
+  AND m.ano = EXTRACT(YEAR FROM p.inicio_atual)::int
 ORDER BY venda_percentual_meta ASC, a.comprador;
