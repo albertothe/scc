@@ -20,7 +20,7 @@ export const getDashboardTvCompras = async () => {
   const query = `
     WITH
 
-    -- ── Grupos e compradores ativos (apenas registros sem data de encerramento) ──
+    -- Grupos e compradores ativos (apenas registros sem data de encerramento)
     grupos_ativos AS (
       SELECT
         TRIM(cg.codgrp)   AS codgrp,
@@ -31,7 +31,7 @@ export const getDashboardTvCompras = async () => {
       WHERE cg.dt_fim IS NULL
     ),
 
-    -- ── Dias com faturamento no período atual (mês corrente até hoje) ──
+    -- Dias com faturamento no periodo atual (mes corrente ate hoje)
     dias_atual AS (
       SELECT
         TRIM(codgrp) AS codgrp,
@@ -42,7 +42,7 @@ export const getDashboardTvCompras = async () => {
       GROUP BY TRIM(codgrp)
     ),
 
-    -- ── Dias com faturamento no mês COMPLETO do ano passado ──
+    -- Dias com faturamento no mes COMPLETO do ano passado
     --    Usado como denominador para pro-ratear a meta mensal
     dias_mes_base AS (
       SELECT
@@ -55,7 +55,7 @@ export const getDashboardTvCompras = async () => {
       GROUP BY TRIM(codgrp)
     ),
 
-    -- ── Vendas do período atual ──
+    -- Vendas do periodo atual
     vendas_atual AS (
       SELECT
         TRIM(codgrp) AS codgrp,
@@ -72,7 +72,7 @@ export const getDashboardTvCompras = async () => {
       GROUP BY TRIM(codgrp)
     ),
 
-    -- ── Vendas do mesmo período do ano passado (para evolução) ──
+    -- Vendas do mesmo periodo do ano passado (para evolucao)
     vendas_ano_passado AS (
       SELECT
         TRIM(codgrp) AS codgrp,
@@ -87,7 +87,7 @@ export const getDashboardTvCompras = async () => {
       ga.comprador,
       ga.codgrp,
 
-      -- ── Meta ajustada: meta_mensal × (dias_atual / dias_mes_base) ──
+      -- Meta ajustada: meta_mensal * (dias_atual / dias_mes_base)
       -- Se não há base histórica usa a meta cheia como fallback
       ROUND(
         CASE
@@ -98,7 +98,7 @@ export const getDashboardTvCompras = async () => {
         END,
       2) AS meta_vendas_ajustada,
 
-      -- ── Venda % da meta ajustada ──
+      -- Venda % da meta ajustada
       ROUND(
         CASE
           WHEN COALESCE(m.meta_vendas, 0) = 0 THEN 0
@@ -111,20 +111,20 @@ export const getDashboardTvCompras = async () => {
         END,
       2) AS venda_percentual_meta,
 
-      -- ── LB % (lucro bruto sobre venda líquida) ──
+      -- LB % (lucro bruto sobre venda liquida)
       ROUND(
         COALESCE(va.lb,    0) / NULLIF(va.venda, 0) * 100,
       2) AS lb_percentual,
 
-      -- ── Meta LB % (percentual-alvo informado no cadastro) ──
+      -- Meta LB % (percentual-alvo informado no cadastro)
       COALESCE(m.meta_lb, 0) AS meta_lb,
 
-      -- ── Evolução vs mesmo período do ano passado ──
+      -- Evolucao vs mesmo periodo do ano passado
       ROUND(
         (COALESCE(va.venda, 0) / NULLIF(vap.venda, 0) - 1) * 100,
       2) AS evolucao_percentual,
 
-      -- ── Produtos fora % da meta ajustada ──
+      -- Produtos fora % da meta ajustada
       ROUND(
         CASE
           WHEN COALESCE(m.meta_produtos_fora, 0) = 0 THEN 0
@@ -164,24 +164,24 @@ export const getDashboardTvCompras = async () => {
   const result = await pool.query(query)
 
   const compradores = result.rows.map((row) => {
-    const vendaMeta        = safe(row.venda_percentual_meta)
-    const lbPct            = safe(row.lb_percentual)
-    const metaLb           = safe(row.meta_lb)
-    const evolucao         = safe(row.evolucao_percentual)
-    const produtosForaPct  = safe(row.produtos_fora_percentual)
+    const vendaMeta = safe(row.venda_percentual_meta)
+    const lbPct = safe(row.lb_percentual)
+    const metaLb = safe(row.meta_lb)
+    const evolucao = safe(row.evolucao_percentual)
+    const produtosForaPct = safe(row.produtos_fora_percentual)
 
     const status =
       vendaMeta >= 100 ? "ACIMA DA META" :
-      vendaMeta >= 95  ? "ATENÇÃO"       :
-                         "ABAIXO"
+        vendaMeta >= 95 ? "ATENÇÃO" :
+          "ABAIXO"
 
     return {
-      comprador:             row.comprador,
-      grupo:                 row.codgrp,
-      vendaPercentualMeta:   Number(vendaMeta.toFixed(2)),
-      lbPercentual:          Number(lbPct.toFixed(2)),
-      metaLb:                Number(metaLb.toFixed(2)),
-      evolucaoPercentual:    Number(evolucao.toFixed(2)),
+      comprador: row.comprador,
+      grupo: row.codgrp,
+      vendaPercentualMeta: Number(vendaMeta.toFixed(2)),
+      lbPercentual: Number(lbPct.toFixed(2)),
+      metaLb: Number(metaLb.toFixed(2)),
+      evolucaoPercentual: Number(evolucao.toFixed(2)),
       produtosForaPercentual: Number(produtosForaPct.toFixed(2)),
       status,
     }
@@ -193,12 +193,12 @@ export const getDashboardTvCompras = async () => {
 
   const kpis = {
     vendasAtingimento: Number(media(compradores.map((c) => c.vendaPercentualMeta)).toFixed(2)),
-    lbRealizado:       Number(media(compradores.map((c) => c.lbPercentual)).toFixed(2)),
-    lbMeta:            Number(media(compradores.map((c) => c.metaLb)).toFixed(2)),
-    evolucao:          Number(media(compradores.map((c) => c.evolucaoPercentual)).toFixed(2)),
-    nivelServico:      null,
-    diasEstoque:       null,
-    produtosFora:      Number(media(compradores.map((c) => c.produtosForaPercentual)).toFixed(2)),
+    lbRealizado: Number(media(compradores.map((c) => c.lbPercentual)).toFixed(2)),
+    lbMeta: Number(media(compradores.map((c) => c.metaLb)).toFixed(2)),
+    evolucao: Number(media(compradores.map((c) => c.evolucaoPercentual)).toFixed(2)),
+    nivelServico: null,
+    diasEstoque: null,
+    produtosFora: Number(media(compradores.map((c) => c.produtosForaPercentual)).toFixed(2)),
   }
 
   const alertas: string[] = []
@@ -218,8 +218,8 @@ export const getDashboardTvCompras = async () => {
     compradores,
     graficos: {
       evolucaoVendas: compradores.map((c) => ({ label: c.comprador, valor: c.vendaPercentualMeta })),
-      evolucaoLb:     compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual })),
-      produtosFora:   compradores.map((c) => ({ label: c.comprador, valor: c.produtosForaPercentual })),
+      evolucaoLb: compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual })),
+      produtosFora: compradores.map((c) => ({ label: c.comprador, valor: c.produtosForaPercentual })),
     },
     alertas,
   }
