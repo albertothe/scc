@@ -60,7 +60,7 @@ const Login: React.FC = () => {
                     sx={{
                         width: "45%",
                         flexShrink: 0,
-                        background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)",
+                        background: "linear-gradient(135deg, #7B0000 0%, #B71C1C 100%)",
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "center",
@@ -163,7 +163,7 @@ const Login: React.FC = () => {
                             <Box sx={{
                                 width: 64, height: 64,
                                 borderRadius: "16px",
-                                background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
+                                background: "linear-gradient(135deg, #7B0000, #B71C1C)",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -257,12 +257,12 @@ const Login: React.FC = () => {
                                 py: 1.6,
                                 fontSize: "1rem",
                                 fontWeight: 700,
-                                background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)",
+                                background: "linear-gradient(135deg, #7B0000 0%, #B71C1C 100%)",
                                 borderRadius: 2,
-                                boxShadow: "0 4px 15px rgba(79, 70, 229, 0.35)",
+                                boxShadow: "0 4px 15px rgba(139, 0, 0, 0.35)",
                                 "&:hover": {
-                                    background: "linear-gradient(135deg, #4338CA 0%, #6D28D9 100%)",
-                                    boxShadow: "0 6px 20px rgba(79, 70, 229, 0.5)",
+                                    background: "linear-gradient(135deg, #6a0000 0%, #9B0000 100%)",
+                                    boxShadow: "0 6px 20px rgba(139, 0, 0, 0.5)",
                                     transform: "translateY(-1px)",
                                 },
                                 "&:active": {

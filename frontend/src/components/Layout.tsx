@@ -79,13 +79,13 @@ const SB = {
     text: "#94A3B8",
     textHover: "#CBD5E1",
     textActive: "#FFFFFF",
-    iconActive: "#818CF8",
-    activeBg: "rgba(99, 102, 241, 0.12)",
-    activeBorder: "#6366F1",
+    iconActive: "#EF9A9A",
+    activeBg: "rgba(139, 0, 0, 0.12)",
+    activeBorder: "#B71C1C",
     hoverBg: "rgba(255,255,255,0.04)",
     divider: "rgba(255,255,255,0.07)",
     subText: "#64748B",
-    subTextActive: "#A5B4FC",
+    subTextActive: "#FFCDD2",
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -187,12 +187,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Box sx={{
             width: 32, height: 32,
             borderRadius: "8px",
-            background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+            background: "linear-gradient(135deg, #7B0000, #B71C1C)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            boxShadow: "0 2px 8px rgba(99,102,241,0.4)",
+            boxShadow: "0 2px 8px rgba(139,0,0,0.4)",
         }}>
             <Typography sx={{ color: "white", fontWeight: 800, fontSize: "0.8rem", letterSpacing: "0.02em" }}>
                 JM
@@ -362,10 +362,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                         pr: 1.5,
                                                         position: "relative",
                                                         overflow: "hidden",
-                                                        background: subActive ? "rgba(99, 102, 241, 0.08)" : "transparent",
+                                                        background: subActive ? "rgba(139, 0, 0, 0.08)" : "transparent",
                                                         "&:hover": {
                                                             background: subActive
-                                                                ? "rgba(99, 102, 241, 0.12)"
+                                                                ? "rgba(139, 0, 0, 0.12)"
                                                                 : SB.hoverBg,
                                                         },
                                                         "&::before": subActive ? {
@@ -427,7 +427,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, overflow: "hidden" }}>
                         <Avatar sx={{
                             width: 32, height: 32,
-                            background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
+                            background: "linear-gradient(135deg, #7B0000, #B71C1C)",
                             fontSize: "0.8rem",
                             fontWeight: 700,
                             flexShrink: 0,
