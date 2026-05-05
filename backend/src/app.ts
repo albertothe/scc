@@ -10,6 +10,7 @@ import controleAcessoRoutes from "./routes/controleAcessoRoutes"
 import dreRoutes from "./routes/dreRoutes"
 import helpDeskRoutes from "./routes/helpDeskRoutes"
 import compradoresRoutes from "./routes/compradoresRoutes"
+import dashboardTvComprasRoutes from "./routes/dashboardTvComprasRoutes"
 import { corsMiddleware } from "./config/cors"
 
 // Carrega as variáveis de ambiente antes de qualquer outra operação
@@ -33,6 +34,7 @@ app.use("/api/controle-acesso", controleAcessoRoutes)
 app.use("/api/dre", dreRoutes)
 app.use("/api/help-desk", helpDeskRoutes)
 app.use("/api", compradoresRoutes)
+app.use("/", dashboardTvComprasRoutes)
 
 // Rota de teste para verificar se o servidor está funcionando
 app.get("/", (req, res) => {

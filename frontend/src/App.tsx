@@ -27,6 +27,7 @@ import { ThemeProvider } from "./contexts/ThemeContext"
 import Compradores from "./pages/Compradores"
 import CompradoresGrupos from "./pages/CompradoresGrupos"
 import CompradoresMetas from "./pages/CompradoresMetas"
+import TvCompras from "./pages/TvCompras"
 
 function App() {
   console.log("App renderizando")
@@ -36,6 +37,7 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/tv-compras" element={<TvCompras />} />
             <Route
               path="/"
               element={
