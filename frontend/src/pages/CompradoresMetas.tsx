@@ -3,6 +3,44 @@ import { Box, Button, IconButton, MenuItem, Paper, Table, TableBody, TableCell, 
 import { useEffect, useState } from "react"
 import { excluirMetaComprador, listarCompradores, listarMetasCompradores, salvarMetaComprador } from "../services/compradoresService"
 
+const formatarNumeroBr = (valor: number) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(Number.isFinite(valor) ? valor : 0)
+const parseNumeroBr = (valor: string) => {
+  const normalizado = valor.replace(/\./g, "").replace(",", ".").trim()
+  const numero = Number(normalizado)
+  return Number.isFinite(numero) ? numero : 0
+}
+
+function CampoNumericoBr({
+  label,
+  valorInicial,
+  onSalvar,
+}: {
+  label?: string
+  valorInicial: number
+  onSalvar: (valor: number) => Promise<void> | void
+}) {
+  const [valor, setValor] = useState(formatarNumeroBr(valorInicial))
+
+  useEffect(() => {
+    setValor(formatarNumeroBr(valorInicial))
+  }, [valorInicial])
+
+  return (
+    <TextField
+      label={label}
+      size="small"
+      value={valor}
+      onChange={(e) => setValor(e.target.value)}
+      onBlur={async () => {
+        const numero = parseNumeroBr(valor)
+        setValor(formatarNumeroBr(numero))
+        await onSalvar(numero)
+      }}
+      inputProps={{ inputMode: "decimal" }}
+    />
+  )
+}
+
 export default function CompradoresMetas() {
   const [ano, setAno] = useState(new Date().getFullYear())
   const [mes, setMes] = useState(new Date().getMonth() + 1)
@@ -35,19 +73,21 @@ export default function CompradoresMetas() {
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: 1 }}>
         <TextField label="Grupo" size="small" value={novo.codgrp} onChange={(e) => setNovo({ ...novo, codgrp: e.target.value })} />
         <TextField select label="Comprador" size="small" value={novo.comprador_id} onChange={(e) => setNovo({ ...novo, comprador_id: e.target.value })}>{compradores.map((c) => <MenuItem key={c.id} value={c.id}>{c.nome}</MenuItem>)}</TextField>
-        {['meta_vendas','meta_lb','meta_evolucao','meta_nivel_servico','meta_dias_estoque','meta_produtos_fora'].map((k) => <TextField key={k} label={k} size="small" type="number" value={novo[k]} onChange={(e) => setNovo({ ...novo, [k]: Number(e.target.value) })} />)}
+        {['meta_vendas','meta_lb','meta_evolucao','meta_nivel_servico','meta_dias_estoque','meta_produtos_fora'].map((k) => (
+          <CampoNumericoBr key={k} label={k} valorInicial={Number(novo[k]) || 0} onSalvar={(valor) => setNovo({ ...novo, [k]: valor })} />
+        ))}
       </Box>
       <Button sx={{ mt: 1 }} variant="contained" onClick={async () => { await salvarMetaComprador({ ...novo, ano, mes, comprador_id: Number(novo.comprador_id) }); carregar() }}>Salvar</Button>
     </Paper>
 
     <TableContainer component={Paper}><Table size="small"><TableHead><TableRow><TableCell>Grupo</TableCell><TableCell>Comprador</TableCell><TableCell>Vendas</TableCell><TableCell>LB</TableCell><TableCell>Evol.</TableCell><TableCell>N. Serviço</TableCell><TableCell>Dias Est.</TableCell><TableCell>Prod Fora</TableCell><TableCell align="right">Ações</TableCell></TableRow></TableHead><TableBody>
       {metas.map((m) => <TableRow key={m.id}><TableCell>{m.codgrp}</TableCell><TableCell>{m.comprador_nome}</TableCell>
-        <TableCell><TextField size="small" type="number" defaultValue={m.meta_vendas} onBlur={async (e) => await salvarMetaComprador({ ...m, meta_vendas: Number(e.target.value) })} /></TableCell>
-        <TableCell><TextField size="small" type="number" defaultValue={m.meta_lb} onBlur={async (e) => await salvarMetaComprador({ ...m, meta_lb: Number(e.target.value) })} /></TableCell>
-        <TableCell><TextField size="small" type="number" defaultValue={m.meta_evolucao} onBlur={async (e) => await salvarMetaComprador({ ...m, meta_evolucao: Number(e.target.value) })} /></TableCell>
-        <TableCell><TextField size="small" type="number" defaultValue={m.meta_nivel_servico} onBlur={async (e) => await salvarMetaComprador({ ...m, meta_nivel_servico: Number(e.target.value) })} /></TableCell>
-        <TableCell><TextField size="small" type="number" defaultValue={m.meta_dias_estoque} onBlur={async (e) => await salvarMetaComprador({ ...m, meta_dias_estoque: Number(e.target.value) })} /></TableCell>
-        <TableCell><TextField size="small" type="number" defaultValue={m.meta_produtos_fora} onBlur={async (e) => await salvarMetaComprador({ ...m, meta_produtos_fora: Number(e.target.value) })} /></TableCell>
+        <TableCell><CampoNumericoBr valorInicial={Number(m.meta_vendas) || 0} onSalvar={async (valor) => await salvarMetaComprador({ ...m, meta_vendas: valor })} /></TableCell>
+        <TableCell><CampoNumericoBr valorInicial={Number(m.meta_lb) || 0} onSalvar={async (valor) => await salvarMetaComprador({ ...m, meta_lb: valor })} /></TableCell>
+        <TableCell><CampoNumericoBr valorInicial={Number(m.meta_evolucao) || 0} onSalvar={async (valor) => await salvarMetaComprador({ ...m, meta_evolucao: valor })} /></TableCell>
+        <TableCell><CampoNumericoBr valorInicial={Number(m.meta_nivel_servico) || 0} onSalvar={async (valor) => await salvarMetaComprador({ ...m, meta_nivel_servico: valor })} /></TableCell>
+        <TableCell><CampoNumericoBr valorInicial={Number(m.meta_dias_estoque) || 0} onSalvar={async (valor) => await salvarMetaComprador({ ...m, meta_dias_estoque: valor })} /></TableCell>
+        <TableCell><CampoNumericoBr valorInicial={Number(m.meta_produtos_fora) || 0} onSalvar={async (valor) => await salvarMetaComprador({ ...m, meta_produtos_fora: valor })} /></TableCell>
         <TableCell align="right"><IconButton color="primary" onClick={async () => carregar()}><SaveIcon /></IconButton><IconButton color="error" onClick={async () => { await excluirMetaComprador(m.id); carregar() }}><DeleteIcon /></IconButton></TableCell></TableRow>)}
     </TableBody></Table></TableContainer>
   </Box>
