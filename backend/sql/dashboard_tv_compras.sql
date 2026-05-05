@@ -6,53 +6,47 @@ WITH periodos AS (
     date_trunc('month', CURRENT_DATE - interval '1 year')::date AS inicio_ano_passado,
     (CURRENT_DATE - interval '1 year')::date AS fim_ano_passado
 ),
-base_atual AS (
+grupos_ativos AS (
+  SELECT
+    cg.codgrp,
+    c.nome AS comprador
+  FROM scc_comprador_grupo cg
+  JOIN scc_compradores c ON c.id = cg.comprador_id
+  WHERE cg.dt_fim IS NULL
+),
+vendas AS (
   SELECT
     v.codgrp,
-    c.nome AS comprador,
-    SUM(COALESCE(v.vlr_total_vendas_bruta, 0)) AS venda_bruta,
-    SUM(COALESCE(v.vlr_total_devolucoes, 0)) AS devolucao,
-    SUM(COALESCE(v.vlr_custos_vendas, 0)) AS custos,
-    SUM(COALESCE(v.vlr_impostos_vendas, 0)) AS impostos,
+    SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0)) AS venda,
+    SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_custos_vendas, 0) - COALESCE(v.vlr_impostos_vendas, 0)) AS lb,
     SUM(CASE WHEN v.tipo IN ('FORA', 'ENCO') THEN COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0) ELSE 0 END) AS venda_fora
   FROM vs_scc_vendas_devolucoes v
-  JOIN scc_comprador_grupo cg ON cg.codgrp = v.codgrp AND cg.dt_fim IS NULL
-  JOIN scc_compradores c ON c.id = cg.comprador_id
   JOIN periodos p ON true
   WHERE v.data BETWEEN p.inicio_atual AND p.fim_atual
-  GROUP BY v.codgrp, c.nome
+  GROUP BY v.codgrp
 ),
-base_ano_passado AS (
+vendas_ano_ant AS (
   SELECT
     v.codgrp,
-    SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0)) AS venda_prev
+    SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0)) AS venda
   FROM vs_scc_vendas_devolucoes v
   JOIN periodos p ON true
   WHERE v.data BETWEEN p.inicio_ano_passado AND p.fim_ano_passado
   GROUP BY v.codgrp
-),
-meta AS (
-  SELECT
-    m.codgrp,
-    m.meta_vendas,
-    m.meta_lb,
-    m.meta_produtos_fora,
-    m.mes,
-    m.ano
-  FROM scc_metas_compradores m
 )
 SELECT
-  a.codgrp,
-  a.comprador,
-  CASE WHEN COALESCE(m.meta_vendas, 0) = 0 THEN 0 ELSE ((a.venda_bruta - a.devolucao) / m.meta_vendas) * 100 END AS venda_percentual_meta,
-  CASE WHEN (a.venda_bruta - a.devolucao) = 0 THEN 0 ELSE ((a.venda_bruta - a.custos - a.impostos) / (a.venda_bruta - a.devolucao)) * 100 END AS lb_percentual,
+  ga.codgrp,
+  ga.comprador,
+  CASE WHEN COALESCE(m.meta_vendas, 0) = 0 THEN 0 ELSE (COALESCE(v.venda, 0) / m.meta_vendas) * 100 END AS venda_percentual_meta,
+  CASE WHEN COALESCE(v.venda, 0) = 0 THEN 0 ELSE (v.lb / v.venda) * 100 END AS lb_percentual,
   COALESCE(m.meta_lb, 0) AS meta_lb,
-  CASE WHEN COALESCE(py.venda_prev, 0) = 0 THEN 0 ELSE (((a.venda_bruta - a.devolucao) / py.venda_prev) - 1) * 100 END AS evolucao_percentual,
-  CASE WHEN COALESCE(m.meta_produtos_fora, 0) = 0 THEN 0 ELSE (a.venda_fora / m.meta_produtos_fora) * 100 END AS produtos_fora_percentual
-FROM base_atual a
-JOIN periodos p ON true
-LEFT JOIN base_ano_passado py ON py.codgrp = a.codgrp
-LEFT JOIN meta m ON m.codgrp = a.codgrp
+  CASE WHEN COALESCE(va.venda, 0) = 0 THEN 0 ELSE ((COALESCE(v.venda, 0) / va.venda) - 1) * 100 END AS evolucao_percentual,
+  CASE WHEN COALESCE(m.meta_produtos_fora, 0) = 0 THEN 0 ELSE (COALESCE(v.venda_fora, 0) / m.meta_produtos_fora) * 100 END AS produtos_fora_percentual
+FROM grupos_ativos ga
+LEFT JOIN vendas v ON v.codgrp = ga.codgrp
+LEFT JOIN vendas_ano_ant va ON va.codgrp = ga.codgrp
+LEFT JOIN periodos p ON true
+LEFT JOIN scc_metas_compradores m ON m.codgrp = ga.codgrp
   AND m.mes = EXTRACT(MONTH FROM p.inicio_atual)::int
   AND m.ano = EXTRACT(YEAR FROM p.inicio_atual)::int
-ORDER BY venda_percentual_meta ASC, a.comprador;
+ORDER BY venda_percentual_meta ASC, ga.comprador;

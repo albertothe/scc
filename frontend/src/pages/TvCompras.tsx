@@ -40,7 +40,7 @@ export default function TvCompras() {
     fetchDados()
     const timer = setInterval(() => {
       fetchDados()
-    }, 60000)
+    }, 1800000)
 
     return () => clearInterval(timer)
   }, [])
