@@ -47,7 +47,7 @@ export default function TvCompras() {
       { label: "Evolução (%)", value: data.kpis?.evolucao ?? 0 },
       { label: "Nível de Serviço", value: null },
       { label: "Dias de Estoque", value: null },
-      { label: "Produtos Fora", value: null },
+      { label: "Produtos Fora (% Meta)", value: data.kpis?.produtosFora ?? 0 },
     ],
     [data.kpis],
   )
@@ -105,7 +105,7 @@ export default function TvCompras() {
               <TableRow>
                 <TableCell sx={{ color: "#fff" }}>Comprador</TableCell><TableCell sx={{ color: "#fff" }}>Grupo</TableCell>
                 <TableCell sx={{ color: "#fff" }}>Venda (% Meta)</TableCell><TableCell sx={{ color: "#fff" }}>LB (%)</TableCell>
-                <TableCell sx={{ color: "#fff" }}>Meta LB (%)</TableCell><TableCell sx={{ color: "#fff" }}>Evolução (%)</TableCell><TableCell sx={{ color: "#fff" }}>Status</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Meta LB (%)</TableCell><TableCell sx={{ color: "#fff" }}>Evolução (%)</TableCell><TableCell sx={{ color: "#fff" }}>Produtos Fora (% Meta)</TableCell><TableCell sx={{ color: "#fff" }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -114,7 +114,7 @@ export default function TvCompras() {
                   <TableCell sx={{ color: "#E5E7EB" }}>{c.comprador}</TableCell><TableCell sx={{ color: "#E5E7EB" }}>{c.grupo}</TableCell>
                   <TableCell sx={{ color: "#E5E7EB" }}>{c.vendaPercentualMeta.toFixed(2)}%</TableCell><TableCell sx={{ color: "#E5E7EB" }}>{c.lbPercentual.toFixed(2)}%</TableCell>
                   <TableCell sx={{ color: "#E5E7EB" }}>{c.metaLb.toFixed(2)}%</TableCell><TableCell sx={{ color: "#E5E7EB" }}>{c.evolucaoPercentual.toFixed(2)}%</TableCell>
-                  <TableCell><Chip label={c.status} color={statusColor(c.vendaPercentualMeta)} /></TableCell>
+                  <TableCell sx={{ color: "#E5E7EB" }}>{c.produtosForaPercentual.toFixed(2)}%</TableCell><TableCell><Chip label={c.status} color={statusColor(c.vendaPercentualMeta)} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>

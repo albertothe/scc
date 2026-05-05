@@ -4,52 +4,60 @@ const safePercent = (value: number | null | undefined) => Number.isFinite(value 
 
 export const getDashboardTvCompras = async () => {
   const query = `
-    WITH params AS (
-      SELECT EXTRACT(YEAR FROM CURRENT_DATE)::int AS ano_atual,
-             EXTRACT(MONTH FROM CURRENT_DATE)::int AS mes_atual
+    WITH periodos AS (
+      SELECT
+        date_trunc('month', CURRENT_DATE)::date AS inicio_atual,
+        CURRENT_DATE::date AS fim_atual,
+        date_trunc('month', CURRENT_DATE - interval '1 year')::date AS inicio_ano_passado,
+        (CURRENT_DATE - interval '1 year')::date AS fim_ano_passado,
+        EXTRACT(YEAR FROM CURRENT_DATE)::int AS ano_atual,
+        EXTRACT(MONTH FROM CURRENT_DATE)::int AS mes_atual
     ),
-    base AS (
+    base_atual AS (
       SELECT
         v.codgrp,
         c.nome AS comprador,
-        EXTRACT(YEAR FROM v.datamov)::int AS ano,
-        EXTRACT(MONTH FROM v.datamov)::int AS mes,
-        SUM(COALESCE(v.vlr_total_vendas_bruta,0)) AS venda_bruta,
-        SUM(COALESCE(v.vlr_total_devolucoes,0)) AS devolucao,
-        SUM(COALESCE(v.vlr_custos_vendas,0)) AS custos,
-        SUM(COALESCE(v.vlr_impostos_vendas,0)) AS impostos
+        SUM(COALESCE(v.vlr_total_vendas_bruta, 0)) AS venda_bruta,
+        SUM(COALESCE(v.vlr_total_devolucoes, 0)) AS devolucao,
+        SUM(COALESCE(v.vlr_custos_vendas, 0)) AS custos,
+        SUM(COALESCE(v.vlr_impostos_vendas, 0)) AS impostos,
+        SUM(CASE WHEN v.tipo IN ('FORA', 'ENCO') THEN COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0) ELSE 0 END) AS venda_fora
       FROM vs_scc_vendas_devolucoes v
       JOIN scc_comprador_grupo cg ON cg.codgrp = v.codgrp AND cg.dt_fim IS NULL
       JOIN scc_compradores c ON c.id = cg.comprador_id
-      GROUP BY v.codgrp, c.nome, EXTRACT(YEAR FROM v.datamov), EXTRACT(MONTH FROM v.datamov)
+      JOIN periodos p ON true
+      WHERE v.data BETWEEN p.inicio_atual AND p.fim_atual
+      GROUP BY v.codgrp, c.nome
     ),
-    curr AS (
-      SELECT b.*, (b.venda_bruta - b.devolucao) AS venda,
-             (b.venda_bruta - b.custos - b.impostos) AS lb
-      FROM base b JOIN params p ON b.ano = p.ano_atual AND b.mes = p.mes_atual
-    ),
-    prev_year AS (
-      SELECT b.codgrp, (b.venda_bruta - b.devolucao) AS venda_prev
-      FROM base b JOIN params p ON b.ano = p.ano_atual - 1 AND b.mes = p.mes_atual
+    base_ano_passado AS (
+      SELECT
+        v.codgrp,
+        SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0)) AS venda_prev
+      FROM vs_scc_vendas_devolucoes v
+      JOIN periodos p ON true
+      WHERE v.data BETWEEN p.inicio_ano_passado AND p.fim_ano_passado
+      GROUP BY v.codgrp
     ),
     meta AS (
-      SELECT m.codgrp, m.meta_vendas, m.meta_lb
+      SELECT m.codgrp, m.meta_vendas, m.meta_lb, m.meta_produtos_fora
       FROM scc_metas_compradores m
-      JOIN params p ON m.ano = p.ano_atual AND m.mes = p.mes_atual
+      JOIN periodos p ON m.ano = p.ano_atual AND m.mes = p.mes_atual
     )
     SELECT
-      c.codgrp,
-      c.comprador,
-      c.venda,
-      c.lb,
-      CASE WHEN c.venda = 0 THEN 0 ELSE (c.lb / c.venda) * 100 END AS lb_percentual,
-      CASE WHEN COALESCE(m.meta_vendas,0) = 0 THEN 0 ELSE (c.venda / m.meta_vendas) * 100 END AS venda_percentual_meta,
+      a.codgrp,
+      a.comprador,
+      (a.venda_bruta - a.devolucao) AS venda,
+      (a.venda_bruta - a.custos - a.impostos) AS lb,
+      a.venda_fora,
+      CASE WHEN (a.venda_bruta - a.devolucao) = 0 THEN 0 ELSE ((a.venda_bruta - a.custos - a.impostos) / (a.venda_bruta - a.devolucao)) * 100 END AS lb_percentual,
+      CASE WHEN COALESCE(m.meta_vendas, 0) = 0 THEN 0 ELSE ((a.venda_bruta - a.devolucao) / m.meta_vendas) * 100 END AS venda_percentual_meta,
       COALESCE(m.meta_lb, 0) AS meta_lb,
-      CASE WHEN COALESCE(py.venda_prev,0) = 0 THEN 0 ELSE ((c.venda / py.venda_prev) - 1) * 100 END AS evolucao_percentual
-    FROM curr c
-    LEFT JOIN prev_year py ON py.codgrp = c.codgrp
-    LEFT JOIN meta m ON m.codgrp = c.codgrp
-    ORDER BY venda_percentual_meta ASC, c.comprador;
+      CASE WHEN COALESCE(py.venda_prev, 0) = 0 THEN 0 ELSE (((a.venda_bruta - a.devolucao) / py.venda_prev) - 1) * 100 END AS evolucao_percentual,
+      CASE WHEN COALESCE(m.meta_produtos_fora, 0) = 0 THEN 0 ELSE (a.venda_fora / m.meta_produtos_fora) * 100 END AS produtos_fora_percentual
+    FROM base_atual a
+    LEFT JOIN base_ano_passado py ON py.codgrp = a.codgrp
+    LEFT JOIN meta m ON m.codgrp = a.codgrp
+    ORDER BY venda_percentual_meta ASC, a.comprador;
   `
 
   const result = await pool.query(query)
@@ -58,6 +66,7 @@ export const getDashboardTvCompras = async () => {
     const lbPct = safePercent(row.lb_percentual)
     const metaLb = safePercent(row.meta_lb)
     const evolucao = safePercent(row.evolucao_percentual)
+    const produtosForaPct = safePercent(row.produtos_fora_percentual)
 
     let status = "ABAIXO"
     if (vendaMeta >= 100) status = "ACIMA DA META"
@@ -70,6 +79,7 @@ export const getDashboardTvCompras = async () => {
       lbPercentual: Number(lbPct.toFixed(2)),
       metaLb: Number(metaLb.toFixed(2)),
       evolucaoPercentual: Number(evolucao.toFixed(2)),
+      produtosForaPercentual: Number(produtosForaPct.toFixed(2)),
       status,
     }
   })
@@ -84,14 +94,15 @@ export const getDashboardTvCompras = async () => {
     evolucao: Number(media(compradores.map((c) => c.evolucaoPercentual)).toFixed(2)),
     nivelServico: null,
     diasEstoque: null,
-    produtosFora: null,
+    produtosFora: Number(media(compradores.map((c) => c.produtosForaPercentual)).toFixed(2)),
   }
 
   const alertas: string[] = []
   compradores.forEach((c) => {
     if (c.lbPercentual < c.metaLb) alertas.push(`${c.comprador}: LB abaixo da meta.`)
     if (c.vendaPercentualMeta < 90) alertas.push(`${c.comprador}: Venda abaixo de 90%.`)
-    if (c.evolucaoPercentual < 0) alertas.push(`${c.comprador}: Queda versus mesmo mês do ano anterior.`)
+    if (c.evolucaoPercentual < 0) alertas.push(`${c.comprador}: Queda versus mesmo período do ano anterior.`)
+    if (c.produtosForaPercentual < 100) alertas.push(`${c.comprador}: Produtos fora abaixo da meta.`)
   })
 
   return {
@@ -100,6 +111,7 @@ export const getDashboardTvCompras = async () => {
     graficos: {
       evolucaoVendas: compradores.map((c) => ({ label: c.comprador, valor: c.vendaPercentualMeta })),
       evolucaoLb: compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual })),
+      produtosFora: compradores.map((c) => ({ label: c.comprador, valor: c.produtosForaPercentual })),
     },
     alertas,
   }
