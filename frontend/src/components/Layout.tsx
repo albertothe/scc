@@ -45,6 +45,7 @@ import {
     VpnKey as PermissoesIcon,
     TableChart as DreIcon,
     SupportAgent as HelpDeskIcon,
+    ShoppingBasket as CompradoresIcon,
     ConfirmationNumber as ChamadosIcon,
     Computer as AtivosIcon,
 } from "@mui/icons-material"
@@ -140,6 +141,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 { text: "Faixas de Comissão", icon: <BarChart />, path: "/comissao/faixas" },
                 { text: "Metas Vendedores", icon: <PersonIcon />, path: "/comissao/metas" },
                 { text: "Comissão Vendedores", icon: <PersonIcon />, path: "/comissao/vendedores" },
+            ],
+        },
+        {
+            text: "Compradores",
+            icon: <CompradoresIcon />,
+            subItems: [
+                { text: "Compradores", icon: <PersonIcon />, path: "/compradores" },
+                { text: "Grupos", icon: <BarChart />, path: "/compradores/grupos" },
+                { text: "Metas", icon: <AttachMoney />, path: "/compradores/metas" },
             ],
         },
         {
