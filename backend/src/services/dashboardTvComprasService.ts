@@ -13,31 +13,32 @@ export const getDashboardTvCompras = async () => {
     ),
     grupos_ativos AS (
       SELECT
-        cg.codgrp,
+        TRIM(cg.codgrp) AS codgrp,
         c.nome AS comprador
       FROM scc_comprador_grupo cg
       JOIN scc_compradores c ON c.id = cg.comprador_id
-      WHERE cg.dt_fim IS NULL
+      WHERE cg.dt_inicio <= CURRENT_DATE
+        AND (cg.dt_fim IS NULL OR cg.dt_fim >= CURRENT_DATE)
     ),
     vendas AS (
       SELECT
-        v.codgrp,
+        TRIM(v.codgrp) AS codgrp,
         SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0)) AS venda,
         SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_custos_vendas, 0) - COALESCE(v.vlr_impostos_vendas, 0)) AS lb,
         SUM(CASE WHEN v.tipo IN ('FORA', 'ENCO') THEN COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0) ELSE 0 END) AS venda_fora
       FROM vs_scc_vendas_devolucoes v
       JOIN periodos p ON true
       WHERE v.data BETWEEN p.inicio_atual AND p.fim_atual
-      GROUP BY v.codgrp
+      GROUP BY TRIM(v.codgrp)
     ),
     vendas_ano_ant AS (
       SELECT
-        v.codgrp,
+        TRIM(v.codgrp) AS codgrp,
         SUM(COALESCE(v.vlr_total_vendas_bruta, 0) - COALESCE(v.vlr_total_devolucoes, 0)) AS venda
       FROM vs_scc_vendas_devolucoes v
       JOIN periodos p ON true
       WHERE v.data BETWEEN p.inicio_ano_passado AND p.fim_ano_passado
-      GROUP BY v.codgrp
+      GROUP BY TRIM(v.codgrp)
     )
     SELECT
       ga.codgrp,
@@ -54,7 +55,7 @@ export const getDashboardTvCompras = async () => {
     LEFT JOIN vendas v ON v.codgrp = ga.codgrp
     LEFT JOIN vendas_ano_ant va ON va.codgrp = ga.codgrp
     LEFT JOIN periodos p ON true
-    LEFT JOIN scc_metas_compradores m ON m.codgrp = ga.codgrp
+    LEFT JOIN scc_metas_compradores m ON TRIM(m.codgrp) = ga.codgrp
       AND m.mes = EXTRACT(MONTH FROM p.inicio_atual)::int
       AND m.ano = EXTRACT(YEAR FROM p.inicio_atual)::int
     ORDER BY venda_percentual_meta ASC, ga.comprador;
