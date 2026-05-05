@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Alert,
   Box,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Grid,
   LinearProgress,
   Stack,
@@ -21,13 +22,17 @@ const statusColor = (v: number) => (v >= 100 ? "success" : v >= 95 ? "warning" :
 
 export default function TvCompras() {
   const [data, setData] = useState<any>({ kpis: {}, compradores: [], graficos: { evolucaoVendas: [], evolucaoLb: [] }, alertas: [] })
+  const [loading, setLoading] = useState(true)
 
   const fetchDados = async () => {
+    setLoading(true)
     try {
       const response = await getDashboardTvCompras()
       setData(response)
     } catch (error) {
       console.error("Erro ao buscar dashboard TV compras", error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -40,17 +45,29 @@ export default function TvCompras() {
     return () => clearInterval(timer)
   }, [])
 
-  const kpis = useMemo(
-    () => [
-      { label: "Vendas (% Meta)", value: data.kpis?.vendasAtingimento ?? 0 },
-      { label: "LB (% Realizado)", value: data.kpis?.lbRealizado ?? 0 },
-      { label: "Evolução (%)", value: data.kpis?.evolucao ?? 0 },
-      { label: "Nível de Serviço", value: null },
-      { label: "Dias de Estoque", value: null },
-      { label: "Produtos Fora (% Meta)", value: data.kpis?.produtosFora ?? 0 },
-    ],
-    [data.kpis],
-  )
+
+  if (loading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        height="100vh"
+        bgcolor="#0b0f14"
+      >
+        <CircularProgress size={80} />
+      </Box>
+    )
+  }
+
+  const kpis = [
+    { label: "Vendas (% Meta)", value: data.kpis?.vendasAtingimento ?? 0 },
+    { label: "LB (% Realizado)", value: data.kpis?.lbRealizado ?? 0 },
+    { label: "Evolução (%)", value: data.kpis?.evolucao ?? 0 },
+    { label: "Nível de Serviço", value: null },
+    { label: "Dias de Estoque", value: null },
+    { label: "Produtos Fora (% Meta)", value: data.kpis?.produtosFora ?? 0 },
+  ]
 
   return (
     <Box sx={{ minHeight: "100vh", background: "#050816", color: "#fff", p: 3 }}>
