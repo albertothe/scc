@@ -143,9 +143,11 @@ export const getDashboardTvCompras = async () => {
     ),
     metas AS (
       SELECT
-        COALESCE(SUM(meta_vendas), 0)        AS meta_vendas,
-        COALESCE(SUM(meta_produtos_fora), 0) AS meta_produtos_fora,
-        COALESCE(AVG(meta_lb), 0)            AS meta_lb_media
+        COALESCE(SUM(meta_vendas), 0)          AS meta_vendas,
+        COALESCE(SUM(meta_produtos_fora), 0)   AS meta_produtos_fora,
+        COALESCE(AVG(meta_lb), 0)              AS meta_lb_media,
+        COALESCE(AVG(meta_dias_estoque), 45)   AS meta_dias_estoque_media,
+        COALESCE(AVG(meta_nivel_servico), 98)  AS meta_nivel_servico_media
       FROM scc_metas_compradores
       WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
         AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
@@ -180,6 +182,8 @@ export const getDashboardTvCompras = async () => {
       metas.meta_vendas,
       metas.meta_produtos_fora,
       metas.meta_lb_media,
+      metas.meta_dias_estoque_media,
+      metas.meta_nivel_servico_media,
       dm.dias_decorridos,
       dm.total_dias
     FROM va, vant, vap, metas, ns, dias_est
@@ -507,7 +511,7 @@ export const getDashboardTvCompras = async () => {
       ? Number((lbPct - lbAntPct).toFixed(1)) : null as number | null,
 
     nivelServico: safe(gm.nivel_servico),
-    nivelServicoMeta: 98,
+    nivelServicoMeta: Math.round(safe(gm.meta_nivel_servico_media)) || 98,
     nivelServicoVsMesAnterior: null as number | null,
 
     evolucao,
@@ -518,7 +522,7 @@ export const getDashboardTvCompras = async () => {
       const vals = Array.from(metricsGrupoMap.values()).map(m => m.diasEstoque).filter(d => d > 0)
       return vals.length > 0 ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : safe(gm.dias_estoque)
     })(),
-    diasEstoqueMeta: 45,
+    diasEstoqueMeta: Math.round(safe(gm.meta_dias_estoque_media)) || 45,
     diasEstoqueVsMesAnterior: null as number | null,
 
     produtosForaValor,
