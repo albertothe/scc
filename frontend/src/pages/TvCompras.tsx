@@ -211,16 +211,20 @@ function Donut({
 
 // ─── Card KPI ─────────────────────────────────────────────────────────────────
 function KpiCard({
-  title, icon, value, meta, trend, trendSuffix, upGood, sparkData, sparkType, color, alert,
+  title, icon, value, meta, metaAting, upGood, color, alert,
 }: {
   title: string; icon: string; value: string; meta: string
-  trend: number | null; trendSuffix: string; upGood: boolean
-  sparkData: number[]; sparkType: "line" | "bar"; color: string; alert?: boolean
+  metaAting: number | null; upGood: boolean
+  color: string; alert?: boolean
 }) {
-  const trendOk = trend === null ? null : (upGood ? trend >= 0 : trend <= 0)
-  const trendColor = trendOk === null ? C.muted : trendOk ? C.green : C.red
-  const arrow = trend === null ? "" : trend >= 0 ? "↑" : "↓"
-  const trendStr = trend !== null ? `${arrow} ${trend >= 0 ? "+" : ""}${trend.toFixed(1).replace(".", ",")}${trendSuffix}` : null
+  let statusLabel = ""; let statusArrow = ""; let statusColor = C.muted
+  if (metaAting !== null) {
+    const atMeta  = upGood ? metaAting >= 100 : metaAting <= 100
+    const close   = upGood ? metaAting >= 90 && metaAting < 100 : metaAting > 100 && metaAting <= 110
+    statusColor   = atMeta ? C.green : close ? C.orange : C.red
+    statusArrow   = atMeta ? "▲" : close ? "≈" : "▼"
+    statusLabel   = atMeta ? (upGood && metaAting < 105 ? "NA META" : "ACIMA") : close ? "PRÓXIMO" : upGood ? "ABAIXO" : "EXCESSO"
+  }
 
   return (
     <div style={{
@@ -235,7 +239,7 @@ function KpiCard({
       boxShadow: alert ? `0 0 14px ${color}44` : "none",
       display: "flex",
       flexDirection: "column",
-      gap: 2,
+      gap: 3,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -246,10 +250,11 @@ function KpiCard({
             {title}
           </span>
         </div>
-        {sparkData.length > 1 && (
-          sparkType === "line"
-            ? <Spark data={sparkData} color={color} />
-            : <SparkBar data={sparkData} color={color} />
+        {metaAting !== null && (
+          <div style={{ background: statusColor + "22", border: `1px solid ${statusColor}55`, borderRadius: 4, padding: "2px 6px", display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+            <span style={{ color: statusColor, fontSize: 11, lineHeight: 1 }}>{statusArrow}</span>
+            <span style={{ color: statusColor, fontSize: 9, fontWeight: 800, letterSpacing: "0.04em" }}>{statusLabel}</span>
+          </div>
         )}
       </div>
       <div style={{ fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
@@ -258,10 +263,12 @@ function KpiCard({
       {meta && (
         <div style={{ fontSize: 11, color: C.muted }}>Meta: {meta}</div>
       )}
-      {trendStr && (
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>{trendStr}</span>
-          <span style={{ fontSize: 10, color: "#374151" }}>vs mês anterior</span>
+      {metaAting !== null && meta && (
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ flex: 1, height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${Math.min(100, metaAting)}%`, height: "100%", background: statusColor, borderRadius: 2, transition: "width 0.4s" }} />
+          </div>
+          <span style={{ fontSize: 10, color: statusColor, fontWeight: 700, flexShrink: 0 }}>{metaAting.toFixed(0)}%</span>
         </div>
       )}
     </div>
@@ -271,8 +278,8 @@ function KpiCard({
 function AtingBar({ pct, meta = 100 }: { pct: number; meta?: number }) {
   const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 80 }}>
-      <div style={{ width: 50, height: 6, background: C.dim, borderRadius: 3, flexShrink: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 110 }}>
+      <div style={{ width: 80, height: 7, background: C.dim, borderRadius: 3, flexShrink: 0, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 3 }} />
       </div>
       <span style={{ fontSize: 11, color, fontWeight: 700, width: 38 }}>{pct.toFixed(0)}%</span>
@@ -280,18 +287,28 @@ function AtingBar({ pct, meta = 100 }: { pct: number; meta?: number }) {
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg: Record<string, { bg: string; color: string }> = {
-    "ACIMA DA META":  { bg: "#052e16", color: C.green },
-    "DENTRO DA META": { bg: "#0c1a3d", color: C.blue },
-    "ATENÇÃO":        { bg: "#431407", color: C.orange },
-    "ABAIXO DA META": { bg: "#3f0000", color: C.red },
-  }
-  const s = cfg[status] ?? cfg["ATENÇÃO"]
+function MetaIcons({ c }: { c: any }) {
+  const items = [
+    { key: "V", ok: safe(c.vendaPercentualMeta) >= 100,                                             title: "Vendas" },
+    { key: "L", ok: safe(c.lbPercentual) >= safe(c.metaLb),                                         title: "LB" },
+    { key: "N", ok: c.nivelServico !== null && safe(c.nivelServico) >= (c.nivelServicoMeta || 97),  title: "Nível Serviço" },
+    { key: "D", ok: c.diasEstoque !== null && safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45),     title: "Dias Estoque" },
+    { key: "P", ok: safe(c.produtosForaPercentual) >= 100,                                           title: "Prod. Fora" },
+  ]
   return (
-    <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>
-      {status}
-    </span>
+    <div style={{ display: "flex", gap: 3 }}>
+      {items.map(({ key, ok, title }) => (
+        <div key={key} title={title} style={{
+          width: 20, height: 20, borderRadius: 3,
+          background: ok ? "#052e16" : "#3f0000",
+          border: `1px solid ${ok ? C.green : C.red}`,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        }}>
+          <span style={{ fontSize: 7, color: ok ? C.green : C.red, fontWeight: 800, lineHeight: 1 }}>{key}</span>
+          <span style={{ fontSize: 8, color: ok ? C.green : C.red, lineHeight: 1 }}>{ok ? "✓" : "✗"}</span>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -346,10 +363,6 @@ export default function TvCompras() {
     let tvBruta = 0, tlb = 0
     return rows.map(r => { tvBruta += safe(r.vendaBruta); tlb += safe(r.lb); return tvBruta > 0 ? tlb / tvBruta * 100 : 0 })
   }
-
-  const sparkVendas   = series.map(s => safe(s.venda))
-  const sparkLbPct    = cumulLbPct(series)
-  const sparkProdFora = series.map(s => safe(s.produtosFora))
 
   const chartVenda1 = cumul(series, "venda")
   const chartVenda2 = cumul(seriesAnt, "venda")
@@ -408,8 +421,8 @@ export default function TvCompras() {
           title="VENDAS" icon="$"
           value={fmtP(safe(kpis.vendasAtingimento))}
           meta=""
-          trend={null} trendSuffix="%" upGood={true}
-          sparkData={sparkVendas} sparkType="line" color={C.blue}
+          metaAting={safe(kpis.vendasAtingimento) > 0 ? safe(kpis.vendasAtingimento) : null}
+          upGood={true} color={C.blue}
           alert={safe(kpis.vendasAtingimento) > 0 && safe(kpis.vendasAtingimento) < 90}
         />
         {/* 2. Evolução (sem meta — regra 6) */}
@@ -419,8 +432,8 @@ export default function TvCompras() {
             ? `${kpis.evolucao >= 0 ? "+" : ""}${safe(kpis.evolucao).toFixed(1).replace(".", ",")}%`
             : "—"}
           meta=""
-          trend={null} trendSuffix="%" upGood={true}
-          sparkData={sparkVendas} sparkType="line" color={C.purple}
+          metaAting={null}
+          upGood={true} color={C.purple}
           alert={kpis.evolucao !== null && kpis.evolucao !== undefined && safe(kpis.evolucao) < 0}
         />
         {/* 3. LB */}
@@ -428,17 +441,17 @@ export default function TvCompras() {
           title="LB (%)" icon="%"
           value={fmtP(safe(kpis.lbPercentual))}
           meta={fmtP(safe(kpis.metaLb))}
-          trend={null} trendSuffix=" p.p." upGood={true}
-          sparkData={sparkLbPct} sparkType="line" color={C.green}
+          metaAting={safe(kpis.metaLb) > 0 ? safe(kpis.lbPercentual) / safe(kpis.metaLb) * 100 : null}
+          upGood={true} color={C.green}
           alert={safe(kpis.lbPercentual) > 0 && safe(kpis.lbPercentual) < safe(kpis.metaLb)}
         />
         {/* 4. Nível de Serviço */}
         <KpiCard
-          title="NÍVEL DE SERVIÇO (%)" icon="🚚"
+          title="NÍVEL DE SERVIÇO" icon="🚚"
           value={fmtP(safe(kpis.nivelServico))}
           meta={fmtP(safe(kpis.nivelServicoMeta) || 98)}
-          trend={kpis.nivelServicoVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true}
-          sparkData={chartNs1} sparkType="line" color={C.orange}
+          metaAting={(safe(kpis.nivelServicoMeta) || 98) > 0 ? safe(kpis.nivelServico) / (safe(kpis.nivelServicoMeta) || 98) * 100 : null}
+          upGood={true} color={C.orange}
           alert={safe(kpis.nivelServico) > 0 && safe(kpis.nivelServico) < (safe(kpis.nivelServicoMeta) || 98)}
         />
         {/* 5. Dias de Estoque */}
@@ -446,8 +459,8 @@ export default function TvCompras() {
           title="DIAS DE ESTOQUE" icon="📦"
           value={`${Math.round(safe(kpis.diasEstoque))} dias`}
           meta={`${safe(kpis.diasEstoqueMeta) || 45} dias`}
-          trend={kpis.diasEstoqueVsMesAnterior ?? null} trendSuffix=" dias" upGood={false}
-          sparkData={sparkVendas.map((_, i) => i + 1)} sparkType="bar" color={C.cyan}
+          metaAting={(safe(kpis.diasEstoqueMeta) || 45) > 0 ? safe(kpis.diasEstoque) / (safe(kpis.diasEstoqueMeta) || 45) * 100 : null}
+          upGood={false} color={C.cyan}
           alert={safe(kpis.diasEstoque) > (safe(kpis.diasEstoqueMeta) || 45) * 1.1}
         />
         {/* 6. Produtos Fora */}
@@ -455,8 +468,8 @@ export default function TvCompras() {
           title="PRODUTOS FORA" icon="⚠️"
           value={fmtP(safe(kpis.produtosFora))}
           meta=""
-          trend={null} trendSuffix="%" upGood={false}
-          sparkData={sparkProdFora} sparkType="bar" color={C.red}
+          metaAting={safe(kpis.produtosFora) > 0 ? safe(kpis.produtosFora) : null}
+          upGood={true} color={C.red}
           alert={safe(kpis.produtosFora) > 0 && safe(kpis.produtosFora) > 110}
         />
       </div>
@@ -562,7 +575,7 @@ export default function TvCompras() {
                 </td>
                 <td style={tdN}>{c.diasEstoqueMeta || 45}</td>
                 <td style={tdG}><AtingBar pct={safe(c.produtosForaPercentual)} /></td>
-                <td style={tdG}><StatusBadge status={c.status} /></td>
+                <td style={tdG}><MetaIcons c={c} /></td>
               </tr>
             )) : (
               <tr><td colSpan={11} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
@@ -665,18 +678,9 @@ export default function TvCompras() {
         </div>
       </div>
 
-      {/* ── RODAPÉ ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${C.border}`, paddingTop: 6, fontSize: 10, color: C.muted }}>
-        <div>
-          <span style={{ color: C.muted }}>"Nosso compromisso: </span>
-          <span style={{ color: C.blue, fontWeight: 600 }}>Comprar bem</span>
-          <span style={{ color: C.muted }}> hoje para crescer sempre!"</span>
-        </div>
-        <div>
-          Fonte: Sistema ERP &nbsp;|&nbsp; Atualizado em: {lastUpdate?.toLocaleDateString("pt-BR")} {lastUpdate?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          {error && <span style={{ color: C.red, marginLeft: 10 }}>⚠ {error}</span>}
-        </div>
-      </div>
+      {error && (
+        <div style={{ fontSize: 10, color: C.red, textAlign: "right", paddingTop: 4 }}>⚠ {error}</div>
+      )}
     </div>
   )
 }
