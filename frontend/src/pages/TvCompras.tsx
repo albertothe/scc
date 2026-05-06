@@ -61,7 +61,9 @@ function LineChart({
 }) {
   const pl = 58, pr = 8, pt = 22, pb = 20
   const cw = w - pl - pr; const ch = h - pt - pb
-  const all = [...data1, ...data2].filter(v => v > 0)
+  // Use a shared calendar-day scale: both series must have the same length (daysInMonth)
+  const nPts = Math.max(data1.length, data2.length, 1)
+  const all = [...data1, ...data2].filter(v => isFinite(v) && v > 0)
   if (!all.length) return (
     <svg width={w} height={h}>
       <text x={w / 2} y={h / 2} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
@@ -70,15 +72,22 @@ function LineChart({
   const minV = Math.min(...all) * 0.9
   const maxV = Math.max(...all) * 1.05
   const rng  = maxV - minV || 1
-  const tx = (i: number, len: number) => pl + (i / Math.max(len - 1, 1)) * cw
+  const tx = (i: number) => pl + (i / Math.max(nPts - 1, 1)) * cw
   const ty = (v: number) => pt + (1 - (v - minV) / rng) * ch
 
-  const path = (data: number[]) =>
-    data.map((v, i) => `${i === 0 ? "M" : "L"}${tx(i, data.length).toFixed(1)},${ty(v).toFixed(1)}`).join(" ")
+  // Build SVG path with NaN-gap support (lifts pen on non-finite values)
+  const makePath = (data: number[]) => {
+    let d = "", jump = true
+    for (let i = 0; i < data.length; i++) {
+      if (!isFinite(data[i])) { jump = true; continue }
+      d += `${jump ? "M" : "L"}${tx(i).toFixed(1)},${ty(data[i]).toFixed(1)}`
+      jump = false
+    }
+    return d
+  }
 
   const yTicks = [minV, minV + rng / 2, maxV]
-  const maxLen = Math.max(data1.length, data2.length)
-  const xTicks = [1, 5, 10, 15, 20, 25, maxLen].filter((d, _, arr) => arr.indexOf(d) === arr.lastIndexOf(d) && d <= maxLen)
+  const xTickDays = [1, 5, 10, 15, 20, 25, nPts].filter((d, idx, arr) => d <= nPts && arr.indexOf(d) === idx)
   const fmt = fmtY ?? ((v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0))
 
   return (
@@ -94,13 +103,13 @@ function LineChart({
           <text x={pl - 4} y={ty(v)} fill={C.muted} fontSize={9} textAnchor="end" dominantBaseline="middle">{fmt(v)}</text>
         </g>
       ))}
-      {xTicks.map((d) => (
-        <text key={d} x={tx(d - 1, maxLen)} y={h - 4} fill={C.muted} fontSize={9} textAnchor="middle">
+      {xTickDays.map((d) => (
+        <text key={d} x={tx(d - 1)} y={h - 4} fill={C.muted} fontSize={9} textAnchor="middle">
           {String(d).padStart(2, "0")}
         </text>
       ))}
-      {data2.length > 1 && <path d={path(data2)} fill="none" stroke={C.muted} strokeWidth="1.5" strokeDasharray="4,3" />}
-      {data1.length > 1 && <path d={path(data1)} fill="none" stroke={color1} strokeWidth="2" strokeLinecap="round" />}
+      {data2.some(isFinite) && <path d={makePath(data2)} fill="none" stroke={C.muted} strokeWidth="1.5" strokeDasharray="4,3" />}
+      {data1.some(isFinite) && <path d={makePath(data1)} fill="none" stroke={color1} strokeWidth="2" strokeLinecap="round" />}
     </svg>
   )
 }
@@ -365,22 +374,56 @@ export default function TvCompras() {
     return Array.from(map.entries()).map(([comprador, grupos]) => ({ comprador, grupos }))
   })()
 
-  // Séries cumulativas
-  const cumul = (rows: any[], field: string) => {
-    let acc = 0; return rows.map(r => { acc += safe(r[field]); return acc })
-  }
-  // LB%: divide por venda_bruta (regra 5)
-  const cumulLbPct = (rows: any[]) => {
-    let tvBruta = 0, tlb = 0
-    return rows.map(r => { tvBruta += safe(r.vendaBruta); tlb += safe(r.lb); return tvBruta > 0 ? tlb / tvBruta * 100 : 0 })
+  // Calendar-day x-scale: arrays of length daysInMonth, NaN for days without data
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const today       = now.getDate()
+
+  const dayOf = (dia: unknown) => {
+    const s = String(dia).split("T")[0]   // "2025-05-06" → "06"
+    return parseInt(s.split("-")[2], 10)
   }
 
-  const chartVenda1 = cumul(series, "venda")
-  const chartVenda2 = cumul(seriesAnt, "venda")
-  const chartLb1    = cumulLbPct(series)
-  const chartLb2    = cumulLbPct(seriesAnt)
+  const cumulDays = (rows: any[], field: string) => {
+    const byDay = new Map<number, number>()
+    for (const r of rows) {
+      const d = dayOf(r.dia)
+      byDay.set(d, (byDay.get(d) || 0) + safe(r[field]))
+    }
+    const out = new Array(daysInMonth).fill(NaN) as number[]
+    let acc = 0
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (byDay.has(d)) { acc += byDay.get(d)!; out[d - 1] = acc }
+    }
+    return out
+  }
+
+  const cumulLbPctDays = (rows: any[]) => {
+    const byDay = new Map<number, { vb: number; lb: number }>()
+    for (const r of rows) {
+      const d = dayOf(r.dia)
+      const cur = byDay.get(d) || { vb: 0, lb: 0 }
+      cur.vb += safe(r.vendaBruta); cur.lb += safe(r.lb)
+      byDay.set(d, cur)
+    }
+    const out = new Array(daysInMonth).fill(NaN) as number[]
+    let tvb = 0, tlb = 0
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (byDay.has(d)) {
+        const { vb, lb } = byDay.get(d)!
+        tvb += vb; tlb += lb
+        out[d - 1] = tvb > 0 ? tlb / tvb * 100 : 0
+      }
+    }
+    return out
+  }
+
+  const chartVenda1 = cumulDays(series, "venda")
+  const chartVenda2 = cumulDays(seriesAnt, "venda")
+  const chartLb1    = cumulLbPctDays(series)
+  const chartLb2    = cumulLbPctDays(seriesAnt)
   const nsVal       = safe(kpis.nivelServico)
-  const chartNs1    = series.map(() => nsVal)
+  // NS line: flat value for days 1..today, NaN for future days
+  const chartNs1    = new Array(daysInMonth).fill(NaN).map((_, i) => i < today ? nsVal : NaN)
 
   const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
   const mesAbrev = now.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase().substring(0, 3) + "/" + now.getFullYear()
