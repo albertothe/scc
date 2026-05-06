@@ -39,7 +39,7 @@ export const getDashboardTvCompras = async () => {
         SUM(COALESCE(vlr_total_vendas_bruta, 0)
           - COALESCE(vlr_custos_vendas, 0)
           - COALESCE(vlr_impostos_vendas, 0))                                                      AS lb_valor,
-        SUM(CASE WHEN tipo IN ('FORA','ENCO')
+        SUM(CASE WHEN tipo IN ('Fora','Encomenda')
                  THEN COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)
                  ELSE 0 END)                                                                       AS venda_fora
       FROM vs_scc_vendas_devolucoes
@@ -106,7 +106,7 @@ export const getDashboardTvCompras = async () => {
         COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)
                    - COALESCE(vlr_custos_vendas,0)
                    - COALESCE(vlr_impostos_vendas,0)), 0)                                        AS lb_valor,
-        COALESCE(SUM(CASE WHEN tipo IN ('FORA','ENCO')
+        COALESCE(SUM(CASE WHEN tipo IN ('Fora','Encomenda')
                      THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
                      ELSE 0 END), 0)                                                             AS venda_fora
       FROM vs_scc_vendas_devolucoes
@@ -120,7 +120,7 @@ export const getDashboardTvCompras = async () => {
         COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)
                    - COALESCE(vlr_custos_vendas,0)
                    - COALESCE(vlr_impostos_vendas,0)), 0)                                        AS lb_valor,
-        COALESCE(SUM(CASE WHEN tipo IN ('FORA','ENCO')
+        COALESCE(SUM(CASE WHEN tipo IN ('Fora','Encomenda')
                      THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
                      ELSE 0 END), 0)                                                             AS venda_fora
       FROM vs_scc_vendas_devolucoes
@@ -156,14 +156,14 @@ export const getDashboardTvCompras = async () => {
         ROUND(COUNT(CASE WHEN facing > 0 AND saldoestoque > 0 THEN 1 END)::numeric
               / NULLIF(COUNT(CASE WHEN facing > 0 THEN 1 END), 0) * 100, 1) AS nivel_servico
       FROM vs_scc_estoque_media_facing
-      WHERE TRIM(codgrupo) IN (SELECT codgrp FROM grupos_meta)
+      WHERE codgrp IN (SELECT codgrp FROM grupos_meta)
     ),
     dias_est AS (
       SELECT
         ROUND(SUM(CASE WHEN mediadia > 0 THEN saldoestoque ELSE 0 END)
               / NULLIF(SUM(CASE WHEN mediadia > 0 THEN mediadia ELSE 0 END), 0), 0) AS dias_estoque
       FROM vs_scc_estoque_media_facing
-      WHERE TRIM(codgrupo) IN (SELECT codgrp FROM grupos_meta)
+      WHERE codgrp IN (SELECT codgrp FROM grupos_meta)
     )
     SELECT
       va.venda                AS vendas_valor,
@@ -201,7 +201,7 @@ export const getDashboardTvCompras = async () => {
       SUM(COALESCE(vlr_total_vendas_bruta,0)
         - COALESCE(vlr_custos_vendas,0)
         - COALESCE(vlr_impostos_vendas,0))                                                      AS lb_valor,
-      SUM(CASE WHEN tipo IN ('FORA','ENCO')
+      SUM(CASE WHEN tipo IN ('Fora','Encomenda')
                THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
                ELSE 0 END)                                                                      AS produtos_fora
     FROM vs_scc_vendas_devolucoes
@@ -225,7 +225,7 @@ export const getDashboardTvCompras = async () => {
       SUM(COALESCE(vlr_total_vendas_bruta,0)
         - COALESCE(vlr_custos_vendas,0)
         - COALESCE(vlr_impostos_vendas,0))                                                      AS lb_valor,
-      SUM(CASE WHEN tipo IN ('FORA','ENCO')
+      SUM(CASE WHEN tipo IN ('Fora','Encomenda')
                THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
                ELSE 0 END)                                                                      AS produtos_fora
     FROM vs_scc_vendas_devolucoes
@@ -245,31 +245,37 @@ export const getDashboardTvCompras = async () => {
         AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
     )
     SELECT
-      TRIM(ef.codgrupo) AS codgrp,
+      ef.codgrp,
       ROUND(COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
             / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 1) AS nivel_servico,
       ROUND(SUM(CASE WHEN ef.mediadia > 0 THEN ef.saldoestoque ELSE 0 END)
             / NULLIF(SUM(CASE WHEN ef.mediadia > 0 THEN ef.mediadia ELSE 0 END), 0), 0) AS dias_estoque
     FROM vs_scc_estoque_media_facing ef
-    WHERE TRIM(ef.codgrupo) IN (SELECT codgrp FROM grupos_meta)
-    GROUP BY TRIM(ef.codgrupo)
+    WHERE ef.codgrp IN (SELECT codgrp FROM grupos_meta)
+    GROUP BY ef.codgrp
   `
 
-  // ── Query 6: produtos em ruptura ──────────────────────────────────────────
+  // ── Query 6: produtos em ruptura (facing > 0 e saldoestoque <= 0) ─────────
   const queryRuptura = `
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    )
     SELECT
-      pro.c_descr AS produto,
-      TRIM(pro.c_class) AS codgrupo,
-      COUNT(DISTINCT est.c_fil) AS lojas_sem_estoque
-    FROM a_estfil est
-    JOIN a_produt pro ON pro.c_codigo = est.c_codprod
+      pro.c_descr  AS produto,
+      ef.codgrp,
+      ef.facing    AS facing,
+      ef.saldoestoque
+    FROM vs_scc_estoque_media_facing ef
+    JOIN a_produt pro ON pro.c_codigo = ef.codproduto
+    WHERE ef.facing > 0
+      AND ef.saldoestoque <= 0
+      AND ef.codgrp IN (SELECT codgrp FROM grupos_meta)
       AND pro.c_status = 'A' AND pro.c_especie = 'P'
-    WHERE (est.c_estloja - est.c_resloja) <= 0
-      AND est.c_fil = ANY (ARRAY['00','01','02','03','04','05','06','07','08','09','10','11','12','15'])
-    GROUP BY pro.c_descr, TRIM(pro.c_class)
-    HAVING COUNT(DISTINCT est.c_fil) >= 1
-    ORDER BY COUNT(DISTINCT est.c_fil) DESC
-    LIMIT 10
+    ORDER BY ef.codgrp, pro.c_descr
+    LIMIT 20
   `
 
   // ── Query 7: situação do estoque ──────────────────────────────────────────
@@ -465,9 +471,10 @@ export const getDashboardTvCompras = async () => {
 
   // ── Ruptura e situação ────────────────────────────────────────────────────
   const ruptura = r6.rows.map((r: any) => ({
-    produto: r.produto,
-    codgrupo: String(r.codgrupo).trim(),
-    lojasSemEstoque: safe(r.lojas_sem_estoque),
+    produto:      r.produto,
+    codgrp:       String(r.codgrp).trim(),
+    facing:       safe(r.facing),
+    saldoestoque: safe(r.saldoestoque),
   }))
 
   const sit = r7.rows[0] ?? {}

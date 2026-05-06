@@ -599,21 +599,23 @@ export default function TvCompras() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
               <th style={th}>Produto</th>
-              <th style={th}>Grupo</th>
-              <th style={{ ...th, textAlign: "center" }}>Lojas s/ estoque</th>
+              <th style={th}>Grp</th>
+              <th style={{ ...th, textAlign: "right" }}>Facing</th>
+              <th style={{ ...th, textAlign: "right" }}>Saldo</th>
             </tr></thead>
             <tbody>
               {ruptura.length > 0 ? ruptura.map((r: any, i: number) => (
                 <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
                   <td style={{ ...td, fontSize: 10 }}>{r.produto}</td>
-                  <td style={tdN}>{r.codgrupo}</td>
-                  <td style={{ ...td, textAlign: "center" }}>
-                    <span style={{ background: r.lojasSemEstoque >= 5 ? "#3f0000" : r.lojasSemEstoque >= 3 ? "#431407" : "#1a1a00", color: r.lojasSemEstoque >= 5 ? C.red : r.lojasSemEstoque >= 3 ? C.orange : C.yellow, borderRadius: 4, padding: "1px 8px", fontWeight: 700, fontSize: 11 }}>
-                      {r.lojasSemEstoque}
-                    </span>
+                  <td style={tdN}>{r.codgrp}</td>
+                  <td style={{ ...td, textAlign: "right", color: C.orange, fontWeight: 700, fontSize: 11 }}>
+                    {safe(r.facing).toFixed(0)}
+                  </td>
+                  <td style={{ ...td, textAlign: "right", color: C.red, fontWeight: 700, fontSize: 11 }}>
+                    {safe(r.saldoestoque).toFixed(0)}
                   </td>
                 </tr>
-              )) : <tr><td colSpan={3} style={{ ...td, textAlign: "center", color: C.green }}>✓ Sem rupturas</td></tr>}
+              )) : <tr><td colSpan={4} style={{ ...td, textAlign: "center", color: C.green }}>✓ Sem rupturas</td></tr>}
             </tbody>
           </table>
         </div>
