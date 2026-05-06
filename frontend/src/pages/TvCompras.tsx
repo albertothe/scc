@@ -348,11 +348,22 @@ export default function TvCompras() {
 
   const kpis = data.kpis ?? {}
   const comps: any[]      = data.compradores ?? []
+  const gruposFlat: any[] = data.compradoresGrupos ?? []
   const series: any[]     = data.series ?? []
   const seriesAnt: any[]  = data.seriesAnt ?? []
   const ruptura: any[]    = data.ruptura ?? []
   const sit               = data.situacaoEstoque ?? {}
   const graficos          = data.graficos ?? {}
+
+  // Agrupa para a tabela matriz: [{comprador, grupos:[...]}]
+  const matrizCompradores = (() => {
+    const map = new Map<string, any[]>()
+    for (const g of gruposFlat) {
+      if (!map.has(g.comprador)) map.set(g.comprador, [])
+      map.get(g.comprador)!.push(g)
+    }
+    return Array.from(map.entries()).map(([comprador, grupos]) => ({ comprador, grupos }))
+  })()
 
   // Séries cumulativas
   const cumul = (rows: any[], field: string) => {
@@ -532,7 +543,7 @@ export default function TvCompras() {
         </div>
       </div>
 
-      {/* ── TABELA DE COMPRADORES ── */}
+      {/* ── TABELA MATRIZ: COMPRADOR × GRUPO ── */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10, overflowX: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <span style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em" }}>👥 DESEMPENHO POR COMPRADOR E GRUPO</span>
@@ -542,42 +553,54 @@ export default function TvCompras() {
           <thead>
             <tr>
               <th style={{ ...th }} rowSpan={2}>Comprador</th>
-              <th style={{ ...th }} rowSpan={2}>Grupos</th>
+              <th style={{ ...th }} rowSpan={2}>Grupo</th>
               <th style={{ ...thG, textAlign: "center" }} rowSpan={2}>Vendas<br/>Atingimento</th>
               <th style={{ ...thG, textAlign: "center" }} colSpan={2}>LB (%)</th>
               <th style={{ ...thG, textAlign: "center" }} colSpan={2}>Nível Serviço (%)</th>
               <th style={{ ...thG, textAlign: "center" }} colSpan={2}>Dias Estoque</th>
               <th style={{ ...thG, textAlign: "center" }} rowSpan={2}>Prod. Fora<br/>Atingimento</th>
-              <th style={{ ...thG }} rowSpan={2}>Status</th>
+              <th style={{ ...thG }} rowSpan={2}>Metas</th>
             </tr>
             <tr>
-              <th style={thG}>Realizado</th><th style={th}>Meta</th>
-              <th style={thG}>Realizado</th><th style={th}>Meta</th>
-              <th style={thG}>Realizado</th><th style={th}>Meta</th>
+              <th style={thG}>Real.</th><th style={th}>Meta</th>
+              <th style={thG}>Real.</th><th style={th}>Meta</th>
+              <th style={thG}>Real.</th><th style={th}>Meta</th>
             </tr>
           </thead>
           <tbody>
-            {comps.length > 0 ? comps.map((c: any, i: number) => (
-              <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
-                <td style={td}>{c.comprador}</td>
-                <td style={tdN}>{c.grupos}</td>
-                <td style={tdG}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
-                <td style={{ ...tdG, color: safe(c.lbPercentual) >= safe(c.metaLb) ? C.green : C.red, fontWeight: 700 }}>
-                  {fmtP(safe(c.lbPercentual))}
-                </td>
-                <td style={tdN}>{fmtP(safe(c.metaLb))}</td>
-                <td style={{ ...tdG, color: safe(c.nivelServico) >= (c.nivelServicoMeta || 97) ? C.green : C.red, fontWeight: 700 }}>
-                  {c.nivelServico !== null ? fmtP(safe(c.nivelServico)) : "—"}
-                </td>
-                <td style={tdN}>{fmtP(c.nivelServicoMeta || 97)}</td>
-                <td style={{ ...tdG, color: safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45) ? C.green : safe(c.diasEstoque) <= 55 ? C.orange : C.red, fontWeight: 700 }}>
-                  {c.diasEstoque !== null ? `${Math.round(safe(c.diasEstoque))}` : "—"}
-                </td>
-                <td style={tdN}>{c.diasEstoqueMeta || 45}</td>
-                <td style={tdG}><AtingBar pct={safe(c.produtosForaPercentual)} /></td>
-                <td style={tdG}><MetaIcons c={c} /></td>
-              </tr>
-            )) : (
+            {matrizCompradores.length > 0 ? matrizCompradores.map((m, mi) =>
+              m.grupos.map((g: any, gi: number) => {
+                const rowBg = mi % 2 === 1 ? "#060C1A" : "transparent"
+                const sepStyle: React.CSSProperties = gi === 0 && mi > 0
+                  ? { borderTop: `2px solid ${C.border}` } : {}
+                return (
+                  <tr key={`${mi}-${gi}`} style={{ background: rowBg }}>
+                    {gi === 0 && (
+                      <td style={{ ...td, ...sepStyle, verticalAlign: "top", fontWeight: 700, paddingTop: 6, whiteSpace: "nowrap" }}
+                        rowSpan={m.grupos.length}>
+                        {g.comprador}
+                      </td>
+                    )}
+                    <td style={{ ...tdN, ...sepStyle, fontSize: 10 }}>{g.grupoNome}</td>
+                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.vendaPercentualMeta)} /></td>
+                    <td style={{ ...tdG, ...sepStyle, color: safe(g.lbPercentual) >= safe(g.metaLb) ? C.green : C.red, fontWeight: 700 }}>
+                      {fmtP(safe(g.lbPercentual))}
+                    </td>
+                    <td style={{ ...tdN, ...sepStyle }}>{fmtP(safe(g.metaLb))}</td>
+                    <td style={{ ...tdG, ...sepStyle, color: g.nivelServico !== null && safe(g.nivelServico) >= (g.nivelServicoMeta || 97) ? C.green : C.red, fontWeight: 700 }}>
+                      {g.nivelServico !== null ? fmtP(safe(g.nivelServico)) : "—"}
+                    </td>
+                    <td style={{ ...tdN, ...sepStyle }}>{fmtP(g.nivelServicoMeta || 97)}</td>
+                    <td style={{ ...tdG, ...sepStyle, color: g.diasEstoque !== null && safe(g.diasEstoque) <= (g.diasEstoqueMeta || 45) ? C.green : safe(g.diasEstoque) <= 55 ? C.orange : C.red, fontWeight: 700 }}>
+                      {g.diasEstoque !== null ? `${Math.round(safe(g.diasEstoque))}` : "—"}
+                    </td>
+                    <td style={{ ...tdN, ...sepStyle }}>{g.diasEstoqueMeta || 45}</td>
+                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.produtosForaPercentual)} /></td>
+                    <td style={{ ...tdG, ...sepStyle }}><MetaIcons c={g} /></td>
+                  </tr>
+                )
+              })
+            ) : (
               <tr><td colSpan={11} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
             )}
           </tbody>
