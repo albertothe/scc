@@ -255,7 +255,7 @@ export const getDashboardTvCompras = async () => {
     GROUP BY ef.codgrp
   `
 
-  // ── Query 6: produtos em ruptura (facing > 0 e saldoestoque <= 0) ─────────
+  // ── Query 6: ruptura por comprador (facing > 0 e saldoestoque <= 0) ────────
   const queryRuptura = `
     WITH grupos_meta AS (
       SELECT DISTINCT TRIM(codgrp) AS codgrp
@@ -264,18 +264,18 @@ export const getDashboardTvCompras = async () => {
         AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
     )
     SELECT
-      pro.c_descr  AS produto,
-      ef.codgrp,
-      ef.facing    AS facing,
-      ef.saldoestoque
+      c.nome       AS comprador,
+      COUNT(*)     AS qtd_ruptura
     FROM vs_scc_estoque_media_facing ef
     JOIN a_produt pro ON pro.c_codigo = ef.codproduto
+    JOIN scc_comprador_grupo cg ON TRIM(cg.codgrp) = ef.codgrp AND cg.dt_fim IS NULL
+    JOIN scc_compradores c     ON c.id = cg.comprador_id
     WHERE ef.facing > 0
       AND ef.saldoestoque <= 0
       AND ef.codgrp IN (SELECT codgrp FROM grupos_meta)
       AND pro.c_status = 'A' AND pro.c_especie = 'P'
-    ORDER BY ef.codgrp, pro.c_descr
-    LIMIT 20
+    GROUP BY c.nome
+    ORDER BY COUNT(*) DESC
   `
 
   // ── Query 7: situação do estoque ──────────────────────────────────────────
@@ -287,11 +287,14 @@ export const getDashboardTvCompras = async () => {
                        AND (qtde_estoque_maximo = 0 OR saldo_estoque <= qtde_estoque_maximo)
                   THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS ideal_pct,
       ROUND(COUNT(CASE WHEN saldo_estoque > 0
-                       AND (qtde_estoque_minimo = 0 OR saldo_estoque < qtde_estoque_minimo)
+                       AND qtde_estoque_minimo > 0
+                       AND saldo_estoque < qtde_estoque_minimo
                   THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS baixo_pct,
       ROUND(COUNT(CASE WHEN qtde_estoque_maximo > 0
                        AND saldo_estoque > qtde_estoque_maximo
-                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS alto_pct
+                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS alto_pct,
+      ROUND(COUNT(CASE WHEN saldo_estoque <= 0
+                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS zero_pct
     FROM vs_scc_festoques
   `
 
@@ -469,19 +472,18 @@ export const getDashboardTvCompras = async () => {
   const series = toSeries(r3.rows)
   const seriesAnt = toSeries(r4.rows)
 
-  // ── Ruptura e situação ────────────────────────────────────────────────────
+  // ── Ruptura por comprador ─────────────────────────────────────────────────
   const ruptura = r6.rows.map((r: any) => ({
-    produto:      r.produto,
-    codgrp:       String(r.codgrp).trim(),
-    facing:       safe(r.facing),
-    saldoestoque: safe(r.saldoestoque),
+    comprador:  r.comprador,
+    qtdRuptura: safe(r.qtd_ruptura),
   }))
 
   const sit = r7.rows[0] ?? {}
   const situacaoEstoque = {
     idealPct: safe(sit.ideal_pct),
     baixoPct: safe(sit.baixo_pct),
-    altoPct: safe(sit.alto_pct),
+    altoPct:  safe(sit.alto_pct),
+    zeroPct:  safe(sit.zero_pct),
   }
 
   const kpis = {
@@ -502,7 +504,11 @@ export const getDashboardTvCompras = async () => {
     evolucao,
     // sem evolucaoMeta (regra 6)
 
-    diasEstoque: safe(gm.dias_estoque),
+    // Média simples dos dias por grupo (evita distorção do SUM/SUM global)
+    diasEstoque: (() => {
+      const vals = Array.from(metricsGrupoMap.values()).map(m => m.diasEstoque).filter(d => d > 0)
+      return vals.length > 0 ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : safe(gm.dias_estoque)
+    })(),
     diasEstoqueMeta: 45,
     diasEstoqueVsMesAnterior: null as number | null,
 

@@ -157,26 +157,36 @@ function Donut({
   const cx = w / 2, cy = h / 2 - 10, r = 48, ri = 30
   let angle = -Math.PI / 2
   const arcs: JSX.Element[] = []
-  const total = slices.reduce((s, sl) => s + sl.pct, 0) || 100
+  const total = slices.reduce((s, sl) => s + sl.pct, 0)
+
+  if (!total) return (
+    <svg width={w} height={h}>
+      <text x={cx} y={cy + 6} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
+    </svg>
+  )
 
   slices.forEach((sl, i) => {
-    const sweep = (sl.pct / total) * 2 * Math.PI - 0.02
-    const x1 = cx + r * Math.cos(angle);       const y1 = cy + r * Math.sin(angle)
-    const x2 = cx + r * Math.cos(angle + sweep); const y2 = cy + r * Math.sin(angle + sweep)
-    const xi1 = cx + ri * Math.cos(angle);      const yi1 = cy + ri * Math.sin(angle)
-    const xi2 = cx + ri * Math.cos(angle + sweep); const yi2 = cy + ri * Math.sin(angle + sweep)
-    const lg = sweep > Math.PI ? 1 : 0
+    if (sl.pct <= 0) { angle; return }
+    const sweep = (sl.pct / total) * 2 * Math.PI
+    const gap = 0.02
+    const s = sweep - gap
+    if (s <= 0) return
+    const x1 = cx + r * Math.cos(angle);         const y1 = cy + r * Math.sin(angle)
+    const x2 = cx + r * Math.cos(angle + s);     const y2 = cy + r * Math.sin(angle + s)
+    const xi1 = cx + ri * Math.cos(angle);       const yi1 = cy + ri * Math.sin(angle)
+    const xi2 = cx + ri * Math.cos(angle + s);   const yi2 = cy + ri * Math.sin(angle + s)
+    const lg = s > Math.PI ? 1 : 0
     arcs.push(
       <path key={i} d={`M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${lg},1,${x2.toFixed(1)},${y2.toFixed(1)} L${xi2.toFixed(1)},${yi2.toFixed(1)} A${ri},${ri},0,${lg},0,${xi1.toFixed(1)},${yi1.toFixed(1)} Z`}
         fill={sl.color} />
     )
-    angle += sweep + 0.02
+    angle += sweep
   })
 
   return (
     <svg width={w} height={h}>
       {arcs}
-      {slices.map((sl, i) => (
+      {slices.filter(sl => sl.pct > 0).map((sl, i) => (
         <g key={i}>
           <rect x={4} y={h - 28 + i * 14} width={8} height={8} rx="2" fill={sl.color} />
           <text x={16} y={h - 22 + i * 14} fill={C.text} fontSize={9}>{sl.label}: {sl.pct}%</text>
@@ -340,8 +350,7 @@ export default function TvCompras() {
   const minAgo   = lastUpdate ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000) : null
 
   const compByVenda = [...comps].sort((a, b) => b.vendaRealizado - a.vendaRealizado)
-  const top5    = compByVenda.slice(0, 5)
-  const bottom5 = [...comps].sort((a, b) => a.vendaPercentualMeta - b.vendaPercentualMeta).slice(0, 5)
+  const top5 = compByVenda.slice(0, 5)
 
   const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "4px 6px", whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }
   const td: React.CSSProperties = { color: C.text, fontSize: 11, padding: "4px 6px", borderBottom: `1px solid ${C.dim}` }
@@ -590,77 +599,57 @@ export default function TvCompras() {
             { label: "Ideal (Ok)",   pct: Math.round(safe(sit.idealPct)), color: C.green },
             { label: "Baixo (<Mín)", pct: Math.round(safe(sit.baixoPct)), color: C.orange },
             { label: "Alto (>Máx)",  pct: Math.round(safe(sit.altoPct)),  color: C.red },
-          ]} w={160} h={150} />
+            { label: "Sem estoque",  pct: Math.round(safe(sit.zeroPct)),  color: C.muted },
+          ]} w={160} h={164} />
         </div>
 
-        {/* Produtos em Ruptura */}
+        {/* Produtos em Ruptura por Comprador */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
-          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⛔ PRODUTOS EM RUPTURA</div>
+          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⛔ RUPTURA POR COMPRADOR</div>
+          {ruptura.length > 0 ? (() => {
+            const maxQtd = Math.max(...ruptura.map((r: any) => safe(r.qtdRuptura)), 1)
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {ruptura.map((r: any, i: number) => {
+                  const qtd = safe(r.qtdRuptura)
+                  const pct = (qtd / maxQtd) * 100
+                  const color = qtd >= 20 ? C.red : qtd >= 10 ? C.orange : C.yellow
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ color: C.text, fontSize: 10, width: 80, flexShrink: 0, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                        {r.comprador.split(" ")[0]}
+                      </span>
+                      <div style={{ flex: 1, height: 8, background: C.dim, borderRadius: 4 }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 4 }} />
+                      </div>
+                      <span style={{ color, fontWeight: 700, fontSize: 11, width: 28, textAlign: "right", flexShrink: 0 }}>{qtd}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })() : <div style={{ fontSize: 11, color: C.green }}>✓ Sem rupturas</div>}
+        </div>
+
+        {/* TOP 5 */}
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>🏆 TOP 5 GRUPOS — VENDAS (R$)</div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
-              <th style={th}>Produto</th>
-              <th style={th}>Grp</th>
-              <th style={{ ...th, textAlign: "right" }}>Facing</th>
-              <th style={{ ...th, textAlign: "right" }}>Saldo</th>
+              <th style={th}>Comprador</th>
+              <th style={{ ...th, textAlign: "right" }}>Vendas</th>
+              <th style={th}>Atingimento</th>
             </tr></thead>
             <tbody>
-              {ruptura.length > 0 ? ruptura.map((r: any, i: number) => (
-                <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
-                  <td style={{ ...td, fontSize: 10 }}>{r.produto}</td>
-                  <td style={tdN}>{r.codgrp}</td>
-                  <td style={{ ...td, textAlign: "right", color: C.orange, fontWeight: 700, fontSize: 11 }}>
-                    {safe(r.facing).toFixed(0)}
-                  </td>
-                  <td style={{ ...td, textAlign: "right", color: C.red, fontWeight: 700, fontSize: 11 }}>
-                    {safe(r.saldoestoque).toFixed(0)}
-                  </td>
+              {top5.map((c: any, i: number) => (
+                <tr key={i}>
+                  <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]} ({c.grupos})</td>
+                  <td style={{ ...td, textAlign: "right", fontSize: 11 }}>{fmtR$(safe(c.vendaRealizado))}</td>
+                  <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
                 </tr>
-              )) : <tr><td colSpan={4} style={{ ...td, textAlign: "center", color: C.green }}>✓ Sem rupturas</td></tr>}
+              ))}
             </tbody>
           </table>
-        </div>
-
-        {/* TOP 5 e BOTTOM 5 */}
-        <div style={{ flex: 3, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
-            <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>🏆 TOP 5 GRUPOS — VENDAS (R$)</div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr>
-                <th style={th}>Comprador</th>
-                <th style={{ ...th, textAlign: "right" }}>Vendas</th>
-                <th style={th}>Atingimento</th>
-              </tr></thead>
-              <tbody>
-                {top5.map((c: any, i: number) => (
-                  <tr key={i}>
-                    <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]} ({c.grupos})</td>
-                    <td style={{ ...td, textAlign: "right", fontSize: 11 }}>{fmtR$(safe(c.vendaRealizado))}</td>
-                    <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
-            <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⚠ BOTTOM 5 — ATINGIMENTO</div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr>
-                <th style={th}>Comprador</th>
-                <th style={{ ...th, textAlign: "right" }}>Vendas</th>
-                <th style={th}>Atingimento</th>
-              </tr></thead>
-              <tbody>
-                {bottom5.map((c: any, i: number) => (
-                  <tr key={i}>
-                    <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]} ({c.grupos})</td>
-                    <td style={{ ...td, textAlign: "right", fontSize: 11 }}>{fmtR$(safe(c.vendaRealizado))}</td>
-                    <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
 
