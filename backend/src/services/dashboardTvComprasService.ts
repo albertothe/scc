@@ -3,41 +3,48 @@ import pool from "../config/database"
 const safe = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
 export const getDashboardTvCompras = async () => {
-  // ── Query 1: compradores (inclui valores absolutos para agregação) ─────────
+
+  // ── Query 1: compradores (apenas grupos com meta no mês/ano atual) ───────────
   const queryCompradores = `
     WITH
+    grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    ),
+    dias_mes AS (
+      SELECT
+        EXTRACT(DAY FROM CURRENT_DATE)::int AS dias_decorridos,
+        EXTRACT(DAY FROM (date_trunc('month', CURRENT_DATE)
+                          + interval '1 month' - interval '1 day')::date)::int AS total_dias
+    ),
     grupos_ativos AS (
       SELECT TRIM(cg.codgrp) AS codgrp, c.nome AS comprador, cg.comprador_id
       FROM scc_comprador_grupo cg
       JOIN scc_compradores c ON c.id = cg.comprador_id
       WHERE cg.dt_fim IS NULL
+        AND TRIM(cg.codgrp) IN (SELECT codgrp FROM grupos_meta)
     ),
-    dias_atual AS (
-      SELECT TRIM(codgrp) AS codgrp, COUNT(DISTINCT data) AS qtd
-      FROM vs_scc_vendas_devolucoes
-      WHERE data BETWEEN date_trunc('month', CURRENT_DATE)::date AND CURRENT_DATE
-      GROUP BY TRIM(codgrp)
-    ),
-    dias_mes_base AS (
-      SELECT TRIM(codgrp) AS codgrp, COUNT(DISTINCT data) AS qtd
-      FROM vs_scc_vendas_devolucoes
-      WHERE data BETWEEN date_trunc('month', CURRENT_DATE - interval '1 year')::date
-                     AND (date_trunc('month', CURRENT_DATE - interval '1 year')
-                          + interval '1 month' - interval '1 day')::date
+    nomes_grupo AS (
+      SELECT TRIM(codgrp) AS codgrp, MIN(grupo) AS grupo
+      FROM vs_scc_dgrupos
       GROUP BY TRIM(codgrp)
     ),
     vendas_atual AS (
       SELECT
         TRIM(codgrp) AS codgrp,
-        SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0))          AS venda,
+        SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0))              AS venda,
+        SUM(COALESCE(vlr_total_vendas_bruta, 0))                                                   AS venda_bruta,
         SUM(COALESCE(vlr_total_vendas_bruta, 0)
           - COALESCE(vlr_custos_vendas, 0)
-          - COALESCE(vlr_impostos_vendas, 0))                                                  AS lb,
+          - COALESCE(vlr_impostos_vendas, 0))                                                      AS lb_valor,
         SUM(CASE WHEN tipo IN ('FORA','ENCO')
                  THEN COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)
-                 ELSE 0 END)                                                                    AS venda_fora
+                 ELSE 0 END)                                                                       AS venda_fora
       FROM vs_scc_vendas_devolucoes
       WHERE data BETWEEN date_trunc('month', CURRENT_DATE)::date AND CURRENT_DATE
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
       GROUP BY TRIM(codgrp)
     ),
     vendas_ano_passado AS (
@@ -47,164 +54,208 @@ export const getDashboardTvCompras = async () => {
       FROM vs_scc_vendas_devolucoes
       WHERE data BETWEEN date_trunc('month', CURRENT_DATE - interval '1 year')::date
                      AND (CURRENT_DATE - interval '1 year')::date
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
       GROUP BY TRIM(codgrp)
     )
     SELECT
       ga.comprador,
       ga.codgrp,
-      ga.comprador_id,
-      -- valores absolutos para agregação no TypeScript
-      COALESCE(va.venda, 0)      AS venda_realizado,
-      COALESCE(va.lb, 0)         AS lb_realizado,
-      COALESCE(va.venda_fora, 0) AS venda_fora_realizado,
-      COALESCE(vap.venda, 0)     AS venda_ano_passado,
-      -- meta ajustada por pro-rata
-      ROUND(
-        CASE WHEN COALESCE(db.qtd, 0) = 0 THEN COALESCE(m.meta_vendas, 0)
-             ELSE COALESCE(m.meta_vendas, 0) * COALESCE(da.qtd, 0)::numeric / NULLIF(db.qtd, 0)
-        END, 0) AS meta_vendas_ajustada,
-      COALESCE(m.meta_lb, 0) AS meta_lb,
-      ROUND(
-        CASE WHEN COALESCE(db.qtd, 0) = 0 THEN COALESCE(m.meta_produtos_fora, 0)
-             ELSE COALESCE(m.meta_produtos_fora, 0) * COALESCE(da.qtd, 0)::numeric / NULLIF(db.qtd, 0)
-        END, 0) AS meta_produtos_fora_ajustada
+      COALESCE(ng.grupo, ga.codgrp)  AS grupo_nome,
+      COALESCE(va.venda, 0)          AS venda_realizado,
+      COALESCE(va.venda_bruta, 0)    AS venda_bruta,
+      COALESCE(va.lb_valor, 0)       AS lb_realizado,
+      COALESCE(va.venda_fora, 0)     AS venda_fora_realizado,
+      COALESCE(vap.venda, 0)         AS venda_ano_passado,
+      COALESCE(ROUND(m.meta_vendas        * dm.dias_decorridos::numeric / NULLIF(dm.total_dias, 0), 0), 0) AS meta_vendas_ajustada,
+      COALESCE(m.meta_lb, 0)         AS meta_lb,
+      COALESCE(ROUND(m.meta_produtos_fora * dm.dias_decorridos::numeric / NULLIF(dm.total_dias, 0), 0), 0) AS meta_produtos_fora_ajustada,
+      COALESCE(m.meta_nivel_servico, 97)  AS meta_nivel_servico,
+      COALESCE(m.meta_dias_estoque, 45)   AS meta_dias_estoque
     FROM grupos_ativos ga
-    LEFT JOIN vendas_atual       va  ON va.codgrp  = ga.codgrp
-    LEFT JOIN vendas_ano_passado vap ON vap.codgrp = ga.codgrp
-    LEFT JOIN dias_atual         da  ON da.codgrp  = ga.codgrp
-    LEFT JOIN dias_mes_base      db  ON db.codgrp  = ga.codgrp
+    CROSS JOIN dias_mes dm
+    LEFT JOIN nomes_grupo ng ON ng.codgrp = ga.codgrp
     LEFT JOIN scc_metas_compradores m
       ON  m.comprador_id = ga.comprador_id
       AND TRIM(m.codgrp) = ga.codgrp
       AND m.mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
       AND m.ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    LEFT JOIN vendas_atual       va  ON va.codgrp  = ga.codgrp
+    LEFT JOIN vendas_ano_passado vap ON vap.codgrp = ga.codgrp
     ORDER BY ga.comprador, ga.codgrp
   `
 
   // ── Query 2: KPIs globais ─────────────────────────────────────────────────
   const queryGlobal = `
     WITH
+    grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    ),
+    dias_mes AS (
+      SELECT
+        EXTRACT(DAY FROM CURRENT_DATE)::int AS dias_decorridos,
+        EXTRACT(DAY FROM (date_trunc('month', CURRENT_DATE)
+                          + interval '1 month' - interval '1 day')::date)::int AS total_dias
+    ),
     va AS (
       SELECT
-        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)), 0)   AS venda,
-        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta, 0)
-                   - COALESCE(vlr_custos_vendas, 0)
-                   - COALESCE(vlr_impostos_vendas, 0)), 0)                                           AS lb,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)), 0) AS venda,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)), 0)                                     AS venda_bruta,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)
+                   - COALESCE(vlr_custos_vendas,0)
+                   - COALESCE(vlr_impostos_vendas,0)), 0)                                        AS lb_valor,
         COALESCE(SUM(CASE WHEN tipo IN ('FORA','ENCO')
-                     THEN COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)
-                     ELSE 0 END), 0)                                                                 AS venda_fora,
-        COALESCE(SUM(COALESCE(vlr_custos_vendas, 0)), 0)                                             AS custo_total,
-        COUNT(DISTINCT data)                                                                         AS dias_com_venda
+                     THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
+                     ELSE 0 END), 0)                                                             AS venda_fora
       FROM vs_scc_vendas_devolucoes
       WHERE data BETWEEN date_trunc('month', CURRENT_DATE)::date AND CURRENT_DATE
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
     ),
     vant AS (
       SELECT
-        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)), 0)   AS venda,
-        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta, 0)
-                   - COALESCE(vlr_custos_vendas, 0)
-                   - COALESCE(vlr_impostos_vendas, 0)), 0)                                           AS lb,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)), 0) AS venda,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)), 0)                                     AS venda_bruta,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)
+                   - COALESCE(vlr_custos_vendas,0)
+                   - COALESCE(vlr_impostos_vendas,0)), 0)                                        AS lb_valor,
         COALESCE(SUM(CASE WHEN tipo IN ('FORA','ENCO')
-                     THEN COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)
-                     ELSE 0 END), 0)                                                                 AS venda_fora
+                     THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
+                     ELSE 0 END), 0)                                                             AS venda_fora
       FROM vs_scc_vendas_devolucoes
       WHERE data BETWEEN
-        date_trunc('month', CURRENT_DATE - interval '1 month')::date
-        AND (CURRENT_DATE - interval '1 month')::date
+          date_trunc('month', CURRENT_DATE - interval '1 month')::date
+          AND (CURRENT_DATE - interval '1 month')::date
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
+    ),
+    vap AS (
+      SELECT
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)), 0) AS venda,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)), 0)                                     AS venda_bruta,
+        COALESCE(SUM(COALESCE(vlr_total_vendas_bruta,0)
+                   - COALESCE(vlr_custos_vendas,0)
+                   - COALESCE(vlr_impostos_vendas,0)), 0)                                        AS lb_valor
+      FROM vs_scc_vendas_devolucoes
+      WHERE data BETWEEN date_trunc('month', CURRENT_DATE - interval '1 year')::date
+                     AND (CURRENT_DATE - interval '1 year')::date
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
     ),
     metas AS (
       SELECT
-        COALESCE(SUM(m.meta_vendas), 0)        AS meta_vendas,
-        COALESCE(SUM(m.meta_produtos_fora), 0) AS meta_produtos_fora,
-        COALESCE(AVG(m.meta_lb), 0)            AS meta_lb_media
-      FROM scc_comprador_grupo cg
-      JOIN scc_compradores c ON c.id = cg.comprador_id
-      JOIN scc_metas_compradores m
-        ON  m.comprador_id = cg.comprador_id
-        AND TRIM(m.codgrp) = TRIM(cg.codgrp)
-        AND m.mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
-        AND m.ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
-      WHERE cg.dt_fim IS NULL
+        COALESCE(SUM(meta_vendas), 0)        AS meta_vendas,
+        COALESCE(SUM(meta_produtos_fora), 0) AS meta_produtos_fora,
+        COALESCE(AVG(meta_lb), 0)            AS meta_lb_media
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
     ),
     ns AS (
-      SELECT ROUND(COUNT(CASE WHEN saldo_estoque > 0 THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 1) AS nivel_servico
-      FROM vs_scc_festoques
+      SELECT
+        ROUND(COUNT(CASE WHEN facing > 0 AND saldoestoque > 0 THEN 1 END)::numeric
+              / NULLIF(COUNT(CASE WHEN facing > 0 THEN 1 END), 0) * 100, 1) AS nivel_servico
+      FROM vs_scc_estoque_media_facing
+      WHERE TRIM(codgrupo) IN (SELECT codgrp FROM grupos_meta)
     ),
-    est AS (
-      SELECT COALESCE(SUM(GREATEST(saldo_estoque, 0) * COALESCE(NULLIF(prc_custo_medio, 0), prc_custo, 0)), 0) AS valor_estoque
-      FROM vs_scc_festoques
+    dias_est AS (
+      SELECT
+        ROUND(SUM(CASE WHEN mediadia > 0 THEN saldoestoque ELSE 0 END)
+              / NULLIF(SUM(CASE WHEN mediadia > 0 THEN mediadia ELSE 0 END), 0), 0) AS dias_estoque
+      FROM vs_scc_estoque_media_facing
+      WHERE TRIM(codgrupo) IN (SELECT codgrp FROM grupos_meta)
     )
     SELECT
+      va.venda                AS vendas_valor,
+      va.venda_bruta,
+      va.lb_valor,
+      va.venda_fora           AS produtos_fora_valor,
+      vant.venda              AS vendas_mes_anterior,
+      vant.venda_bruta        AS venda_bruta_mes_anterior,
+      vant.lb_valor           AS lb_valor_mes_anterior,
+      vant.venda_fora         AS produtos_fora_mes_anterior,
+      vap.venda               AS vendas_ano_passado,
       ns.nivel_servico,
-      ROUND(est.valor_estoque / NULLIF(va.custo_total::numeric / NULLIF(va.dias_com_venda, 0), 0), 0) AS dias_estoque,
-      va.venda       AS vendas_valor,
-      va.lb          AS lb_valor,
-      va.venda_fora  AS produtos_fora_valor,
-      vant.venda     AS vendas_ant_valor,
-      vant.lb        AS lb_ant_valor,
-      vant.venda_fora AS produtos_fora_ant_valor,
-      ROUND(va.lb   / NULLIF(va.venda,   0) * 100, 1) AS lb_pct,
-      ROUND(vant.lb / NULLIF(vant.venda, 0) * 100, 1) AS lb_ant_pct,
+      dias_est.dias_estoque,
       metas.meta_vendas,
       metas.meta_produtos_fora,
-      metas.meta_lb_media
-    FROM va, vant, metas, ns, est
+      metas.meta_lb_media,
+      dm.dias_decorridos,
+      dm.total_dias
+    FROM va, vant, vap, metas, ns, dias_est
+    CROSS JOIN dias_mes dm
   `
 
-  // ── Query 3: série diária mês atual ──────────────────────────────────────
+  // ── Query 3: série diária mês atual ───────────────────────────────────────
   const querySeries = `
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    )
     SELECT
       data::date AS dia,
-      SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0))               AS venda,
-      SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_custos_vendas, 0) - COALESCE(vlr_impostos_vendas, 0)) AS lb,
+      SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0))              AS venda,
+      SUM(COALESCE(vlr_total_vendas_bruta,0))                                                   AS venda_bruta,
+      SUM(COALESCE(vlr_total_vendas_bruta,0)
+        - COALESCE(vlr_custos_vendas,0)
+        - COALESCE(vlr_impostos_vendas,0))                                                      AS lb_valor,
       SUM(CASE WHEN tipo IN ('FORA','ENCO')
-               THEN COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)
-               ELSE 0 END)                                                                        AS produtos_fora
+               THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
+               ELSE 0 END)                                                                      AS produtos_fora
     FROM vs_scc_vendas_devolucoes
     WHERE data >= date_trunc('month', CURRENT_DATE)::date AND data <= CURRENT_DATE
+      AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
     GROUP BY data::date ORDER BY data::date
   `
 
-  // ── Query 4: série diária mês anterior (mesmo período) ───────────────────
+  // ── Query 4: série diária mesmo mês ano passado ───────────────────────────
   const querySeriesAnt = `
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    )
     SELECT
       data::date AS dia,
-      SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0))               AS venda,
-      SUM(COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_custos_vendas, 0) - COALESCE(vlr_impostos_vendas, 0)) AS lb,
+      SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0))              AS venda,
+      SUM(COALESCE(vlr_total_vendas_bruta,0))                                                   AS venda_bruta,
+      SUM(COALESCE(vlr_total_vendas_bruta,0)
+        - COALESCE(vlr_custos_vendas,0)
+        - COALESCE(vlr_impostos_vendas,0))                                                      AS lb_valor,
       SUM(CASE WHEN tipo IN ('FORA','ENCO')
-               THEN COALESCE(vlr_total_vendas_bruta, 0) - COALESCE(vlr_total_devolucoes, 0)
-               ELSE 0 END)                                                                        AS produtos_fora
+               THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
+               ELSE 0 END)                                                                      AS produtos_fora
     FROM vs_scc_vendas_devolucoes
-    WHERE data BETWEEN
-      date_trunc('month', CURRENT_DATE - interval '1 month')::date
-      AND (CURRENT_DATE - interval '1 month')::date
+    WHERE data BETWEEN date_trunc('month', CURRENT_DATE - interval '1 year')::date
+                   AND (date_trunc('month', CURRENT_DATE - interval '1 year')
+                        + interval '1 month' - interval '1 day')::date
+      AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
     GROUP BY data::date ORDER BY data::date
   `
 
-  // ── Query 5: nível de serviço e dias de estoque por grupo ─────────────────
+  // ── Query 5: NS e dias de estoque por grupo (vs_scc_estoque_media_facing) ──
   const queryMetricsGrupo = `
-    WITH custo_grupo AS (
-      SELECT TRIM(codgrp) AS codgrp,
-             SUM(COALESCE(vlr_custos_vendas, 0)) / NULLIF(COUNT(DISTINCT data), 0) AS custo_por_dia
-      FROM vs_scc_vendas_devolucoes
-      WHERE data BETWEEN date_trunc('month', CURRENT_DATE)::date AND CURRENT_DATE
-      GROUP BY TRIM(codgrp)
-    ),
-    est_grupo AS (
-      SELECT
-        TRIM(codgrupo) AS codgrupo,
-        ROUND(COUNT(CASE WHEN saldo_estoque > 0 THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 1) AS nivel_servico,
-        COALESCE(SUM(GREATEST(saldo_estoque, 0) * COALESCE(NULLIF(prc_custo_medio, 0), prc_custo, 0)), 0) AS valor_estoque
-      FROM vs_scc_festoques
-      GROUP BY TRIM(codgrupo)
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
     )
-    SELECT eg.codgrupo, eg.nivel_servico,
-           ROUND(eg.valor_estoque / NULLIF(cg.custo_por_dia, 0), 0) AS dias_estoque
-    FROM est_grupo eg
-    LEFT JOIN custo_grupo cg ON cg.codgrp = eg.codgrupo
+    SELECT
+      TRIM(ef.codgrupo) AS codgrp,
+      ROUND(COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
+            / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 1) AS nivel_servico,
+      ROUND(SUM(CASE WHEN ef.mediadia > 0 THEN ef.saldoestoque ELSE 0 END)
+            / NULLIF(SUM(CASE WHEN ef.mediadia > 0 THEN ef.mediadia ELSE 0 END), 0), 0) AS dias_estoque
+    FROM vs_scc_estoque_media_facing ef
+    WHERE TRIM(ef.codgrupo) IN (SELECT codgrp FROM grupos_meta)
+    GROUP BY TRIM(ef.codgrupo)
   `
 
-  // ── Query 6: produtos em ruptura (saldo <= 0) ─────────────────────────────
+  // ── Query 6: produtos em ruptura ──────────────────────────────────────────
   const queryRuptura = `
     SELECT
       pro.c_descricao AS produto,
@@ -248,56 +299,73 @@ export const getDashboardTvCompras = async () => {
     pool.query(querySituacao),
   ])
 
-  // ── Agrupa compradores (múltiplos grupos → 1 linha por comprador) ─────────
+  // ── Mapa de métricas por grupo ────────────────────────────────────────────
   const metricsGrupoMap = new Map<string, { nivelServico: number; diasEstoque: number }>()
   for (const row of r5.rows) {
-    metricsGrupoMap.set(String(row.codgrupo).trim(), {
+    metricsGrupoMap.set(String(row.codgrp).trim(), {
       nivelServico: safe(row.nivel_servico),
       diasEstoque:  safe(row.dias_estoque),
     })
   }
 
+  // ── Agrega compradores (múltiplos grupos → 1 linha por comprador) ─────────
   interface CompRow {
     comprador: string
     grupos: string[]
+    grupoNomes: string[]
     vendaRealizado: number
+    vendaBruta: number
     lbRealizado: number
     vendaForaRealizado: number
     vendaAnoPassado: number
     metaVendasAjustada: number
-    metaLb: number
+    metaLbSum: number
     metaProdutosForaAjustada: number
+    metaNivelServicoSum: number
+    metaDiasEstoqueSum: number
+    groupCount: number
     nivelServico: number | null
     diasEstoque: number | null
   }
 
   const compMap = new Map<string, CompRow>()
   for (const row of r1.rows) {
-    const key = row.comprador
+    const key      = row.comprador
+    const codgrp   = String(row.codgrp).trim()
+    const grupoNome = String(row.grupo_nome || row.codgrp).trim()
+
     if (compMap.has(key)) {
       const c = compMap.get(key)!
-      c.grupos.push(String(row.codgrp).trim())
-      c.vendaRealizado       += safe(row.venda_realizado)
-      c.lbRealizado          += safe(row.lb_realizado)
-      c.vendaForaRealizado   += safe(row.venda_fora_realizado)
-      c.vendaAnoPassado      += safe(row.venda_ano_passado)
-      c.metaVendasAjustada   += safe(row.meta_vendas_ajustada)
-      c.metaProdutosForaAjustada += safe(row.meta_produtos_fora_ajustada)
-      // meta_lb: média simples entre grupos
-      c.metaLb = (c.metaLb + safe(row.meta_lb)) / 2
+      c.grupos.push(codgrp)
+      c.grupoNomes.push(grupoNome)
+      c.vendaRealizado            += safe(row.venda_realizado)
+      c.vendaBruta                += safe(row.venda_bruta)
+      c.lbRealizado               += safe(row.lb_realizado)
+      c.vendaForaRealizado        += safe(row.venda_fora_realizado)
+      c.vendaAnoPassado           += safe(row.venda_ano_passado)
+      c.metaVendasAjustada        += safe(row.meta_vendas_ajustada)
+      c.metaLbSum                 += safe(row.meta_lb)
+      c.metaProdutosForaAjustada  += safe(row.meta_produtos_fora_ajustada)
+      c.metaNivelServicoSum       += safe(row.meta_nivel_servico)
+      c.metaDiasEstoqueSum        += safe(row.meta_dias_estoque)
+      c.groupCount++
     } else {
-      const codgrp = String(row.codgrp).trim()
       const mg = metricsGrupoMap.get(codgrp)
       compMap.set(key, {
-        comprador: row.comprador,
-        grupos: [codgrp],
-        vendaRealizado:         safe(row.venda_realizado),
-        lbRealizado:            safe(row.lb_realizado),
-        vendaForaRealizado:     safe(row.venda_fora_realizado),
-        vendaAnoPassado:        safe(row.venda_ano_passado),
-        metaVendasAjustada:     safe(row.meta_vendas_ajustada),
-        metaLb:                 safe(row.meta_lb),
+        comprador:               row.comprador,
+        grupos:                  [codgrp],
+        grupoNomes:              [grupoNome],
+        vendaRealizado:          safe(row.venda_realizado),
+        vendaBruta:              safe(row.venda_bruta),
+        lbRealizado:             safe(row.lb_realizado),
+        vendaForaRealizado:      safe(row.venda_fora_realizado),
+        vendaAnoPassado:         safe(row.venda_ano_passado),
+        metaVendasAjustada:      safe(row.meta_vendas_ajustada),
+        metaLbSum:               safe(row.meta_lb),
         metaProdutosForaAjustada: safe(row.meta_produtos_fora_ajustada),
+        metaNivelServicoSum:     safe(row.meta_nivel_servico),
+        metaDiasEstoqueSum:      safe(row.meta_dias_estoque),
+        groupCount:              1,
         nivelServico: mg ? mg.nivelServico : null,
         diasEstoque:  mg ? mg.diasEstoque  : null,
       })
@@ -305,18 +373,25 @@ export const getDashboardTvCompras = async () => {
   }
 
   const compradores = Array.from(compMap.values()).map((c) => {
+    const gc   = c.groupCount || 1
+    const metaLb           = c.metaLbSum / gc
+    const metaNivelServico = c.metaNivelServicoSum / gc
+    const metaDiasEstoque  = c.metaDiasEstoqueSum / gc
+
     const vendaMeta    = c.metaVendasAjustada > 0 ? (c.vendaRealizado / c.metaVendasAjustada) * 100 : 0
-    const lbPct        = c.vendaRealizado > 0 ? (c.lbRealizado / c.vendaRealizado) * 100 : 0
+    // LB%: divide por venda_bruta (regra 5)
+    const lbPct        = c.vendaBruta > 0 ? (c.lbRealizado / c.vendaBruta) * 100 : 0
+    // Evolução: vs mesmo período ano passado (regra 6)
     const evolucao     = c.vendaAnoPassado > 0 ? (c.vendaRealizado / c.vendaAnoPassado - 1) * 100 : 0
-    const produtosForaPct = c.metaProdutosForaAjustada > 0 ? (c.vendaForaRealizado / c.metaProdutosForaAjustada) * 100 : 0
+    const produtosForaPct = c.metaProdutosForaAjustada > 0
+      ? (c.vendaForaRealizado / c.metaProdutosForaAjustada) * 100 : 0
 
     const status =
       vendaMeta >= 105 ? "ACIMA DA META" :
         vendaMeta >= 100 ? "DENTRO DA META" :
           vendaMeta >= 90 ? "ATENÇÃO" : "ABAIXO DA META"
 
-    // Para múltiplos grupos: média ponderada de NS e dias
-    let nsMedia = c.nivelServico
+    let nsMedia   = c.nivelServico
     let diasMedia = c.diasEstoque
     if (c.grupos.length > 1) {
       const vals = c.grupos.map((g) => metricsGrupoMap.get(g)).filter(Boolean)
@@ -327,17 +402,17 @@ export const getDashboardTvCompras = async () => {
     }
 
     return {
-      comprador: c.comprador,
-      grupos: c.grupos.join(", "),
+      comprador:          c.comprador,
+      grupos:             c.grupoNomes.join(", "),
       vendaRealizado:     Math.round(c.vendaRealizado),
       metaVendasAjustada: Math.round(c.metaVendasAjustada),
       vendaPercentualMeta: Number(vendaMeta.toFixed(1)),
       lbPercentual:       Number(lbPct.toFixed(1)),
-      metaLb:             Number(c.metaLb.toFixed(1)),
+      metaLb:             Number(metaLb.toFixed(1)),
       nivelServico:       nsMedia !== null ? Number(nsMedia!.toFixed(1)) : null,
-      nivelServicoMeta:   97,
+      nivelServicoMeta:   Math.round(metaNivelServico),
       diasEstoque:        diasMedia !== null ? Math.round(diasMedia!) : null,
-      diasEstoqueMeta:    45,
+      diasEstoqueMeta:    Math.round(metaDiasEstoque),
       evolucaoPercentual: Number(evolucao.toFixed(1)),
       vendaForaRealizado: Math.round(c.vendaForaRealizado),
       metaProdutosFora:   Math.round(c.metaProdutosForaAjustada),
@@ -346,89 +421,95 @@ export const getDashboardTvCompras = async () => {
     }
   }).sort((a, b) => a.vendaPercentualMeta - b.vendaPercentualMeta)
 
-  // ── Global metrics ────────────────────────────────────────────────────────
+  // ── KPIs globais ──────────────────────────────────────────────────────────
   const gm = r2.rows[0] ?? {}
-  const vendasValor       = safe(gm.vendas_valor)
-  const vendasAnt         = safe(gm.vendas_ant_valor)
-  const lbPct             = safe(gm.lb_pct)
-  const lbAntPct          = safe(gm.lb_ant_pct)
-  const produtosForaValor = safe(gm.produtos_fora_valor)
-  const produtosForaAnt   = safe(gm.produtos_fora_ant_valor)
+  const vendasValor        = safe(gm.vendas_valor)
+  const vendaBruta         = safe(gm.venda_bruta)
+  const lbValor            = safe(gm.lb_valor)
+  const produtosForaValor  = safe(gm.produtos_fora_valor)
+  const vendasMesAnt       = safe(gm.vendas_mes_anterior)
+  const vendaBrutaAnt      = safe(gm.venda_bruta_mes_anterior)
+  const lbValorAnt         = safe(gm.lb_valor_mes_anterior)
+  const produtosForaAnt    = safe(gm.produtos_fora_mes_anterior)
+  const vendasAnoPassado   = safe(gm.vendas_ano_passado)
+  const diasDecorridos     = safe(gm.dias_decorridos)
+  const totalDias          = safe(gm.total_dias)
+
+  // LB%: divide por bruta (regra 5)
+  const lbPct    = vendaBruta    > 0 ? lbValor    / vendaBruta    * 100 : 0
+  const lbAntPct = vendaBrutaAnt > 0 ? lbValorAnt / vendaBrutaAnt * 100 : 0
+
+  // Meta pro-rata por dias corridos (regra 4)
+  const metaVendasAjustada       = totalDias > 0
+    ? Math.round(safe(gm.meta_vendas)        * diasDecorridos / totalDias) : safe(gm.meta_vendas)
+  const metaProdutosForaAjustada = totalDias > 0
+    ? Math.round(safe(gm.meta_produtos_fora) * diasDecorridos / totalDias) : safe(gm.meta_produtos_fora)
+
+  // Evolução vs ano passado (regra 6 — sem meta)
+  const evolucao = vendasAnoPassado > 0
+    ? Number(((vendasValor / vendasAnoPassado - 1) * 100).toFixed(1))
+    : (null as number | null)
 
   // ── Séries diárias ────────────────────────────────────────────────────────
   const toSeries = (rows: any[]) =>
-    rows.map((r) => ({ dia: r.dia, venda: safe(r.venda), lb: safe(r.lb), produtosFora: safe(r.produtos_fora) }))
+    rows.map((r) => ({
+      dia:          r.dia,
+      venda:        safe(r.venda),
+      vendaBruta:   safe(r.venda_bruta),
+      lb:           safe(r.lb_valor),
+      produtosFora: safe(r.produtos_fora),
+    }))
 
   const series    = toSeries(r3.rows)
   const seriesAnt = toSeries(r4.rows)
 
   // ── Ruptura e situação ────────────────────────────────────────────────────
-  const ruptura = r6.rows.map((r) => ({
-    produto:          r.produto,
-    codgrupo:         String(r.codgrupo).trim(),
-    lojasSemEstoque:  safe(r.lojas_sem_estoque),
+  const ruptura = r6.rows.map((r: any) => ({
+    produto:         r.produto,
+    codgrupo:        String(r.codgrupo).trim(),
+    lojasSemEstoque: safe(r.lojas_sem_estoque),
   }))
 
   const sit = r7.rows[0] ?? {}
   const situacaoEstoque = {
-    idealPct:   safe(sit.ideal_pct),
-    baixoPct:   safe(sit.baixo_pct),
-    altoPct:    safe(sit.alto_pct),
+    idealPct: safe(sit.ideal_pct),
+    baixoPct: safe(sit.baixo_pct),
+    altoPct:  safe(sit.alto_pct),
   }
-
-  // ── KPIs ──────────────────────────────────────────────────────────────────
-  const n   = compradores.length || 1
-  const avg = (arr: number[]) => arr.reduce((s, v) => s + v, 0) / n
 
   const kpis = {
     vendasValor,
-    metaVendas:  safe(gm.meta_vendas),
-    vendasVsMesAnterior: vendasAnt > 0
-      ? Number(((vendasValor / vendasAnt - 1) * 100).toFixed(1)) : null as number | null,
+    metaVendas:  metaVendasAjustada,
+    vendasVsMesAnterior: vendasMesAnt > 0
+      ? Number(((vendasValor / vendasMesAnt - 1) * 100).toFixed(1)) : null as number | null,
 
-    lbPercentual: lbPct,
-    metaLb:       safe(gm.meta_lb_media),
-    lbVsMesAnterior: lbAntPct > 0
+    lbPercentual: Number(lbPct.toFixed(1)),
+    metaLb:       Number(safe(gm.meta_lb_media).toFixed(1)),
+    lbVsMesAnterior: vendaBrutaAnt > 0
       ? Number((lbPct - lbAntPct).toFixed(1)) : null as number | null,
 
     nivelServico:              safe(gm.nivel_servico),
     nivelServicoMeta:          98,
     nivelServicoVsMesAnterior: null as number | null,
 
-    evolucao:              Number(avg(compradores.map((c) => c.evolucaoPercentual)).toFixed(1)),
-    evolucaoMeta:          100,
-    evolucaoVsMesAnterior: null as number | null,
+    evolucao,
+    // sem evolucaoMeta (regra 6)
 
     diasEstoque:              safe(gm.dias_estoque),
     diasEstoqueMeta:          45,
     diasEstoqueVsMesAnterior: null as number | null,
 
     produtosForaValor,
-    metaProdutosFora:          safe(gm.meta_produtos_fora),
+    metaProdutosFora:          metaProdutosForaAjustada,
     produtosForaVsMesAnterior: produtosForaAnt > 0
       ? Number(((produtosForaValor / produtosForaAnt - 1) * 100).toFixed(1)) : null as number | null,
 
-    // Legacy
-    vendasAtingimento: Number(avg(compradores.map((c) => c.vendaPercentualMeta)).toFixed(2)),
-    lbRealizado:       lbPct,
-    produtosFora:      safe(gm.meta_produtos_fora) > 0
-      ? Number((produtosForaValor / safe(gm.meta_produtos_fora) * 100).toFixed(2)) : 0,
+    vendasAtingimento: metaVendasAjustada > 0
+      ? Number((vendasValor / metaVendasAjustada * 100).toFixed(2)) : 0,
+    lbRealizado: Number(lbPct.toFixed(1)),
+    produtosFora: metaProdutosForaAjustada > 0
+      ? Number((produtosForaValor / metaProdutosForaAjustada * 100).toFixed(2)) : 0,
   }
-
-  // ── Alertas ───────────────────────────────────────────────────────────────
-  const alertas: string[] = []
-  compradores.forEach((c) => {
-    if (c.vendaPercentualMeta > 0 && c.vendaPercentualMeta < 90)
-      alertas.push(`${c.comprador}: Venda abaixo de 90% da meta (${c.vendaPercentualMeta}%)`)
-    if (c.lbPercentual > 0 && c.lbPercentual < c.metaLb)
-      alertas.push(`${c.comprador}: LB abaixo da meta (${c.lbPercentual}% vs ${c.metaLb}%)`)
-    if (c.nivelServico !== null && c.nivelServico < c.nivelServicoMeta)
-      alertas.push(`${c.comprador}: Nível de serviço abaixo da meta (${c.nivelServico}%)`)
-    if (c.evolucaoPercentual < 0)
-      alertas.push(`${c.comprador}: Queda de ${Math.abs(c.evolucaoPercentual)}% vs mesmo período do ano anterior`)
-  })
-  if (ruptura.length > 0)
-    alertas.push(`${ruptura.length} produto(s) em ruptura de estoque`)
 
   return {
     kpis,
@@ -438,9 +519,9 @@ export const getDashboardTvCompras = async () => {
     ruptura,
     situacaoEstoque,
     graficos: {
-      evolucaoVendas: compradores.map((c) => ({ label: c.comprador, valor: c.vendaPercentualMeta })),
-      evolucaoLb:     compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual })),
+      atingimentoVendas: compradores.map((c) => ({ label: c.comprador, valor: c.vendaPercentualMeta, meta: 100 })),
+      atingimentoLb:     compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual, meta: c.metaLb })),
     },
-    alertas,
+    alertas: [] as string[],
   }
 }

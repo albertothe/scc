@@ -20,7 +20,6 @@ const C = {
   white:   "#FFFFFF",
 }
 
-// ─── Utilitários ─────────────────────────────────────────────────────────────
 const safe  = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 const fmtR$ = (v: number)  => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(v)
 const fmtP  = (v: number, d = 1) => `${v.toFixed(d).replace(".", ",")}%`
@@ -52,7 +51,7 @@ function SparkBar({ data, color, w = 90, h = 36 }: { data: number[]; color: stri
   )
 }
 
-// ─── SVG: Gráfico de linha comparativo (este mês vs anterior) ────────────────
+// ─── SVG: Gráfico de linha comparativo ───────────────────────────────────────
 function LineChart({
   data1, data2, color1, title1, title2, fmtY, w = 360, h = 160,
 }: {
@@ -78,35 +77,72 @@ function LineChart({
     data.map((v, i) => `${i === 0 ? "M" : "L"}${tx(i, data.length).toFixed(1)},${ty(v).toFixed(1)}`).join(" ")
 
   const yTicks = [minV, minV + rng / 2, maxV]
-  const xTicks = [1, 5, 10, 15, 20, 25, data1.length].filter((d, _, arr) => arr.indexOf(d) === arr.lastIndexOf(d) && d <= data1.length)
+  const maxLen = Math.max(data1.length, data2.length)
+  const xTicks = [1, 5, 10, 15, 20, 25, maxLen].filter((d, _, arr) => arr.indexOf(d) === arr.lastIndexOf(d) && d <= maxLen)
   const fmt = fmtY ?? ((v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0))
 
   return (
     <svg width={w} height={h}>
-      {/* Legend */}
       <circle cx={pl} cy={10} r={4} fill={color1} />
       <text x={pl + 8} y={14} fill={C.text} fontSize={9}>{title1}</text>
       <line x1={pl + 65} y1={10} x2={pl + 80} y2={10} stroke={C.muted} strokeDasharray="4,3" strokeWidth="1.5" />
       <text x={pl + 83} y={14} fill={C.muted} fontSize={9}>{title2}</text>
 
-      {/* Grid + Y labels */}
       {yTicks.map((v, i) => (
         <g key={i}>
           <line x1={pl} y1={ty(v)} x2={w - pr} y2={ty(v)} stroke={C.dim} strokeWidth={0.5} />
           <text x={pl - 4} y={ty(v)} fill={C.muted} fontSize={9} textAnchor="end" dominantBaseline="middle">{fmt(v)}</text>
         </g>
       ))}
-
-      {/* X labels */}
       {xTicks.map((d) => (
-        <text key={d} x={tx(d - 1, data1.length)} y={h - 4} fill={C.muted} fontSize={9} textAnchor="middle">
+        <text key={d} x={tx(d - 1, maxLen)} y={h - 4} fill={C.muted} fontSize={9} textAnchor="middle">
           {String(d).padStart(2, "0")}
         </text>
       ))}
-
-      {/* Lines */}
       {data2.length > 1 && <path d={path(data2)} fill="none" stroke={C.muted} strokeWidth="1.5" strokeDasharray="4,3" />}
       {data1.length > 1 && <path d={path(data1)} fill="none" stroke={color1} strokeWidth="2" strokeLinecap="round" />}
+    </svg>
+  )
+}
+
+// ─── SVG: Gráfico de barras horizontais (atingimento por comprador) ───────────
+function BarChartH({
+  data, target = 100, fmtVal, w = 280, h = 160,
+}: {
+  data: { label: string; valor: number; meta?: number }[]
+  target?: number; fmtVal?: (v: number) => string; w?: number; h?: number
+}) {
+  if (!data.length) return (
+    <svg width={w} height={h}>
+      <text x={w / 2} y={h / 2} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
+    </svg>
+  )
+  const pl = 72, pr = 38, pt = 4, pb = 4
+  const cw = w - pl - pr
+  const totalH = h - pt - pb
+  const bh = Math.max(6, Math.floor(totalH / data.length) - 4)
+  const gap = Math.floor((totalH - bh * data.length) / Math.max(data.length - 1, 1))
+  const maxVal = Math.max(...data.map(d => d.valor), target * 1.1, 1)
+  const fmt = fmtVal ?? ((v: number) => `${v.toFixed(0)}%`)
+  const tgtX = pl + (target / maxVal) * cw
+
+  return (
+    <svg width={w} height={h}>
+      {data.map((d, i) => {
+        const y = pt + i * (bh + gap)
+        const barW = Math.max(0, (d.valor / maxVal) * cw)
+        const barColor = d.valor >= (d.meta ?? target) ? C.green : d.valor >= (d.meta ?? target) * 0.9 ? C.orange : C.red
+        const firstName = d.label.split(" ")[0]
+        return (
+          <g key={i}>
+            <text x={pl - 4} y={y + bh / 2 + 4} fill={C.text} fontSize={9} textAnchor="end">{firstName}</text>
+            <rect x={pl} y={y} width={barW} height={bh} fill={barColor} rx="2" opacity="0.85" />
+            <text x={pl + barW + 3} y={y + bh / 2 + 4} fill={barColor} fontSize={9} fontWeight="700">{fmt(d.valor)}</text>
+          </g>
+        )
+      })}
+      <line x1={tgtX} y1={pt} x2={tgtX} y2={h - pb} stroke={C.muted} strokeDasharray="3,2" strokeWidth="1" />
+      <text x={tgtX} y={pt - 1} fill={C.muted} fontSize={8} textAnchor="middle">meta</text>
     </svg>
   )
 }
@@ -178,7 +214,6 @@ function KpiCard({
       flexDirection: "column",
       gap: 2,
     }}>
-      {/* Título + Sparkline */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 26, height: 26, borderRadius: "50%", border: `1.5px solid ${color}`, display: "flex", alignItems: "center", justifyContent: "center", color: color, fontSize: 13, flexShrink: 0 }}>
@@ -194,16 +229,12 @@ function KpiCard({
             : <SparkBar data={sparkData} color={color} />
         )}
       </div>
-
-      {/* Valor */}
       <div style={{ fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
         {value}
       </div>
-
-      {/* Meta */}
-      <div style={{ fontSize: 11, color: C.muted }}>Meta: {meta}</div>
-
-      {/* Tendência */}
+      {meta && (
+        <div style={{ fontSize: 11, color: C.muted }}>Meta: {meta}</div>
+      )}
       {trendStr && (
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>{trendStr}</span>
@@ -214,7 +245,6 @@ function KpiCard({
   )
 }
 
-// ─── Tabela de compradores ────────────────────────────────────────────────────
 function AtingBar({ pct, meta = 100 }: { pct: number; meta?: number }) {
   const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
   return (
@@ -242,9 +272,9 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-// ─── Componente principal ────────────────────────────────────────────────────
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function TvCompras() {
-  const [data, setData] = useState<any>({ kpis: {}, compradores: [], series: [], seriesAnt: [], ruptura: [], situacaoEstoque: {}, alertas: [] })
+  const [data, setData] = useState<any>({ kpis: {}, compradores: [], series: [], seriesAnt: [], ruptura: [], situacaoEstoque: {}, graficos: {}, alertas: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
@@ -255,7 +285,7 @@ export default function TvCompras() {
     return () => clearInterval(t)
   }, [])
 
-  const fetch = async () => {
+  const fetchData = async () => {
     setLoading(true); setError(null)
     try {
       const r = await getDashboardTvCompras()
@@ -265,7 +295,7 @@ export default function TvCompras() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { fetch(); const t = setInterval(fetch, 1800000); return () => clearInterval(t) }, [])
+  useEffect(() => { fetchData(); const t = setInterval(fetchData, 1800000); return () => clearInterval(t) }, [])
 
   if (loading && !lastUpdate) return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bgcolor={C.bg}>
@@ -276,21 +306,22 @@ export default function TvCompras() {
     </Box>
   )
 
-  // ── Dados ──────────────────────────────────────────────────────────────────
   const kpis = data.kpis ?? {}
-  const comps: any[] = data.compradores ?? []
-  const series: any[]    = data.series ?? []
-  const seriesAnt: any[] = data.seriesAnt ?? []
-  const ruptura: any[]   = data.ruptura ?? []
-  const sit = data.situacaoEstoque ?? {}
+  const comps: any[]      = data.compradores ?? []
+  const series: any[]     = data.series ?? []
+  const seriesAnt: any[]  = data.seriesAnt ?? []
+  const ruptura: any[]    = data.ruptura ?? []
+  const sit               = data.situacaoEstoque ?? {}
+  const graficos          = data.graficos ?? {}
 
-  // Séries cumulativas para os gráficos de linha
+  // Séries cumulativas
   const cumul = (rows: any[], field: string) => {
     let acc = 0; return rows.map(r => { acc += safe(r[field]); return acc })
   }
+  // LB%: divide por venda_bruta (regra 5)
   const cumulLbPct = (rows: any[]) => {
-    let tv = 0, tlb = 0
-    return rows.map(r => { tv += safe(r.venda); tlb += safe(r.lb); return tv > 0 ? tlb / tv * 100 : 0 })
+    let tvBruta = 0, tlb = 0
+    return rows.map(r => { tvBruta += safe(r.vendaBruta); tlb += safe(r.lb); return tvBruta > 0 ? tlb / tvBruta * 100 : 0 })
   }
 
   const sparkVendas   = series.map(s => safe(s.venda))
@@ -301,15 +332,13 @@ export default function TvCompras() {
   const chartVenda2 = cumul(seriesAnt, "venda")
   const chartLb1    = cumulLbPct(series)
   const chartLb2    = cumulLbPct(seriesAnt)
-  // NS: linha plana no valor atual
-  const nsVal = safe(kpis.nivelServico)
-  const chartNs1 = series.map(() => nsVal)
+  const nsVal       = safe(kpis.nivelServico)
+  const chartNs1    = series.map(() => nsVal)
 
   const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
   const mesAbrev = now.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase().substring(0, 3) + "/" + now.getFullYear()
   const minAgo   = lastUpdate ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000) : null
 
-  // TOP5 e BOTTOM5
   const compByVenda = [...comps].sort((a, b) => b.vendaRealizado - a.vendaRealizado)
   const top5    = compByVenda.slice(0, 5)
   const bottom5 = [...comps].sort((a, b) => a.vendaPercentualMeta - b.vendaPercentualMeta).slice(0, 5)
@@ -341,62 +370,126 @@ export default function TvCompras() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12 }}>
             {minAgo !== null ? `Atualizado há ${minAgo} min` : ""}
-            <span onClick={fetch} style={{ cursor: "pointer", color: loading ? C.muted : C.green, fontSize: 16 }}>↻</span>
+            <span onClick={fetchData} style={{ cursor: "pointer", color: loading ? C.muted : C.green, fontSize: 16 }}>↻</span>
           </div>
         </div>
       </div>
 
-      {/* ── 6 CARDS KPI ── */}
+      {/* ── 6 CARDS KPI: Vendas → Evolução → LB → NS → Dias → Prod. Fora ── */}
       <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-        <KpiCard title="VENDAS (R$)" icon="$" value={fmtR$(safe(kpis.vendasValor))} meta={fmtR$(safe(kpis.metaVendas))} trend={kpis.vendasVsMesAnterior ?? null} trendSuffix="%" upGood={true} sparkData={sparkVendas} sparkType="line" color={C.blue} alert={safe(kpis.vendasValor) < safe(kpis.metaVendas) * 0.9} />
-        <KpiCard title="LB (%)" icon="%" value={fmtP(safe(kpis.lbPercentual))} meta={fmtP(safe(kpis.metaLb))} trend={kpis.lbVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true} sparkData={sparkLbPct} sparkType="line" color={C.green} alert={safe(kpis.lbPercentual) > 0 && safe(kpis.lbPercentual) < safe(kpis.metaLb)} />
-        <KpiCard title="NÍVEL DE SERVIÇO (%)" icon="🚚" value={fmtP(safe(kpis.nivelServico))} meta={fmtP(safe(kpis.nivelServicoMeta) || 98)} trend={kpis.nivelServicoVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true} sparkData={chartNs1} sparkType="line" color={C.orange} alert={safe(kpis.nivelServico) > 0 && safe(kpis.nivelServico) < 98} />
-        <KpiCard title="EVOLUÇÃO (%)" icon="🎯" value={fmtP(safe(kpis.evolucao), 0)} meta={fmtP(safe(kpis.evolucaoMeta) || 100, 0)} trend={kpis.evolucaoVsMesAnterior ?? null} trendSuffix="%" upGood={true} sparkData={sparkVendas} sparkType="line" color={C.purple} alert={safe(kpis.evolucao) < 100} />
-        <KpiCard title="DIAS DE ESTOQUE" icon="📦" value={`${Math.round(safe(kpis.diasEstoque))} dias`} meta={`${safe(kpis.diasEstoqueMeta) || 45} dias`} trend={kpis.diasEstoqueVsMesAnterior ?? null} trendSuffix=" dias" upGood={false} sparkData={sparkVendas.map((_, i) => i + 1)} sparkType="bar" color={C.cyan} alert={safe(kpis.diasEstoque) > (safe(kpis.diasEstoqueMeta) || 45) * 1.1} />
-        <KpiCard title="PRODUTOS FORA" icon="⚠️" value={`R$ ${fmtR$(safe(kpis.produtosForaValor))}`} meta={fmtR$(safe(kpis.metaProdutosFora))} trend={kpis.produtosForaVsMesAnterior ?? null} trendSuffix="%" upGood={false} sparkData={sparkProdFora} sparkType="bar" color={C.red} alert={safe(kpis.produtosForaValor) > safe(kpis.metaProdutosFora) * 1.1} />
+        {/* 1. Vendas */}
+        <KpiCard
+          title="VENDAS (R$)" icon="$"
+          value={fmtR$(safe(kpis.vendasValor))}
+          meta={fmtR$(safe(kpis.metaVendas))}
+          trend={kpis.vendasVsMesAnterior ?? null} trendSuffix="%" upGood={true}
+          sparkData={sparkVendas} sparkType="line" color={C.blue}
+          alert={safe(kpis.vendasValor) < safe(kpis.metaVendas) * 0.9}
+        />
+        {/* 2. Evolução (sem meta — regra 6) */}
+        <KpiCard
+          title="EVOLUÇÃO (%)" icon="🎯"
+          value={kpis.evolucao !== null && kpis.evolucao !== undefined
+            ? `${kpis.evolucao >= 0 ? "+" : ""}${safe(kpis.evolucao).toFixed(1).replace(".", ",")}%`
+            : "—"}
+          meta=""
+          trend={null} trendSuffix="%" upGood={true}
+          sparkData={sparkVendas} sparkType="line" color={C.purple}
+          alert={kpis.evolucao !== null && kpis.evolucao !== undefined && safe(kpis.evolucao) < 0}
+        />
+        {/* 3. LB */}
+        <KpiCard
+          title="LB (%)" icon="%"
+          value={fmtP(safe(kpis.lbPercentual))}
+          meta={fmtP(safe(kpis.metaLb))}
+          trend={kpis.lbVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true}
+          sparkData={sparkLbPct} sparkType="line" color={C.green}
+          alert={safe(kpis.lbPercentual) > 0 && safe(kpis.lbPercentual) < safe(kpis.metaLb)}
+        />
+        {/* 4. Nível de Serviço */}
+        <KpiCard
+          title="NÍVEL DE SERVIÇO (%)" icon="🚚"
+          value={fmtP(safe(kpis.nivelServico))}
+          meta={fmtP(safe(kpis.nivelServicoMeta) || 98)}
+          trend={kpis.nivelServicoVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true}
+          sparkData={chartNs1} sparkType="line" color={C.orange}
+          alert={safe(kpis.nivelServico) > 0 && safe(kpis.nivelServico) < (safe(kpis.nivelServicoMeta) || 98)}
+        />
+        {/* 5. Dias de Estoque */}
+        <KpiCard
+          title="DIAS DE ESTOQUE" icon="📦"
+          value={`${Math.round(safe(kpis.diasEstoque))} dias`}
+          meta={`${safe(kpis.diasEstoqueMeta) || 45} dias`}
+          trend={kpis.diasEstoqueVsMesAnterior ?? null} trendSuffix=" dias" upGood={false}
+          sparkData={sparkVendas.map((_, i) => i + 1)} sparkType="bar" color={C.cyan}
+          alert={safe(kpis.diasEstoque) > (safe(kpis.diasEstoqueMeta) || 45) * 1.1}
+        />
+        {/* 6. Produtos Fora */}
+        <KpiCard
+          title="PRODUTOS FORA" icon="⚠️"
+          value={`R$ ${fmtR$(safe(kpis.produtosForaValor))}`}
+          meta={fmtR$(safe(kpis.metaProdutosFora))}
+          trend={kpis.produtosForaVsMesAnterior ?? null} trendSuffix="%" upGood={false}
+          sparkData={sparkProdFora} sparkType="bar" color={C.red}
+          alert={safe(kpis.produtosForaValor) > safe(kpis.metaProdutosFora) * 1.1}
+        />
       </div>
 
-      {/* ── GRÁFICOS + ALERTAS ── */}
+      {/* ── GRÁFICOS (5 painéis, sem alertas) ── */}
       <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-        {/* Evolução de Vendas */}
+        {/* 1. Evolução de Vendas */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
           <div style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
             📈 EVOLUÇÃO DE VENDAS (R$)
-            <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Mês anterior</span>
+            <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Ano anterior</span>
           </div>
-          <LineChart data1={chartVenda1} data2={chartVenda2} color1={C.blue} title1="Este mês" title2="Mês anterior" fmtY={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}k` : v.toFixed(0)} />
+          <LineChart data1={chartVenda1} data2={chartVenda2} color1={C.blue} title1="Este mês" title2="Ano anterior"
+            fmtY={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)} />
         </div>
 
-        {/* Evolução de LB */}
+        {/* 2. Evolução de LB */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
           <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
             📊 EVOLUÇÃO DE LB (%)
-            <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Mês anterior</span>
+            <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Ano anterior</span>
           </div>
-          <LineChart data1={chartLb1} data2={chartLb2} color1={C.green} title1="Este mês" title2="Mês anterior" fmtY={v => `${v.toFixed(0)}%`} />
+          <LineChart data1={chartLb1} data2={chartLb2} color1={C.green} title1="Este mês" title2="Ano anterior"
+            fmtY={v => `${v.toFixed(0)}%`} />
         </div>
 
-        {/* Evolução do Nível de Serviço */}
+        {/* 3. Evolução do Nível de Serviço */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
           <div style={{ color: C.orange, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
-            🚚 EVOLUÇÃO DO NÍVEL DE SERVIÇO (%)
+            🚚 NÍVEL DE SERVIÇO (%)
           </div>
-          <LineChart data1={chartNs1} data2={[]} color1={C.orange} title1="Este mês" title2="" fmtY={v => `${v.toFixed(0)}%`} />
+          <LineChart data1={chartNs1} data2={[]} color1={C.orange} title1="Este mês" title2=""
+            fmtY={v => `${v.toFixed(0)}%`} />
         </div>
 
-        {/* Alertas */}
-        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.red}55`, borderRadius: 8, padding: "8px 10px" }}>
-          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>🔔 ALERTAS</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, overflowY: "auto", maxHeight: 160 }}>
-            {(data.alertas ?? []).length > 0 ? (data.alertas as string[]).map((a, i) => (
-              <div key={i} style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                <span style={{ color: i % 3 === 0 ? C.red : i % 3 === 1 ? C.orange : C.yellow, fontSize: 8, marginTop: 3 }}>●</span>
-                <span style={{ fontSize: 11, color: C.text, lineHeight: 1.4 }}>{a}</span>
-              </div>
-            )) : (
-              <div style={{ fontSize: 11, color: C.green }}>✓ Sem alertas críticos</div>
-            )}
+        {/* 4. Atingimento de Vendas */}
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>
+            🎯 ATINGIMENTO VENDAS (%)
           </div>
+          <BarChartH
+            data={(graficos.atingimentoVendas ?? []).map((d: any) => ({ label: d.label, valor: safe(d.valor), meta: safe(d.meta) }))}
+            target={100}
+            fmtVal={v => `${v.toFixed(0)}%`}
+            w={240} h={160}
+          />
+        </div>
+
+        {/* 5. Atingimento de LB */}
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>
+            📊 ATINGIMENTO LB (%)
+          </div>
+          <BarChartH
+            data={(graficos.atingimentoLb ?? []).map((d: any) => ({ label: d.label, valor: safe(d.valor), meta: safe(d.meta) }))}
+            target={safe(kpis.metaLb) || 35}
+            fmtVal={v => `${v.toFixed(1).replace(".", ",")}%`}
+            w={240} h={160}
+          />
         </div>
       </div>
 
@@ -419,19 +512,12 @@ export default function TvCompras() {
               <th style={th}>Status</th>
             </tr>
             <tr>
-              <th style={th} />
-              <th style={th} />
-              <th style={th}>Realizado</th>
-              <th style={th}>Meta</th>
-              <th style={th}>Atingimento</th>
-              <th style={th}>Realizado</th>
-              <th style={th}>Meta</th>
-              <th style={th}>Realizado</th>
-              <th style={th}>Meta</th>
-              <th style={th}>Realizado</th>
-              <th style={th}>Meta</th>
-              <th style={th}>Realizado</th>
-              <th style={th}>Meta</th>
+              <th style={th} /><th style={th} />
+              <th style={th}>Realizado</th><th style={th}>Meta</th><th style={th}>Atingimento</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
               <th style={th} />
             </tr>
           </thead>
@@ -478,8 +564,9 @@ export default function TvCompras() {
             </tr></thead>
             <tbody>
               {comps.filter(c => c.diasEstoque !== null).map((c: any, i: number) => {
-                const dias = Math.round(safe(c.diasEstoque))
-                const color = dias <= 45 ? C.green : dias <= 55 ? C.orange : C.red
+                const dias  = Math.round(safe(c.diasEstoque))
+                const meta  = c.diasEstoqueMeta || 45
+                const color = dias <= meta ? C.green : dias <= meta * 1.2 ? C.orange : C.red
                 return (
                   <tr key={i}>
                     <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]}</td>
@@ -533,7 +620,6 @@ export default function TvCompras() {
 
         {/* TOP 5 e BOTTOM 5 */}
         <div style={{ flex: 3, display: "flex", flexDirection: "column", gap: 10 }}>
-          {/* TOP 5 */}
           <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
             <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>🏆 TOP 5 GRUPOS — VENDAS (R$)</div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -554,7 +640,6 @@ export default function TvCompras() {
             </table>
           </div>
 
-          {/* BOTTOM 5 */}
           <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
             <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⚠ BOTTOM 5 — ATINGIMENTO</div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
