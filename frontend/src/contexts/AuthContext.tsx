@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 } else {
                     console.log("AuthProvider: Não autenticado")
-                    if (window.location.pathname !== "/login") {
+                    if (window.location.pathname !== "/login" && window.location.pathname !== "/tv-compras") {
                         console.log("AuthProvider: Redirecionando para /login")
                         navigate("/login")
                     }
