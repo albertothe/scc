@@ -1,613 +1,679 @@
 import { useEffect, useState } from "react"
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Grid,
-  Stack,
-  Typography,
-  Card,
-  CardContent,
-  Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  LinearProgress,
-  Alert,
-} from "@mui/material"
-import {
-  AttachMoney,
-  BarChart as BarChartIcon,
-  LocalShipping,
-  TrackChanges,
-  Inventory2,
-  Warning,
-  Refresh as RefreshIcon,
-  CalendarToday,
-  AccessTime,
-} from "@mui/icons-material"
+import { Box, CircularProgress, Stack, Typography } from "@mui/material"
 import { getDashboardTvCompras } from "../services/dashboardTvComprasService"
 
-// ── Utilitários ──────────────────────────────────────────────────────────────
+// ─── Paleta ──────────────────────────────────────────────────────────────────
+const C = {
+  bg:      "#04091A",
+  card:    "#070D1C",
+  border:  "#0F1D35",
+  text:    "#F1F5F9",
+  muted:   "#64748B",
+  dim:     "#1E293B",
+  blue:    "#1D9BF0",
+  green:   "#22C55E",
+  orange:  "#FB923C",
+  purple:  "#A855F7",
+  cyan:    "#22D3EE",
+  red:     "#EF4444",
+  yellow:  "#EAB308",
+  white:   "#FFFFFF",
+}
 
-const safe = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0)
+const safe  = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+const fmtR$ = (v: number)  => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(v)
+const fmtP  = (v: number, d = 1) => `${v.toFixed(d).replace(".", ",")}%`
 
-const fmtMoeda = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v)
-
-const fmtPct = (v: number, casas = 1) => `${v.toFixed(casas).replace(".", ",")}%`
-
-// ── Sparkline SVG simples ────────────────────────────────────────────────────
-
-function Sparkline({
-  data,
-  color,
-  width = 80,
-  height = 40,
-}: {
-  data: number[]
-  color: string
-  width?: number
-  height?: number
-}) {
-  if (!data || data.length < 2) return null
-  const min = Math.min(...data)
-  const max = Math.max(...data)
-  const range = max - min || 1
-  const pad = height * 0.1
-  const pts = data
-    .map((v, i) => {
-      const x = (i / (data.length - 1)) * width
-      const y = height - pad - ((v - min) / range) * (height - 2 * pad)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(" ")
+// ─── SVG: Sparkline de linha ─────────────────────────────────────────────────
+function Spark({ data, color, w = 90, h = 36 }: { data: number[]; color: string; w?: number; h?: number }) {
+  if (data.length < 2) return <svg width={w} height={h} />
+  const min = Math.min(...data); const max = Math.max(...data); const rng = max - min || 1
+  const pts = data.map((v, i) => `${((i / (data.length - 1)) * w).toFixed(1)},${(h - 4 - ((v - min) / rng) * (h - 8)).toFixed(1)}`).join(" ")
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width={w} height={h} style={{ flexShrink: 0 }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function BarSparkline({
-  data,
-  color,
-  width = 80,
-  height = 40,
-}: {
-  data: number[]
-  color: string
-  width?: number
-  height?: number
-}) {
-  if (!data || data.length === 0) return null
+// ─── SVG: Sparkline de barras ─────────────────────────────────────────────────
+function SparkBar({ data, color, w = 90, h = 36 }: { data: number[]; color: string; w?: number; h?: number }) {
+  if (!data.length) return <svg width={w} height={h} />
   const max = Math.max(...data) || 1
-  const barW = Math.max(1, Math.floor(width / data.length) - 2)
+  const bw  = Math.max(2, Math.floor(w / data.length) - 2)
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0 }}>
+    <svg width={w} height={h} style={{ flexShrink: 0 }}>
       {data.map((v, i) => {
-        const bh = Math.max(2, (v / max) * (height * 0.85))
-        return (
-          <rect
-            key={i}
-            x={i * (barW + 2)}
-            y={height - bh}
-            width={barW}
-            height={bh}
-            fill={color}
-            opacity={i === data.length - 1 ? 1 : 0.55}
-            rx="1"
-          />
-        )
+        const bh = Math.max(2, (v / max) * (h - 4))
+        return <rect key={i} x={i * (bw + 2)} y={h - bh} width={bw} height={bh} fill={color} opacity={i === data.length - 1 ? 1 : 0.5} rx="1" />
       })}
     </svg>
   )
 }
 
-// ── Card KPI ─────────────────────────────────────────────────────────────────
+// ─── SVG: Gráfico de linha comparativo ───────────────────────────────────────
+function LineChart({
+  data1, data2, color1, title1, title2, fmtY, w = 360, h = 160,
+}: {
+  data1: number[]; data2: number[]
+  color1: string; title1: string; title2: string
+  fmtY?: (v: number) => string; w?: number; h?: number
+}) {
+  const pl = 58, pr = 8, pt = 22, pb = 20
+  const cw = w - pl - pr; const ch = h - pt - pb
+  const all = [...data1, ...data2].filter(v => v > 0)
+  if (!all.length) return (
+    <svg width={w} height={h}>
+      <text x={w / 2} y={h / 2} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
+    </svg>
+  )
+  const minV = Math.min(...all) * 0.9
+  const maxV = Math.max(...all) * 1.05
+  const rng  = maxV - minV || 1
+  const tx = (i: number, len: number) => pl + (i / Math.max(len - 1, 1)) * cw
+  const ty = (v: number) => pt + (1 - (v - minV) / rng) * ch
 
-interface KpiCardProps {
-  title: string
-  icon: React.ReactNode
-  value: string
-  meta: string
-  trend: number | null
-  trendSuffix: string
-  /** true = subir é bom (verde), false = subir é ruim (vermelho) */
-  trendUpGood: boolean
-  sparkData?: number[]
-  sparkType?: "line" | "bar"
-  color: string
-  /** true quando o valor está fora da meta — realça borda */
-  alertMode?: boolean
-}
+  const path = (data: number[]) =>
+    data.map((v, i) => `${i === 0 ? "M" : "L"}${tx(i, data.length).toFixed(1)},${ty(v).toFixed(1)}`).join(" ")
 
-function KpiCard({
-  title,
-  icon,
-  value,
-  meta,
-  trend,
-  trendSuffix,
-  trendUpGood,
-  sparkData,
-  sparkType = "line",
-  color,
-  alertMode = false,
-}: KpiCardProps) {
-  const trendPositive = trend === null ? null : trendUpGood ? trend >= 0 : trend <= 0
-  const trendColor = trendPositive === null ? "#9CA3AF" : trendPositive ? "#22C55E" : "#EF4444"
-  const trendArrow = trend === null ? "" : trend >= 0 ? "↑" : "↓"
-  const trendStr =
-    trend === null
-      ? null
-      : `${trendArrow} ${trend >= 0 ? "+" : ""}${trend.toFixed(1).replace(".", ",")}${trendSuffix}`
+  const yTicks = [minV, minV + rng / 2, maxV]
+  const maxLen = Math.max(data1.length, data2.length)
+  const xTicks = [1, 5, 10, 15, 20, 25, maxLen].filter((d, _, arr) => arr.indexOf(d) === arr.lastIndexOf(d) && d <= maxLen)
+  const fmt = fmtY ?? ((v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0))
 
   return (
-    <Card
-      sx={{
-        background: "linear-gradient(135deg, #0D1117 0%, #0F1923 100%)",
-        border: `1px solid ${alertMode ? color : color + "44"}`,
-        borderTop: `2px solid ${color}`,
-        borderRadius: 2,
-        height: "100%",
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: alertMode ? `0 0 12px ${color}55` : "none",
-      }}
-    >
-      <CardContent sx={{ p: "12px !important" }}>
-        {/* Título */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 0.5 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-            <Box
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                border: `1.5px solid ${color}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: color,
-                "& svg": { fontSize: "0.9rem" },
-              }}
-            >
-              {icon}
-            </Box>
-            <Typography
-              sx={{
-                color: color,
-                fontWeight: 700,
-                fontSize: "0.6rem",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                lineHeight: 1.2,
-              }}
-            >
-              {title}
-            </Typography>
-          </Box>
-          {/* Sparkline */}
-          {sparkData && sparkData.length > 1 && (
-            <Box sx={{ opacity: 0.85 }}>
-              {sparkType === "line" ? (
-                <Sparkline data={sparkData} color={color} />
-              ) : (
-                <BarSparkline data={sparkData} color={color} />
-              )}
-            </Box>
-          )}
-        </Box>
+    <svg width={w} height={h}>
+      <circle cx={pl} cy={10} r={4} fill={color1} />
+      <text x={pl + 8} y={14} fill={C.text} fontSize={9}>{title1}</text>
+      <line x1={pl + 65} y1={10} x2={pl + 80} y2={10} stroke={C.muted} strokeDasharray="4,3" strokeWidth="1.5" />
+      <text x={pl + 83} y={14} fill={C.muted} fontSize={9}>{title2}</text>
 
-        {/* Valor principal */}
-        <Typography
-          sx={{
-            fontSize: "1.65rem",
-            fontWeight: 800,
-            color: "#F9FAFB",
-            lineHeight: 1,
-            mb: 0.4,
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {value}
-        </Typography>
-
-        {/* Meta */}
-        <Typography sx={{ fontSize: "0.7rem", color: "#6B7280", mb: 0.5 }}>
-          Meta: {meta}
-        </Typography>
-
-        {/* Tendência vs mês anterior */}
-        {trendStr && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-            <Typography sx={{ fontSize: "0.72rem", color: trendColor, fontWeight: 600 }}>
-              {trendStr}
-            </Typography>
-            <Typography sx={{ fontSize: "0.65rem", color: "#4B5563" }}>
-              vs mês anterior
-            </Typography>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+      {yTicks.map((v, i) => (
+        <g key={i}>
+          <line x1={pl} y1={ty(v)} x2={w - pr} y2={ty(v)} stroke={C.dim} strokeWidth={0.5} />
+          <text x={pl - 4} y={ty(v)} fill={C.muted} fontSize={9} textAnchor="end" dominantBaseline="middle">{fmt(v)}</text>
+        </g>
+      ))}
+      {xTicks.map((d) => (
+        <text key={d} x={tx(d - 1, maxLen)} y={h - 4} fill={C.muted} fontSize={9} textAnchor="middle">
+          {String(d).padStart(2, "0")}
+        </text>
+      ))}
+      {data2.length > 1 && <path d={path(data2)} fill="none" stroke={C.muted} strokeWidth="1.5" strokeDasharray="4,3" />}
+      {data1.length > 1 && <path d={path(data1)} fill="none" stroke={color1} strokeWidth="2" strokeLinecap="round" />}
+    </svg>
   )
 }
 
-// ── Status da tabela ─────────────────────────────────────────────────────────
+// ─── SVG: Gráfico de barras horizontais (atingimento por comprador) ───────────
+function BarChartH({
+  data, target = 100, fmtVal, w = 280, h = 160,
+}: {
+  data: { label: string; valor: number; meta?: number }[]
+  target?: number; fmtVal?: (v: number) => string; w?: number; h?: number
+}) {
+  if (!data.length) return (
+    <svg width={w} height={h}>
+      <text x={w / 2} y={h / 2} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
+    </svg>
+  )
+  const pl = 72, pr = 38, pt = 4, pb = 4
+  const cw = w - pl - pr
+  const totalH = h - pt - pb
+  const bh = Math.max(6, Math.floor(totalH / data.length) - 4)
+  const gap = Math.floor((totalH - bh * data.length) / Math.max(data.length - 1, 1))
+  const maxVal = Math.max(...data.map(d => d.valor), target * 1.1, 1)
+  const fmt = fmtVal ?? ((v: number) => `${v.toFixed(0)}%`)
+  const tgtX = pl + (target / maxVal) * cw
 
-const statusColor = (v: number) => (v >= 100 ? "success" : v >= 95 ? "warning" : "error")
+  return (
+    <svg width={w} height={h}>
+      {data.map((d, i) => {
+        const y = pt + i * (bh + gap)
+        const barW = Math.max(0, (d.valor / maxVal) * cw)
+        const barColor = d.valor >= (d.meta ?? target) ? C.green : d.valor >= (d.meta ?? target) * 0.9 ? C.orange : C.red
+        const firstName = d.label.split(" ")[0]
+        return (
+          <g key={i}>
+            <text x={pl - 4} y={y + bh / 2 + 4} fill={C.text} fontSize={9} textAnchor="end">{firstName}</text>
+            <rect x={pl} y={y} width={barW} height={bh} fill={barColor} rx="2" opacity="0.85" />
+            <text x={pl + barW + 3} y={y + bh / 2 + 4} fill={barColor} fontSize={9} fontWeight="700">{fmt(d.valor)}</text>
+          </g>
+        )
+      })}
+      <line x1={tgtX} y1={pt} x2={tgtX} y2={h - pb} stroke={C.muted} strokeDasharray="3,2" strokeWidth="1" />
+      <text x={tgtX} y={pt - 1} fill={C.muted} fontSize={8} textAnchor="middle">meta</text>
+    </svg>
+  )
+}
 
-// ── Componente principal ─────────────────────────────────────────────────────
+// ─── SVG: Gráfico de rosca ───────────────────────────────────────────────────
+function Donut({
+  slices, w = 140, h = 140,
+}: {
+  slices: { label: string; pct: number; color: string }[]
+  w?: number; h?: number
+}) {
+  const cx = w / 2, cy = h / 2 - 10, r = 48, ri = 30
+  let angle = -Math.PI / 2
+  const arcs: JSX.Element[] = []
+  const total = slices.reduce((s, sl) => s + sl.pct, 0) || 100
 
-export default function TvCompras() {
-  const [data, setData] = useState<any>({
-    kpis: {},
-    compradores: [],
-    series: [],
-    graficos: { evolucaoVendas: [], evolucaoLb: [] },
-    alertas: [],
+  slices.forEach((sl, i) => {
+    const sweep = (sl.pct / total) * 2 * Math.PI - 0.02
+    const x1 = cx + r * Math.cos(angle);       const y1 = cy + r * Math.sin(angle)
+    const x2 = cx + r * Math.cos(angle + sweep); const y2 = cy + r * Math.sin(angle + sweep)
+    const xi1 = cx + ri * Math.cos(angle);      const yi1 = cy + ri * Math.sin(angle)
+    const xi2 = cx + ri * Math.cos(angle + sweep); const yi2 = cy + ri * Math.sin(angle + sweep)
+    const lg = sweep > Math.PI ? 1 : 0
+    arcs.push(
+      <path key={i} d={`M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${lg},1,${x2.toFixed(1)},${y2.toFixed(1)} L${xi2.toFixed(1)},${yi2.toFixed(1)} A${ri},${ri},0,${lg},0,${xi1.toFixed(1)},${yi1.toFixed(1)} Z`}
+        fill={sl.color} />
+    )
+    angle += sweep + 0.02
   })
+
+  return (
+    <svg width={w} height={h}>
+      {arcs}
+      {slices.map((sl, i) => (
+        <g key={i}>
+          <rect x={4} y={h - 28 + i * 14} width={8} height={8} rx="2" fill={sl.color} />
+          <text x={16} y={h - 22 + i * 14} fill={C.text} fontSize={9}>{sl.label}: {sl.pct}%</text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+// ─── Card KPI ─────────────────────────────────────────────────────────────────
+function KpiCard({
+  title, icon, value, meta, trend, trendSuffix, upGood, sparkData, sparkType, color, alert,
+}: {
+  title: string; icon: string; value: string; meta: string
+  trend: number | null; trendSuffix: string; upGood: boolean
+  sparkData: number[]; sparkType: "line" | "bar"; color: string; alert?: boolean
+}) {
+  const trendOk = trend === null ? null : (upGood ? trend >= 0 : trend <= 0)
+  const trendColor = trendOk === null ? C.muted : trendOk ? C.green : C.red
+  const arrow = trend === null ? "" : trend >= 0 ? "↑" : "↓"
+  const trendStr = trend !== null ? `${arrow} ${trend >= 0 ? "+" : ""}${trend.toFixed(1).replace(".", ",")}${trendSuffix}` : null
+
+  return (
+    <div style={{
+      background: C.card,
+      border: `1px solid ${alert ? color : color + "55"}`,
+      borderTop: `2px solid ${color}`,
+      borderRadius: 8,
+      padding: "10px 12px",
+      flex: 1,
+      minWidth: 0,
+      boxSizing: "border-box",
+      boxShadow: alert ? `0 0 14px ${color}44` : "none",
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 26, height: 26, borderRadius: "50%", border: `1.5px solid ${color}`, display: "flex", alignItems: "center", justifyContent: "center", color: color, fontSize: 13, flexShrink: 0 }}>
+            {icon}
+          </div>
+          <span style={{ color: color, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.2 }}>
+            {title}
+          </span>
+        </div>
+        {sparkData.length > 1 && (
+          sparkType === "line"
+            ? <Spark data={sparkData} color={color} />
+            : <SparkBar data={sparkData} color={color} />
+        )}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
+        {value}
+      </div>
+      {meta && (
+        <div style={{ fontSize: 11, color: C.muted }}>Meta: {meta}</div>
+      )}
+      {trendStr && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: trendColor }}>{trendStr}</span>
+          <span style={{ fontSize: 10, color: "#374151" }}>vs mês anterior</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AtingBar({ pct, meta = 100 }: { pct: number; meta?: number }) {
+  const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 80 }}>
+      <div style={{ width: 50, height: 6, background: C.dim, borderRadius: 3, flexShrink: 0 }}>
+        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 3 }} />
+      </div>
+      <span style={{ fontSize: 11, color, fontWeight: 700, width: 38 }}>{pct.toFixed(0)}%</span>
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg: Record<string, { bg: string; color: string }> = {
+    "ACIMA DA META":  { bg: "#052e16", color: C.green },
+    "DENTRO DA META": { bg: "#0c1a3d", color: C.blue },
+    "ATENÇÃO":        { bg: "#431407", color: C.orange },
+    "ABAIXO DA META": { bg: "#3f0000", color: C.red },
+  }
+  const s = cfg[status] ?? cfg["ATENÇÃO"]
+  return (
+    <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>
+      {status}
+    </span>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+export default function TvCompras() {
+  const [data, setData] = useState<any>({ kpis: {}, compradores: [], series: [], seriesAnt: [], ruptura: [], situacaoEstoque: {}, graficos: {}, alertas: [] })
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]     = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [now, setNow] = useState(new Date())
 
-  // Relógio em tempo real
   useEffect(() => {
-    const tick = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(tick)
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
   }, [])
 
-  const fetchDados = async () => {
-    setLoading(true)
-    setError(null)
+  const fetchData = async () => {
+    setLoading(true); setError(null)
     try {
-      const response = await getDashboardTvCompras()
-      setData(response)
-      setLastUpdate(new Date())
-    } catch (err: any) {
-      console.error("Erro ao buscar dashboard TV compras", err)
-      const msg =
-        err?.code === "ERR_NETWORK" || err?.response?.status === 0
-          ? "Não foi possível conectar ao servidor."
-          : err?.response?.data?.message
-          ? `Erro do servidor: ${err.response.data.message}`
-          : "Erro ao carregar dados."
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
+      const r = await getDashboardTvCompras()
+      setData(r); setLastUpdate(new Date())
+    } catch (e: any) {
+      setError(e?.response?.data?.message ?? "Erro ao carregar dados")
+    } finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    fetchDados()
-    const timer = setInterval(fetchDados, 1800000)
-    return () => clearInterval(timer)
-  }, [])
+  useEffect(() => { fetchData(); const t = setInterval(fetchData, 1800000); return () => clearInterval(t) }, [])
 
-  // Tela de carga inicial
-  if (loading && !lastUpdate) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bgcolor="#0b0f14">
-        <Stack alignItems="center" spacing={2}>
-          <CircularProgress size={80} sx={{ color: "#B71C1C" }} />
-          <Typography color="#94A3B8">Carregando dashboard...</Typography>
-        </Stack>
-      </Box>
-    )
-  }
+  if (loading && !lastUpdate) return (
+    <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bgcolor={C.bg}>
+      <Stack alignItems="center" spacing={2}>
+        <CircularProgress size={80} sx={{ color: C.red }} />
+        <Typography color={C.muted}>Carregando dashboard...</Typography>
+      </Stack>
+    </Box>
+  )
 
-  if (error && !lastUpdate) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bgcolor="#0b0f14">
-        <Stack alignItems="center" spacing={3} sx={{ maxWidth: 500, p: 4, textAlign: "center" }}>
-          <Typography variant="h5" color="#EF4444" fontWeight={700}>Falha ao carregar</Typography>
-          <Typography color="#94A3B8">{error}</Typography>
-          <Button variant="outlined" startIcon={<RefreshIcon />} onClick={fetchDados}
-            sx={{ color: "#EF9A9A", borderColor: "#EF9A9A" }}>
-            Tentar novamente
-          </Button>
-        </Stack>
-      </Box>
-    )
-  }
-
-  // ── Dados extraídos ──────────────────────────────────────────────────────
   const kpis = data.kpis ?? {}
-  const series: { dia: string; venda: number; lb: number; produtosFora: number }[] = data.series ?? []
+  const comps: any[]      = data.compradores ?? []
+  const series: any[]     = data.series ?? []
+  const seriesAnt: any[]  = data.seriesAnt ?? []
+  const ruptura: any[]    = data.ruptura ?? []
+  const sit               = data.situacaoEstoque ?? {}
+  const graficos          = data.graficos ?? {}
 
-  const sparkVendas       = series.map((s) => s.venda)
-  const sparkLbPct        = series.map((s) => (s.venda > 0 ? (s.lb / s.venda) * 100 : 0))
-  const sparkProdutosFora = series.map((s) => s.produtosFora)
+  // Séries cumulativas
+  const cumul = (rows: any[], field: string) => {
+    let acc = 0; return rows.map(r => { acc += safe(r[field]); return acc })
+  }
+  // LB%: divide por venda_bruta (regra 5)
+  const cumulLbPct = (rows: any[]) => {
+    let tvBruta = 0, tlb = 0
+    return rows.map(r => { tvBruta += safe(r.vendaBruta); tlb += safe(r.lb); return tvBruta > 0 ? tlb / tvBruta * 100 : 0 })
+  }
 
-  const mesAtual = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).toUpperCase()
-  const minUpdate = lastUpdate
-    ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000)
-    : null
+  const sparkVendas   = series.map(s => safe(s.venda))
+  const sparkLbPct    = cumulLbPct(series)
+  const sparkProdFora = series.map(s => safe(s.produtosFora))
 
-  // ── Definição dos 6 cards ────────────────────────────────────────────────
+  const chartVenda1 = cumul(series, "venda")
+  const chartVenda2 = cumul(seriesAnt, "venda")
+  const chartLb1    = cumulLbPct(series)
+  const chartLb2    = cumulLbPct(seriesAnt)
+  const nsVal       = safe(kpis.nivelServico)
+  const chartNs1    = series.map(() => nsVal)
 
-  const cards: KpiCardProps[] = [
-    {
-      title: "VENDAS (R$)",
-      icon: <AttachMoney />,
-      value: `${fmtMoeda(safe(kpis.vendasValor))}`,
-      meta: fmtMoeda(safe(kpis.metaVendas)),
-      trend: kpis.vendasVsMesAnterior ?? null,
-      trendSuffix: "%",
-      trendUpGood: true,
-      sparkData: sparkVendas,
-      sparkType: "line",
-      color: "#3B82F6",
-      alertMode: safe(kpis.vendasValor) < safe(kpis.metaVendas) * 0.9,
-    },
-    {
-      title: "LB (%)",
-      icon: <BarChartIcon />,
-      value: fmtPct(safe(kpis.lbPercentual)),
-      meta: fmtPct(safe(kpis.metaLb)),
-      trend: kpis.lbVsMesAnterior ?? null,
-      trendSuffix: " p.p.",
-      trendUpGood: true,
-      sparkData: sparkLbPct,
-      sparkType: "line",
-      color: "#22C55E",
-      alertMode: safe(kpis.lbPercentual) > 0 && safe(kpis.lbPercentual) < safe(kpis.metaLb),
-    },
-    {
-      title: "NÍVEL DE SERVIÇO (%)",
-      icon: <LocalShipping />,
-      value: fmtPct(safe(kpis.nivelServico)),
-      meta: fmtPct(safe(kpis.nivelServicoMeta) || 98),
-      trend: kpis.nivelServicoVsMesAnterior ?? null,
-      trendSuffix: " p.p.",
-      trendUpGood: true,
-      color: "#F97316",
-      alertMode: safe(kpis.nivelServico) > 0 && safe(kpis.nivelServico) < (safe(kpis.nivelServicoMeta) || 98),
-    },
-    {
-      title: "EVOLUÇÃO (%)",
-      icon: <TrackChanges />,
-      value: fmtPct(safe(kpis.evolucao), 0),
-      meta: fmtPct(safe(kpis.evolucaoMeta) || 100, 0),
-      trend: kpis.evolucaoVsMesAnterior ?? null,
-      trendSuffix: "%",
-      trendUpGood: true,
-      color: "#A855F7",
-      alertMode: safe(kpis.evolucao) < (safe(kpis.evolucaoMeta) || 100),
-    },
-    {
-      title: "DIAS DE ESTOQUE",
-      icon: <Inventory2 />,
-      value: `${Math.round(safe(kpis.diasEstoque))} dias`,
-      meta: `${safe(kpis.diasEstoqueMeta) || 45} dias`,
-      trend: kpis.diasEstoqueVsMesAnterior ?? null,
-      trendSuffix: " dias",
-      trendUpGood: false,
-      sparkData: sparkVendas.length > 0 ? sparkVendas.map((_, i) => i + 1) : [],
-      sparkType: "bar",
-      color: "#60A5FA",
-      alertMode: safe(kpis.diasEstoque) > (safe(kpis.diasEstoqueMeta) || 45) * 1.1,
-    },
-    {
-      title: "PRODUTOS FORA",
-      icon: <Warning />,
-      value: `R$ ${fmtMoeda(safe(kpis.produtosForaValor))}`,
-      meta: fmtMoeda(safe(kpis.metaProdutosFora)),
-      trend: kpis.produtosForaVsMesAnterior ?? null,
-      trendSuffix: "%",
-      trendUpGood: false,
-      sparkData: sparkProdutosFora,
-      sparkType: "bar",
-      color: "#EF4444",
-      alertMode: safe(kpis.produtosForaValor) > safe(kpis.metaProdutosFora) * 1.1,
-    },
-  ]
+  const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
+  const mesAbrev = now.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase().substring(0, 3) + "/" + now.getFullYear()
+  const minAgo   = lastUpdate ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000) : null
+
+  const compByVenda = [...comps].sort((a, b) => b.vendaRealizado - a.vendaRealizado)
+  const top5    = compByVenda.slice(0, 5)
+  const bottom5 = [...comps].sort((a, b) => a.vendaPercentualMeta - b.vendaPercentualMeta).slice(0, 5)
+
+  const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "4px 6px", whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }
+  const td: React.CSSProperties = { color: C.text, fontSize: 11, padding: "4px 6px", borderBottom: `1px solid ${C.dim}` }
+  const tdN: React.CSSProperties = { ...td, color: C.muted }
 
   return (
-    <Box sx={{ minHeight: "100vh", background: "#050816", color: "#fff", p: "12px 16px" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.text, padding: "10px 14px", fontFamily: "'Segoe UI', sans-serif", boxSizing: "border-box" }}>
 
-      {/* ── Cabeçalho ── */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 1.5,
-          pb: 1,
-          borderBottom: "1px solid #1E293B",
-        }}
-      >
-        {/* Esquerda: título */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #1E3A5F, #3B82F6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <AttachMoney sx={{ color: "#fff", fontSize: "1.3rem" }} />
-          </Box>
-          <Box>
-            <Typography sx={{ fontSize: "1.3rem", fontWeight: 800, letterSpacing: "0.04em", lineHeight: 1 }}>
-              DASHBOARD COMPRAS
-            </Typography>
-            <Typography sx={{ fontSize: "0.65rem", color: "#64748B", letterSpacing: "0.08em" }}>
-              VISÃO GERAL DE DESEMPENHO — {mesAtual}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Centro: data e hora */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <CalendarToday sx={{ color: "#64748B", fontSize: "0.85rem" }} />
-            <Typography sx={{ color: "#CBD5E1", fontSize: "0.85rem" }}>
-              {now.toLocaleDateString("pt-BR")}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <AccessTime sx={{ color: "#64748B", fontSize: "0.85rem" }} />
-            <Typography sx={{ color: "#CBD5E1", fontSize: "0.85rem", fontVariantNumeric: "tabular-nums" }}>
+      {/* ── CABEÇALHO ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}`, paddingBottom: 8, marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#0e2b5c,#1D9BF0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛒</div>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.04em", lineHeight: 1 }}>DASHBOARD COMPRAS</div>
+            <div style={{ fontSize: 11, color: "#4B7FB5", letterSpacing: "0.1em" }}>VISÃO GERAL DE DESEMPENHO — {mesLabel.toUpperCase()}</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 13 }}>
+            📅 <span style={{ color: C.text }}>{now.toLocaleDateString("pt-BR")}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 13 }}>
+            🕐 <span style={{ color: C.text, fontVariantNumeric: "tabular-nums" }}>
               {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </Typography>
-          </Box>
-        </Box>
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12 }}>
+            {minAgo !== null ? `Atualizado há ${minAgo} min` : ""}
+            <span onClick={fetchData} style={{ cursor: "pointer", color: loading ? C.muted : C.green, fontSize: 16 }}>↻</span>
+          </div>
+        </div>
+      </div>
 
-        {/* Direita: atualização */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {error && (
-            <Typography sx={{ fontSize: "0.7rem", color: "#F87171" }}>{error}</Typography>
-          )}
-          <Typography sx={{ fontSize: "0.72rem", color: "#4B5563" }}>
-            {loading
-              ? "Atualizando..."
-              : minUpdate !== null
-              ? minUpdate === 0
-                ? "Atualizado agora"
-                : `Atualizado há ${minUpdate} min`
-              : ""}
-          </Typography>
-          <Box
-            onClick={fetchDados}
-            sx={{
-              cursor: "pointer",
-              color: loading ? "#64748B" : "#3B82F6",
-              display: "flex",
-              alignItems: "center",
-              "&:hover": { color: "#60A5FA" },
-            }}
-          >
-            <RefreshIcon sx={{ fontSize: "1rem" }} />
-          </Box>
-        </Box>
-      </Box>
+      {/* ── 6 CARDS KPI: Vendas → Evolução → LB → NS → Dias → Prod. Fora ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+        {/* 1. Vendas */}
+        <KpiCard
+          title="VENDAS (R$)" icon="$"
+          value={fmtR$(safe(kpis.vendasValor))}
+          meta={fmtR$(safe(kpis.metaVendas))}
+          trend={kpis.vendasVsMesAnterior ?? null} trendSuffix="%" upGood={true}
+          sparkData={sparkVendas} sparkType="line" color={C.blue}
+          alert={safe(kpis.vendasValor) < safe(kpis.metaVendas) * 0.9}
+        />
+        {/* 2. Evolução (sem meta — regra 6) */}
+        <KpiCard
+          title="EVOLUÇÃO (%)" icon="🎯"
+          value={kpis.evolucao !== null && kpis.evolucao !== undefined
+            ? `${kpis.evolucao >= 0 ? "+" : ""}${safe(kpis.evolucao).toFixed(1).replace(".", ",")}%`
+            : "—"}
+          meta=""
+          trend={null} trendSuffix="%" upGood={true}
+          sparkData={sparkVendas} sparkType="line" color={C.purple}
+          alert={kpis.evolucao !== null && kpis.evolucao !== undefined && safe(kpis.evolucao) < 0}
+        />
+        {/* 3. LB */}
+        <KpiCard
+          title="LB (%)" icon="%"
+          value={fmtP(safe(kpis.lbPercentual))}
+          meta={fmtP(safe(kpis.metaLb))}
+          trend={kpis.lbVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true}
+          sparkData={sparkLbPct} sparkType="line" color={C.green}
+          alert={safe(kpis.lbPercentual) > 0 && safe(kpis.lbPercentual) < safe(kpis.metaLb)}
+        />
+        {/* 4. Nível de Serviço */}
+        <KpiCard
+          title="NÍVEL DE SERVIÇO (%)" icon="🚚"
+          value={fmtP(safe(kpis.nivelServico))}
+          meta={fmtP(safe(kpis.nivelServicoMeta) || 98)}
+          trend={kpis.nivelServicoVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true}
+          sparkData={chartNs1} sparkType="line" color={C.orange}
+          alert={safe(kpis.nivelServico) > 0 && safe(kpis.nivelServico) < (safe(kpis.nivelServicoMeta) || 98)}
+        />
+        {/* 5. Dias de Estoque */}
+        <KpiCard
+          title="DIAS DE ESTOQUE" icon="📦"
+          value={`${Math.round(safe(kpis.diasEstoque))} dias`}
+          meta={`${safe(kpis.diasEstoqueMeta) || 45} dias`}
+          trend={kpis.diasEstoqueVsMesAnterior ?? null} trendSuffix=" dias" upGood={false}
+          sparkData={sparkVendas.map((_, i) => i + 1)} sparkType="bar" color={C.cyan}
+          alert={safe(kpis.diasEstoque) > (safe(kpis.diasEstoqueMeta) || 45) * 1.1}
+        />
+        {/* 6. Produtos Fora */}
+        <KpiCard
+          title="PRODUTOS FORA" icon="⚠️"
+          value={`R$ ${fmtR$(safe(kpis.produtosForaValor))}`}
+          meta={fmtR$(safe(kpis.metaProdutosFora))}
+          trend={kpis.produtosForaVsMesAnterior ?? null} trendSuffix="%" upGood={false}
+          sparkData={sparkProdFora} sparkType="bar" color={C.red}
+          alert={safe(kpis.produtosForaValor) > safe(kpis.metaProdutosFora) * 1.1}
+        />
+      </div>
 
-      {/* ── 6 Cards KPI ── */}
-      <Grid container spacing={1.5} mb={1.5}>
-        {cards.map((card) => (
-          <Grid item xs={12} sm={6} md={4} lg={2} key={card.title}>
-            <KpiCard {...card} />
-          </Grid>
-        ))}
-      </Grid>
+      {/* ── GRÁFICOS (5 painéis, sem alertas) ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+        {/* 1. Evolução de Vendas */}
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
+            📈 EVOLUÇÃO DE VENDAS (R$)
+            <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Ano anterior</span>
+          </div>
+          <LineChart data1={chartVenda1} data2={chartVenda2} color1={C.blue} title1="Este mês" title2="Ano anterior"
+            fmtY={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)} />
+        </div>
 
-      {/* ── Tabela por comprador ── */}
-      <Card sx={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 2, mb: 1.5 }}>
-        <CardContent sx={{ p: "12px !important" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", mb: 1, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Performance por Comprador
-          </Typography>
-          {data.compradores?.length ? (
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ "& th": { borderBottom: "1px solid #1E293B", py: 0.5 } }}>
-                  {["Comprador", "Grupo", "Venda (% Meta)", "LB (%)", "Meta LB", "Evolução", "Prod. Fora (%)", "Status"].map((h) => (
-                    <TableCell key={h} sx={{ color: "#64748B", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.compradores.map((c: any) => (
-                  <TableRow
-                    key={`${c.grupo}-${c.comprador}`}
-                    sx={{ "&:hover": { background: "#0F1923" }, "& td": { borderBottom: "1px solid #111827", py: 0.6 } }}
-                  >
-                    <TableCell sx={{ color: "#E5E7EB", fontSize: "0.78rem" }}>{c.comprador}</TableCell>
-                    <TableCell sx={{ color: "#94A3B8", fontSize: "0.78rem" }}>{c.grupo}</TableCell>
-                    <TableCell sx={{ color: "#E5E7EB", fontSize: "0.78rem" }}>{safe(c.vendaPercentualMeta).toFixed(1)}%</TableCell>
-                    <TableCell sx={{ color: "#E5E7EB", fontSize: "0.78rem" }}>{safe(c.lbPercentual).toFixed(1)}%</TableCell>
-                    <TableCell sx={{ color: "#6B7280", fontSize: "0.78rem" }}>{safe(c.metaLb).toFixed(1)}%</TableCell>
-                    <TableCell sx={{ color: safe(c.evolucaoPercentual) >= 0 ? "#22C55E" : "#EF4444", fontSize: "0.78rem" }}>
-                      {safe(c.evolucaoPercentual) >= 0 ? "+" : ""}{safe(c.evolucaoPercentual).toFixed(1)}%
-                    </TableCell>
-                    <TableCell sx={{ color: "#E5E7EB", fontSize: "0.78rem" }}>{safe(c.produtosForaPercentual).toFixed(1)}%</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={c.status}
-                        color={statusColor(safe(c.vendaPercentualMeta))}
-                        size="small"
-                        sx={{ fontSize: "0.65rem", height: 20 }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <Typography sx={{ color: "#4B5563", fontSize: "0.8rem" }}>
-              Nenhum comprador com dados para o período atual.
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
+        {/* 2. Evolução de LB */}
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
+            📊 EVOLUÇÃO DE LB (%)
+            <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Ano anterior</span>
+          </div>
+          <LineChart data1={chartLb1} data2={chartLb2} color1={C.green} title1="Este mês" title2="Ano anterior"
+            fmtY={v => `${v.toFixed(0)}%`} />
+        </div>
 
-      {/* ── Gráficos de barras (% atingimento) ── */}
-      <Grid container spacing={1.5} mb={1.5}>
-        {[
-          { title: "Atingimento de Vendas (%)", dados: data.graficos?.evolucaoVendas },
-          { title: "Atingimento de LB (%)", dados: data.graficos?.evolucaoLb },
-        ].map(({ title, dados }) => (
-          <Grid item xs={12} md={6} key={title}>
-            <Card sx={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 2 }}>
-              <CardContent sx={{ p: "12px !important" }}>
-                <Typography sx={{ fontWeight: 700, fontSize: "0.78rem", mb: 1, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  {title}
-                </Typography>
-                <Stack spacing={0.75}>
-                  {dados?.length ? (
-                    dados.map((item: any) => (
-                      <Box key={item.label}>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.25 }}>
-                          <Typography sx={{ fontSize: "0.72rem", color: "#CBD5E1" }}>{item.label}</Typography>
-                          <Typography sx={{ fontSize: "0.72rem", color: "#CBD5E1" }}>{safe(item.valor).toFixed(1)}%</Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.max(0, Math.min(100, safe(item.valor)))}
-                          color={statusColor(safe(item.valor))}
-                          sx={{ height: 5, borderRadius: 1 }}
-                        />
-                      </Box>
-                    ))
-                  ) : (
-                    <Typography sx={{ fontSize: "0.75rem", color: "#4B5563" }}>Sem dados para o período.</Typography>
-                  )}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+        {/* 3. Evolução do Nível de Serviço */}
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.orange, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
+            🚚 NÍVEL DE SERVIÇO (%)
+          </div>
+          <LineChart data1={chartNs1} data2={[]} color1={C.orange} title1="Este mês" title2=""
+            fmtY={v => `${v.toFixed(0)}%`} />
+        </div>
 
-      {/* ── Alertas ── */}
-      <Card sx={{ background: "#0D1117", border: "1px solid #1E293B", borderRadius: 2 }}>
-        <CardContent sx={{ p: "12px !important" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.78rem", mb: 1, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Alertas
-          </Typography>
-          <Stack spacing={0.75}>
-            {data.alertas?.length ? (
-              data.alertas.map((alerta: string, idx: number) => (
-                <Alert key={idx} severity="warning" sx={{ py: 0.25, fontSize: "0.75rem" }}>{alerta}</Alert>
-              ))
-            ) : (
-              <Alert severity="success" sx={{ py: 0.25, fontSize: "0.75rem" }}>Sem alertas críticos no momento.</Alert>
+        {/* 4. Atingimento de Vendas */}
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>
+            🎯 ATINGIMENTO VENDAS (%)
+          </div>
+          <BarChartH
+            data={(graficos.atingimentoVendas ?? []).map((d: any) => ({ label: d.label, valor: safe(d.valor), meta: safe(d.meta) }))}
+            target={100}
+            fmtVal={v => `${v.toFixed(0)}%`}
+            w={240} h={160}
+          />
+        </div>
+
+        {/* 5. Atingimento de LB */}
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>
+            📊 ATINGIMENTO LB (%)
+          </div>
+          <BarChartH
+            data={(graficos.atingimentoLb ?? []).map((d: any) => ({ label: d.label, valor: safe(d.valor), meta: safe(d.meta) }))}
+            target={safe(kpis.metaLb) || 35}
+            fmtVal={v => `${v.toFixed(1).replace(".", ",")}%`}
+            w={240} h={160}
+          />
+        </div>
+      </div>
+
+      {/* ── TABELA DE COMPRADORES ── */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10, overflowX: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em" }}>👥 DESEMPENHO POR COMPRADOR E GRUPO</span>
+          <span style={{ color: C.muted, fontSize: 10 }}>Metas referentes ao mês: {mesAbrev}</span>
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={th}>Comprador</th>
+              <th style={th}>Grupos</th>
+              <th style={{ ...th, textAlign: "center" }} colSpan={3}>Vendas (R$)</th>
+              <th style={{ ...th, textAlign: "center" }} colSpan={2}>LB (%)</th>
+              <th style={{ ...th, textAlign: "center" }} colSpan={2}>Nível Serviço (%)</th>
+              <th style={{ ...th, textAlign: "center" }} colSpan={2}>Dias Estoque</th>
+              <th style={{ ...th, textAlign: "center" }} colSpan={2}>Produtos Fora (R$)</th>
+              <th style={th}>Status</th>
+            </tr>
+            <tr>
+              <th style={th} /><th style={th} />
+              <th style={th}>Realizado</th><th style={th}>Meta</th><th style={th}>Atingimento</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={th} />
+            </tr>
+          </thead>
+          <tbody>
+            {comps.length > 0 ? comps.map((c: any, i: number) => (
+              <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
+                <td style={td}>{c.comprador}</td>
+                <td style={tdN}>{c.grupos}</td>
+                <td style={td}>{fmtR$(safe(c.vendaRealizado))}</td>
+                <td style={tdN}>{fmtR$(safe(c.metaVendasAjustada))}</td>
+                <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
+                <td style={td}>{fmtP(safe(c.lbPercentual))}</td>
+                <td style={tdN}>{fmtP(safe(c.metaLb))}</td>
+                <td style={{ ...td, color: safe(c.nivelServico) >= (c.nivelServicoMeta || 97) ? C.green : C.red }}>
+                  {c.nivelServico !== null ? fmtP(safe(c.nivelServico)) : "—"}
+                </td>
+                <td style={tdN}>{fmtP(c.nivelServicoMeta || 97)}</td>
+                <td style={{ ...td, color: safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45) ? C.green : safe(c.diasEstoque) <= 55 ? C.orange : C.red }}>
+                  {c.diasEstoque !== null ? `${Math.round(safe(c.diasEstoque))}` : "—"}
+                </td>
+                <td style={tdN}>{c.diasEstoqueMeta || 45}</td>
+                <td style={td}>{c.vendaForaRealizado > 0 ? fmtR$(safe(c.vendaForaRealizado)) : "—"}</td>
+                <td style={tdN}>{c.metaProdutosFora > 0 ? fmtR$(safe(c.metaProdutosFora)) : "—"}</td>
+                <td style={td}><StatusBadge status={c.status} /></td>
+              </tr>
+            )) : (
+              <tr><td colSpan={14} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
             )}
-          </Stack>
-        </CardContent>
-      </Card>
-    </Box>
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── PAINEL INFERIOR ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+
+        {/* Dias de Estoque por Comprador */}
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.cyan, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>📦 DIAS DE ESTOQUE POR COMPRADOR</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead><tr>
+              <th style={th}>Comprador</th>
+              <th style={{ ...th, width: 80 }}></th>
+              <th style={{ ...th, textAlign: "right" }}>Dias</th>
+            </tr></thead>
+            <tbody>
+              {comps.filter(c => c.diasEstoque !== null).map((c: any, i: number) => {
+                const dias  = Math.round(safe(c.diasEstoque))
+                const meta  = c.diasEstoqueMeta || 45
+                const color = dias <= meta ? C.green : dias <= meta * 1.2 ? C.orange : C.red
+                return (
+                  <tr key={i}>
+                    <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]}</td>
+                    <td style={td}>
+                      <div style={{ width: "100%", height: 6, background: C.dim, borderRadius: 3 }}>
+                        <div style={{ width: `${Math.min(100, (dias / 90) * 100)}%`, height: "100%", background: color, borderRadius: 3 }} />
+                      </div>
+                    </td>
+                    <td style={{ ...td, textAlign: "right", color, fontWeight: 700, fontSize: 11 }}>{dias}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Situação do Estoque */}
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4, alignSelf: "flex-start" }}>SITUAÇÃO DO ESTOQUE</div>
+          <Donut slices={[
+            { label: "Ideal (Ok)",   pct: Math.round(safe(sit.idealPct)), color: C.green },
+            { label: "Baixo (<Mín)", pct: Math.round(safe(sit.baixoPct)), color: C.orange },
+            { label: "Alto (>Máx)",  pct: Math.round(safe(sit.altoPct)),  color: C.red },
+          ]} w={160} h={150} />
+        </div>
+
+        {/* Produtos em Ruptura */}
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⛔ PRODUTOS EM RUPTURA</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead><tr>
+              <th style={th}>Produto</th>
+              <th style={th}>Grupo</th>
+              <th style={{ ...th, textAlign: "center" }}>Lojas s/ estoque</th>
+            </tr></thead>
+            <tbody>
+              {ruptura.length > 0 ? ruptura.map((r: any, i: number) => (
+                <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
+                  <td style={{ ...td, fontSize: 10 }}>{r.produto}</td>
+                  <td style={tdN}>{r.codgrupo}</td>
+                  <td style={{ ...td, textAlign: "center" }}>
+                    <span style={{ background: r.lojasSemEstoque >= 5 ? "#3f0000" : r.lojasSemEstoque >= 3 ? "#431407" : "#1a1a00", color: r.lojasSemEstoque >= 5 ? C.red : r.lojasSemEstoque >= 3 ? C.orange : C.yellow, borderRadius: 4, padding: "1px 8px", fontWeight: 700, fontSize: 11 }}>
+                      {r.lojasSemEstoque}
+                    </span>
+                  </td>
+                </tr>
+              )) : <tr><td colSpan={3} style={{ ...td, textAlign: "center", color: C.green }}>✓ Sem rupturas</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        {/* TOP 5 e BOTTOM 5 */}
+        <div style={{ flex: 3, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+            <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>🏆 TOP 5 GRUPOS — VENDAS (R$)</div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>
+                <th style={th}>Comprador</th>
+                <th style={{ ...th, textAlign: "right" }}>Vendas</th>
+                <th style={th}>Atingimento</th>
+              </tr></thead>
+              <tbody>
+                {top5.map((c: any, i: number) => (
+                  <tr key={i}>
+                    <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]} ({c.grupos})</td>
+                    <td style={{ ...td, textAlign: "right", fontSize: 11 }}>{fmtR$(safe(c.vendaRealizado))}</td>
+                    <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+            <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⚠ BOTTOM 5 — ATINGIMENTO</div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>
+                <th style={th}>Comprador</th>
+                <th style={{ ...th, textAlign: "right" }}>Vendas</th>
+                <th style={th}>Atingimento</th>
+              </tr></thead>
+              <tbody>
+                {bottom5.map((c: any, i: number) => (
+                  <tr key={i}>
+                    <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]} ({c.grupos})</td>
+                    <td style={{ ...td, textAlign: "right", fontSize: 11 }}>{fmtR$(safe(c.vendaRealizado))}</td>
+                    <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ── RODAPÉ ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${C.border}`, paddingTop: 6, fontSize: 10, color: C.muted }}>
+        <div>
+          <span style={{ color: C.muted }}>"Nosso compromisso: </span>
+          <span style={{ color: C.blue, fontWeight: 600 }}>Comprar bem</span>
+          <span style={{ color: C.muted }}> hoje para crescer sempre!"</span>
+        </div>
+        <div>
+          Fonte: Sistema ERP &nbsp;|&nbsp; Atualizado em: {lastUpdate?.toLocaleDateString("pt-BR")} {lastUpdate?.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          {error && <span style={{ color: C.red, marginLeft: 10 }}>⚠ {error}</span>}
+        </div>
+      </div>
+    </div>
   )
 }
