@@ -255,7 +255,7 @@ export const getDashboardTvCompras = async () => {
     GROUP BY ef.codgrp
   `
 
-  // ── Query 6: ruptura por comprador (facing > 0 e saldoestoque <= 0) ────────
+  // ── Query 6: ruptura por comprador (facing > 0, sem estoque e sem pedido pendente) ──
   const queryRuptura = `
     WITH grupos_meta AS (
       SELECT DISTINCT TRIM(codgrp) AS codgrp
@@ -274,6 +274,11 @@ export const getDashboardTvCompras = async () => {
       AND ef.saldoestoque <= 0
       AND ef.codgrp IN (SELECT codgrp FROM grupos_meta)
       AND pro.c_status = 'A' AND pro.c_especie = 'P'
+      AND NOT EXISTS (
+        SELECT 1 FROM vs_scc_pedidos_compra_pendente pcp
+        WHERE pcp.codproduto = ef.codproduto
+          AND pcp.qdte_pendente > 0
+      )
     GROUP BY c.nome
     ORDER BY COUNT(*) DESC
   `

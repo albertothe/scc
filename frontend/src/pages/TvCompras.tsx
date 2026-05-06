@@ -117,10 +117,10 @@ function BarChartH({
       <text x={w / 2} y={h / 2} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
     </svg>
   )
-  const pl = 72, pr = 38, pt = 4, pb = 4
+  const pl = 72, pr = 38, pt = 10, pb = 4
   const cw = w - pl - pr
   const totalH = h - pt - pb
-  const bh = Math.max(6, Math.floor(totalH / data.length) - 4)
+  const bh = Math.max(8, Math.floor(totalH / data.length) - 4)
   const gap = Math.floor((totalH - bh * data.length) / Math.max(data.length - 1, 1))
   const maxVal = Math.max(...data.map(d => d.valor), target * 1.1, 1)
   const fmt = fmtVal ?? ((v: number) => `${v.toFixed(0)}%`)
@@ -128,53 +128,61 @@ function BarChartH({
 
   return (
     <svg width={w} height={h}>
+      {/* Faixa verde de fundo indicando zona atingida */}
+      <rect x={tgtX} y={pt} width={Math.max(0, w - pr - tgtX)} height={h - pt - pb} fill={C.green} opacity="0.04" rx="2" />
       {data.map((d, i) => {
         const y = pt + i * (bh + gap)
+        const tgt = d.meta ?? target
         const barW = Math.max(0, (d.valor / maxVal) * cw)
-        const barColor = d.valor >= (d.meta ?? target) ? C.green : d.valor >= (d.meta ?? target) * 0.9 ? C.orange : C.red
+        const barColor = d.valor >= tgt ? C.green : d.valor >= tgt * 0.9 ? C.orange : C.red
         const firstName = d.label.split(" ")[0]
         return (
           <g key={i}>
             <text x={pl - 4} y={y + bh / 2 + 4} fill={C.text} fontSize={9} textAnchor="end">{firstName}</text>
-            <rect x={pl} y={y} width={barW} height={bh} fill={barColor} rx="2" opacity="0.85" />
+            {/* Trilho de fundo */}
+            <rect x={pl} y={y} width={cw} height={bh} fill={C.dim} rx="2" />
+            {/* Barra de valor */}
+            <rect x={pl} y={y} width={barW} height={bh} fill={barColor} rx="2" />
+            {/* Valor à direita */}
             <text x={pl + barW + 3} y={y + bh / 2 + 4} fill={barColor} fontSize={9} fontWeight="700">{fmt(d.valor)}</text>
           </g>
         )
       })}
-      <line x1={tgtX} y1={pt} x2={tgtX} y2={h - pb} stroke={C.muted} strokeDasharray="3,2" strokeWidth="1" />
-      <text x={tgtX} y={pt - 1} fill={C.muted} fontSize={8} textAnchor="middle">meta</text>
+      {/* Linha de meta destacada */}
+      <line x1={tgtX} y1={pt} x2={tgtX} y2={h - pb} stroke="#FFFFFF" strokeWidth="1.5" strokeDasharray="4,3" opacity="0.5" />
+      <text x={tgtX} y={pt - 2} fill="#FFFFFF" fontSize={8} textAnchor="middle" opacity="0.6">META</text>
     </svg>
   )
 }
 
 // ─── SVG: Gráfico de rosca ───────────────────────────────────────────────────
 function Donut({
-  slices, w = 140, h = 140,
+  slices, w = 140, h = 120,
 }: {
   slices: { label: string; pct: number; color: string }[]
   w?: number; h?: number
 }) {
-  const cx = w / 2, cy = h / 2 - 10, r = 48, ri = 30
+  const cx = w / 2, cy = h / 2, r = 46, ri = 28
   let angle = -Math.PI / 2
   const arcs: JSX.Element[] = []
   const total = slices.reduce((s, sl) => s + sl.pct, 0)
 
   if (!total) return (
-    <svg width={w} height={h}>
-      <text x={cx} y={cy + 6} fill={C.muted} textAnchor="middle" fontSize={11}>Sem dados</text>
-    </svg>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: h, color: C.muted, fontSize: 11 }}>
+      Sem dados
+    </div>
   )
 
   slices.forEach((sl, i) => {
-    if (sl.pct <= 0) { angle; return }
+    if (sl.pct <= 0) return
     const sweep = (sl.pct / total) * 2 * Math.PI
     const gap = 0.02
     const s = sweep - gap
     if (s <= 0) return
-    const x1 = cx + r * Math.cos(angle);         const y1 = cy + r * Math.sin(angle)
-    const x2 = cx + r * Math.cos(angle + s);     const y2 = cy + r * Math.sin(angle + s)
-    const xi1 = cx + ri * Math.cos(angle);       const yi1 = cy + ri * Math.sin(angle)
-    const xi2 = cx + ri * Math.cos(angle + s);   const yi2 = cy + ri * Math.sin(angle + s)
+    const x1 = cx + r * Math.cos(angle);       const y1 = cy + r * Math.sin(angle)
+    const x2 = cx + r * Math.cos(angle + s);   const y2 = cy + r * Math.sin(angle + s)
+    const xi1 = cx + ri * Math.cos(angle);     const yi1 = cy + ri * Math.sin(angle)
+    const xi2 = cx + ri * Math.cos(angle + s); const yi2 = cy + ri * Math.sin(angle + s)
     const lg = s > Math.PI ? 1 : 0
     arcs.push(
       <path key={i} d={`M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r},0,${lg},1,${x2.toFixed(1)},${y2.toFixed(1)} L${xi2.toFixed(1)},${yi2.toFixed(1)} A${ri},${ri},0,${lg},0,${xi1.toFixed(1)},${yi1.toFixed(1)} Z`}
@@ -183,16 +191,21 @@ function Donut({
     angle += sweep
   })
 
+  const visible = slices.filter(sl => sl.pct > 0)
   return (
-    <svg width={w} height={h}>
-      {arcs}
-      {slices.filter(sl => sl.pct > 0).map((sl, i) => (
-        <g key={i}>
-          <rect x={4} y={h - 28 + i * 14} width={8} height={8} rx="2" fill={sl.color} />
-          <text x={16} y={h - 22 + i * 14} fill={C.text} fontSize={9}>{sl.label}: {sl.pct}%</text>
-        </g>
-      ))}
-    </svg>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <svg width={w} height={h}>{arcs}</svg>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px", justifyContent: "center" }}>
+        {visible.map((sl, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: sl.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 9, color: C.text }}>
+              {sl.label}: <strong style={{ color: sl.color }}>{sl.pct}%</strong>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -355,6 +368,10 @@ export default function TvCompras() {
   const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "4px 6px", whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }
   const td: React.CSSProperties = { color: C.text, fontSize: 11, padding: "4px 6px", borderBottom: `1px solid ${C.dim}` }
   const tdN: React.CSSProperties = { ...td, color: C.muted }
+  // Separador visual entre grupos de colunas
+  const thG: React.CSSProperties = { ...th, borderLeft: `2px solid ${C.border}` }
+  const tdG: React.CSSProperties = { ...td, borderLeft: `2px solid ${C.dim}` }
+  const tdNG: React.CSSProperties = { ...tdN, borderLeft: `2px solid ${C.dim}` }
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, padding: "10px 14px", fontFamily: "'Segoe UI', sans-serif", boxSizing: "border-box" }}>
@@ -513,17 +530,17 @@ export default function TvCompras() {
             <tr>
               <th style={{ ...th }} rowSpan={2}>Comprador</th>
               <th style={{ ...th }} rowSpan={2}>Grupos</th>
-              <th style={{ ...th, textAlign: "center" }} rowSpan={2}>Vendas<br/>Atingimento</th>
-              <th style={{ ...th, textAlign: "center" }} colSpan={2}>LB (%)</th>
-              <th style={{ ...th, textAlign: "center" }} colSpan={2}>Nível Serviço (%)</th>
-              <th style={{ ...th, textAlign: "center" }} colSpan={2}>Dias Estoque</th>
-              <th style={{ ...th, textAlign: "center" }} rowSpan={2}>Prod. Fora<br/>Atingimento</th>
-              <th style={{ ...th }} rowSpan={2}>Status</th>
+              <th style={{ ...thG, textAlign: "center" }} rowSpan={2}>Vendas<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }} colSpan={2}>LB (%)</th>
+              <th style={{ ...thG, textAlign: "center" }} colSpan={2}>Nível Serviço (%)</th>
+              <th style={{ ...thG, textAlign: "center" }} colSpan={2}>Dias Estoque</th>
+              <th style={{ ...thG, textAlign: "center" }} rowSpan={2}>Prod. Fora<br/>Atingimento</th>
+              <th style={{ ...thG }} rowSpan={2}>Status</th>
             </tr>
             <tr>
-              <th style={th}>Realizado</th><th style={th}>Meta</th>
-              <th style={th}>Realizado</th><th style={th}>Meta</th>
-              <th style={th}>Realizado</th><th style={th}>Meta</th>
+              <th style={thG}>Realizado</th><th style={th}>Meta</th>
+              <th style={thG}>Realizado</th><th style={th}>Meta</th>
+              <th style={thG}>Realizado</th><th style={th}>Meta</th>
             </tr>
           </thead>
           <tbody>
@@ -531,19 +548,21 @@ export default function TvCompras() {
               <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
                 <td style={td}>{c.comprador}</td>
                 <td style={tdN}>{c.grupos}</td>
-                <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
-                <td style={td}>{fmtP(safe(c.lbPercentual))}</td>
+                <td style={tdG}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
+                <td style={{ ...tdG, color: safe(c.lbPercentual) >= safe(c.metaLb) ? C.green : C.red, fontWeight: 700 }}>
+                  {fmtP(safe(c.lbPercentual))}
+                </td>
                 <td style={tdN}>{fmtP(safe(c.metaLb))}</td>
-                <td style={{ ...td, color: safe(c.nivelServico) >= (c.nivelServicoMeta || 97) ? C.green : C.red }}>
+                <td style={{ ...tdG, color: safe(c.nivelServico) >= (c.nivelServicoMeta || 97) ? C.green : C.red, fontWeight: 700 }}>
                   {c.nivelServico !== null ? fmtP(safe(c.nivelServico)) : "—"}
                 </td>
                 <td style={tdN}>{fmtP(c.nivelServicoMeta || 97)}</td>
-                <td style={{ ...td, color: safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45) ? C.green : safe(c.diasEstoque) <= 55 ? C.orange : C.red }}>
+                <td style={{ ...tdG, color: safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45) ? C.green : safe(c.diasEstoque) <= 55 ? C.orange : C.red, fontWeight: 700 }}>
                   {c.diasEstoque !== null ? `${Math.round(safe(c.diasEstoque))}` : "—"}
                 </td>
                 <td style={tdN}>{c.diasEstoqueMeta || 45}</td>
-                <td style={td}><AtingBar pct={safe(c.produtosForaPercentual)} /></td>
-                <td style={td}><StatusBadge status={c.status} /></td>
+                <td style={tdG}><AtingBar pct={safe(c.produtosForaPercentual)} /></td>
+                <td style={tdG}><StatusBadge status={c.status} /></td>
               </tr>
             )) : (
               <tr><td colSpan={11} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
@@ -592,12 +611,13 @@ export default function TvCompras() {
             { label: "Normal (16-90d)", pct: Math.round(safe(sit.normalPct)),  color: C.green },
             { label: "Crítico (≤15d)",  pct: Math.round(safe(sit.criticoPct)), color: C.red },
             { label: "Excesso (>90d)",  pct: Math.round(safe(sit.excessoPct)), color: C.orange },
-          ]} w={160} h={148} />
+          ]} w={160} h={120} />
         </div>
 
         {/* Produtos em Ruptura por Comprador */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
-          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>⛔ RUPTURA POR COMPRADOR</div>
+          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2 }}>⛔ RUPTURA POR COMPRADOR</div>
+          <div style={{ color: C.muted, fontSize: 9, marginBottom: 6 }}>Produtos com facing, sem estoque e sem pedido pendente no fornecedor</div>
           {ruptura.length > 0 ? (() => {
             const maxQtd = Math.max(...ruptura.map((r: any) => safe(r.qtdRuptura)), 1)
             return (
