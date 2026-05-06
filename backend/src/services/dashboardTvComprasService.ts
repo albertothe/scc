@@ -468,6 +468,34 @@ export const getDashboardTvCompras = async () => {
   const metaProdutosForaAjustada = totalDias > 0
     ? Math.round(safe(gm.meta_produtos_fora) * diasDecorridos / totalDias) : safe(gm.meta_produtos_fora)
 
+  // ── Dados por comprador+grupo (para a tabela matriz) ────────────────────
+  const compradoresGrupos = r1.rows.map((row: any) => {
+    const codgrp = String(row.codgrp).trim()
+    const mg = metricsGrupoMap.get(codgrp)
+    const vendaBruta = safe(row.venda_bruta)
+    const lbRealizado = safe(row.lb_realizado)
+    const lbPct = vendaBruta > 0 ? (lbRealizado / vendaBruta) * 100 : 0
+    const metaVendasAjustada = safe(row.meta_vendas_ajustada)
+    const vendaRealizado = safe(row.venda_realizado)
+    const vendaPercentualMeta = metaVendasAjustada > 0 ? (vendaRealizado / metaVendasAjustada) * 100 : 0
+    const metaProdutosForaAjustada = safe(row.meta_produtos_fora_ajustada)
+    const vendaForaRealizado = safe(row.venda_fora_realizado)
+    const produtosForaPct = metaProdutosForaAjustada > 0 ? (vendaForaRealizado / metaProdutosForaAjustada) * 100 : 0
+    return {
+      comprador: row.comprador,
+      codgrp,
+      grupoNome: String(row.grupo_nome || row.codgrp).trim(),
+      vendaPercentualMeta: Number(vendaPercentualMeta.toFixed(1)),
+      lbPercentual: Number(lbPct.toFixed(1)),
+      metaLb: Number(safe(row.meta_lb).toFixed(1)),
+      nivelServico: mg ? Number(mg.nivelServico.toFixed(1)) : null,
+      nivelServicoMeta: safe(row.meta_nivel_servico) || 97,
+      diasEstoque: mg ? Math.round(mg.diasEstoque) : null,
+      diasEstoqueMeta: safe(row.meta_dias_estoque) || 45,
+      produtosForaPercentual: Number(produtosForaPct.toFixed(1)),
+    }
+  })
+
   // Evolução vs ano passado (regra 6 — sem meta)
   const evolucao = vendasAnoPassado > 0
     ? Number(((vendasValor / vendasAnoPassado - 1) * 100).toFixed(1))
@@ -540,6 +568,7 @@ export const getDashboardTvCompras = async () => {
   return {
     kpis,
     compradores,
+    compradoresGrupos,
     series,
     seriesAnt,
     ruptura,
