@@ -278,24 +278,29 @@ export const getDashboardTvCompras = async () => {
     ORDER BY COUNT(*) DESC
   `
 
-  // ── Query 7: situação do estoque ──────────────────────────────────────────
+  // ── Query 7: situação do estoque por faixa de dias ──────────────────────
   const querySituacao = `
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    ),
+    dias_produto AS (
+      SELECT
+        CASE WHEN mediadia > 0 THEN ROUND(saldoestoque::numeric / mediadia, 0) ELSE 0 END AS dias
+      FROM vs_scc_estoque_media_facing
+      WHERE codgrp IN (SELECT codgrp FROM grupos_meta)
+        AND facing > 0
+    )
     SELECT
-      ROUND(COUNT(CASE WHEN saldo_estoque > 0
-                       AND qtde_estoque_minimo > 0
-                       AND saldo_estoque >= qtde_estoque_minimo
-                       AND (qtde_estoque_maximo = 0 OR saldo_estoque <= qtde_estoque_maximo)
-                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS ideal_pct,
-      ROUND(COUNT(CASE WHEN saldo_estoque > 0
-                       AND qtde_estoque_minimo > 0
-                       AND saldo_estoque < qtde_estoque_minimo
-                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS baixo_pct,
-      ROUND(COUNT(CASE WHEN qtde_estoque_maximo > 0
-                       AND saldo_estoque > qtde_estoque_maximo
-                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS alto_pct,
-      ROUND(COUNT(CASE WHEN saldo_estoque <= 0
-                  THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 0) AS zero_pct
-    FROM vs_scc_festoques
+      ROUND(COUNT(CASE WHEN dias <= 15 THEN 1 END)::numeric
+            / NULLIF(COUNT(*), 0) * 100, 0) AS critico_pct,
+      ROUND(COUNT(CASE WHEN dias > 15 AND dias <= 90 THEN 1 END)::numeric
+            / NULLIF(COUNT(*), 0) * 100, 0) AS normal_pct,
+      ROUND(COUNT(CASE WHEN dias > 90 THEN 1 END)::numeric
+            / NULLIF(COUNT(*), 0) * 100, 0) AS excesso_pct
+    FROM dias_produto
   `
 
   const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
@@ -480,10 +485,9 @@ export const getDashboardTvCompras = async () => {
 
   const sit = r7.rows[0] ?? {}
   const situacaoEstoque = {
-    idealPct: safe(sit.ideal_pct),
-    baixoPct: safe(sit.baixo_pct),
-    altoPct:  safe(sit.alto_pct),
-    zeroPct:  safe(sit.zero_pct),
+    criticoPct: safe(sit.critico_pct),
+    normalPct:  safe(sit.normal_pct),
+    excessoPct: safe(sit.excesso_pct),
   }
 
   const kpis = {

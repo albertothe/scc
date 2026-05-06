@@ -388,12 +388,12 @@ export default function TvCompras() {
       <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
         {/* 1. Vendas */}
         <KpiCard
-          title="VENDAS (R$)" icon="$"
-          value={fmtR$(safe(kpis.vendasValor))}
-          meta={fmtR$(safe(kpis.metaVendas))}
-          trend={kpis.vendasVsMesAnterior ?? null} trendSuffix="%" upGood={true}
+          title="VENDAS" icon="$"
+          value={fmtP(safe(kpis.vendasAtingimento))}
+          meta=""
+          trend={null} trendSuffix="%" upGood={true}
           sparkData={sparkVendas} sparkType="line" color={C.blue}
-          alert={safe(kpis.vendasValor) < safe(kpis.metaVendas) * 0.9}
+          alert={safe(kpis.vendasAtingimento) > 0 && safe(kpis.vendasAtingimento) < 90}
         />
         {/* 2. Evolução (sem meta — regra 6) */}
         <KpiCard
@@ -411,7 +411,7 @@ export default function TvCompras() {
           title="LB (%)" icon="%"
           value={fmtP(safe(kpis.lbPercentual))}
           meta={fmtP(safe(kpis.metaLb))}
-          trend={kpis.lbVsMesAnterior ?? null} trendSuffix=" p.p." upGood={true}
+          trend={null} trendSuffix=" p.p." upGood={true}
           sparkData={sparkLbPct} sparkType="line" color={C.green}
           alert={safe(kpis.lbPercentual) > 0 && safe(kpis.lbPercentual) < safe(kpis.metaLb)}
         />
@@ -436,11 +436,11 @@ export default function TvCompras() {
         {/* 6. Produtos Fora */}
         <KpiCard
           title="PRODUTOS FORA" icon="⚠️"
-          value={`R$ ${fmtR$(safe(kpis.produtosForaValor))}`}
-          meta={fmtR$(safe(kpis.metaProdutosFora))}
-          trend={kpis.produtosForaVsMesAnterior ?? null} trendSuffix="%" upGood={false}
+          value={fmtP(safe(kpis.produtosFora))}
+          meta=""
+          trend={null} trendSuffix="%" upGood={false}
           sparkData={sparkProdFora} sparkType="bar" color={C.red}
-          alert={safe(kpis.produtosForaValor) > safe(kpis.metaProdutosFora) * 1.1}
+          alert={safe(kpis.produtosFora) > 0 && safe(kpis.produtosFora) > 110}
         />
       </div>
 
@@ -511,23 +511,19 @@ export default function TvCompras() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={th}>Comprador</th>
-              <th style={th}>Grupos</th>
-              <th style={{ ...th, textAlign: "center" }} colSpan={3}>Vendas (R$)</th>
+              <th style={{ ...th }} rowSpan={2}>Comprador</th>
+              <th style={{ ...th }} rowSpan={2}>Grupos</th>
+              <th style={{ ...th, textAlign: "center" }} rowSpan={2}>Vendas<br/>Atingimento</th>
               <th style={{ ...th, textAlign: "center" }} colSpan={2}>LB (%)</th>
               <th style={{ ...th, textAlign: "center" }} colSpan={2}>Nível Serviço (%)</th>
               <th style={{ ...th, textAlign: "center" }} colSpan={2}>Dias Estoque</th>
-              <th style={{ ...th, textAlign: "center" }} colSpan={2}>Produtos Fora (R$)</th>
-              <th style={th}>Status</th>
+              <th style={{ ...th, textAlign: "center" }} rowSpan={2}>Prod. Fora<br/>Atingimento</th>
+              <th style={{ ...th }} rowSpan={2}>Status</th>
             </tr>
             <tr>
-              <th style={th} /><th style={th} />
-              <th style={th}>Realizado</th><th style={th}>Meta</th><th style={th}>Atingimento</th>
               <th style={th}>Realizado</th><th style={th}>Meta</th>
               <th style={th}>Realizado</th><th style={th}>Meta</th>
               <th style={th}>Realizado</th><th style={th}>Meta</th>
-              <th style={th}>Realizado</th><th style={th}>Meta</th>
-              <th style={th} />
             </tr>
           </thead>
           <tbody>
@@ -535,8 +531,6 @@ export default function TvCompras() {
               <tr key={i} style={{ background: i % 2 === 1 ? "#060C1A" : "transparent" }}>
                 <td style={td}>{c.comprador}</td>
                 <td style={tdN}>{c.grupos}</td>
-                <td style={td}>{fmtR$(safe(c.vendaRealizado))}</td>
-                <td style={tdN}>{fmtR$(safe(c.metaVendasAjustada))}</td>
                 <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
                 <td style={td}>{fmtP(safe(c.lbPercentual))}</td>
                 <td style={tdN}>{fmtP(safe(c.metaLb))}</td>
@@ -548,12 +542,11 @@ export default function TvCompras() {
                   {c.diasEstoque !== null ? `${Math.round(safe(c.diasEstoque))}` : "—"}
                 </td>
                 <td style={tdN}>{c.diasEstoqueMeta || 45}</td>
-                <td style={td}>{c.vendaForaRealizado > 0 ? fmtR$(safe(c.vendaForaRealizado)) : "—"}</td>
-                <td style={tdN}>{c.metaProdutosFora > 0 ? fmtR$(safe(c.metaProdutosFora)) : "—"}</td>
+                <td style={td}><AtingBar pct={safe(c.produtosForaPercentual)} /></td>
                 <td style={td}><StatusBadge status={c.status} /></td>
               </tr>
             )) : (
-              <tr><td colSpan={14} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
+              <tr><td colSpan={11} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
             )}
           </tbody>
         </table>
@@ -596,11 +589,10 @@ export default function TvCompras() {
         <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4, alignSelf: "flex-start" }}>SITUAÇÃO DO ESTOQUE</div>
           <Donut slices={[
-            { label: "Ideal (Ok)",   pct: Math.round(safe(sit.idealPct)), color: C.green },
-            { label: "Baixo (<Mín)", pct: Math.round(safe(sit.baixoPct)), color: C.orange },
-            { label: "Alto (>Máx)",  pct: Math.round(safe(sit.altoPct)),  color: C.red },
-            { label: "Sem estoque",  pct: Math.round(safe(sit.zeroPct)),  color: C.muted },
-          ]} w={160} h={164} />
+            { label: "Normal (16-90d)", pct: Math.round(safe(sit.normalPct)),  color: C.green },
+            { label: "Crítico (≤15d)",  pct: Math.round(safe(sit.criticoPct)), color: C.red },
+            { label: "Excesso (>90d)",  pct: Math.round(safe(sit.excessoPct)), color: C.orange },
+          ]} w={160} h={148} />
         </div>
 
         {/* Produtos em Ruptura por Comprador */}
