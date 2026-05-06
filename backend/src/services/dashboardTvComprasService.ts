@@ -258,7 +258,7 @@ export const getDashboardTvCompras = async () => {
   // ── Query 6: produtos em ruptura ──────────────────────────────────────────
   const queryRuptura = `
     SELECT
-      pro.c_descricao AS produto,
+      pro.c_descr AS produto,
       TRIM(pro.c_class) AS codgrupo,
       COUNT(DISTINCT est.c_fil) AS lojas_sem_estoque
     FROM a_estfil est
@@ -266,7 +266,7 @@ export const getDashboardTvCompras = async () => {
       AND pro.c_status = 'A' AND pro.c_especie = 'P'
     WHERE (est.c_estloja - est.c_resloja) <= 0
       AND est.c_fil = ANY (ARRAY['00','01','02','03','04','05','06','07','08','09','10','11','12','15'])
-    GROUP BY pro.c_descricao, TRIM(pro.c_class)
+    GROUP BY pro.c_descr, TRIM(pro.c_class)
     HAVING COUNT(DISTINCT est.c_fil) >= 1
     ORDER BY COUNT(DISTINCT est.c_fil) DESC
     LIMIT 10
@@ -304,7 +304,7 @@ export const getDashboardTvCompras = async () => {
   for (const row of r5.rows) {
     metricsGrupoMap.set(String(row.codgrp).trim(), {
       nivelServico: safe(row.nivel_servico),
-      diasEstoque:  safe(row.dias_estoque),
+      diasEstoque: safe(row.dias_estoque),
     })
   }
 
@@ -330,59 +330,59 @@ export const getDashboardTvCompras = async () => {
 
   const compMap = new Map<string, CompRow>()
   for (const row of r1.rows) {
-    const key      = row.comprador
-    const codgrp   = String(row.codgrp).trim()
+    const key = row.comprador
+    const codgrp = String(row.codgrp).trim()
     const grupoNome = String(row.grupo_nome || row.codgrp).trim()
 
     if (compMap.has(key)) {
       const c = compMap.get(key)!
       c.grupos.push(codgrp)
       c.grupoNomes.push(grupoNome)
-      c.vendaRealizado            += safe(row.venda_realizado)
-      c.vendaBruta                += safe(row.venda_bruta)
-      c.lbRealizado               += safe(row.lb_realizado)
-      c.vendaForaRealizado        += safe(row.venda_fora_realizado)
-      c.vendaAnoPassado           += safe(row.venda_ano_passado)
-      c.metaVendasAjustada        += safe(row.meta_vendas_ajustada)
-      c.metaLbSum                 += safe(row.meta_lb)
-      c.metaProdutosForaAjustada  += safe(row.meta_produtos_fora_ajustada)
-      c.metaNivelServicoSum       += safe(row.meta_nivel_servico)
-      c.metaDiasEstoqueSum        += safe(row.meta_dias_estoque)
+      c.vendaRealizado += safe(row.venda_realizado)
+      c.vendaBruta += safe(row.venda_bruta)
+      c.lbRealizado += safe(row.lb_realizado)
+      c.vendaForaRealizado += safe(row.venda_fora_realizado)
+      c.vendaAnoPassado += safe(row.venda_ano_passado)
+      c.metaVendasAjustada += safe(row.meta_vendas_ajustada)
+      c.metaLbSum += safe(row.meta_lb)
+      c.metaProdutosForaAjustada += safe(row.meta_produtos_fora_ajustada)
+      c.metaNivelServicoSum += safe(row.meta_nivel_servico)
+      c.metaDiasEstoqueSum += safe(row.meta_dias_estoque)
       c.groupCount++
     } else {
       const mg = metricsGrupoMap.get(codgrp)
       compMap.set(key, {
-        comprador:               row.comprador,
-        grupos:                  [codgrp],
-        grupoNomes:              [grupoNome],
-        vendaRealizado:          safe(row.venda_realizado),
-        vendaBruta:              safe(row.venda_bruta),
-        lbRealizado:             safe(row.lb_realizado),
-        vendaForaRealizado:      safe(row.venda_fora_realizado),
-        vendaAnoPassado:         safe(row.venda_ano_passado),
-        metaVendasAjustada:      safe(row.meta_vendas_ajustada),
-        metaLbSum:               safe(row.meta_lb),
+        comprador: row.comprador,
+        grupos: [codgrp],
+        grupoNomes: [grupoNome],
+        vendaRealizado: safe(row.venda_realizado),
+        vendaBruta: safe(row.venda_bruta),
+        lbRealizado: safe(row.lb_realizado),
+        vendaForaRealizado: safe(row.venda_fora_realizado),
+        vendaAnoPassado: safe(row.venda_ano_passado),
+        metaVendasAjustada: safe(row.meta_vendas_ajustada),
+        metaLbSum: safe(row.meta_lb),
         metaProdutosForaAjustada: safe(row.meta_produtos_fora_ajustada),
-        metaNivelServicoSum:     safe(row.meta_nivel_servico),
-        metaDiasEstoqueSum:      safe(row.meta_dias_estoque),
-        groupCount:              1,
+        metaNivelServicoSum: safe(row.meta_nivel_servico),
+        metaDiasEstoqueSum: safe(row.meta_dias_estoque),
+        groupCount: 1,
         nivelServico: mg ? mg.nivelServico : null,
-        diasEstoque:  mg ? mg.diasEstoque  : null,
+        diasEstoque: mg ? mg.diasEstoque : null,
       })
     }
   }
 
   const compradores = Array.from(compMap.values()).map((c) => {
-    const gc   = c.groupCount || 1
-    const metaLb           = c.metaLbSum / gc
+    const gc = c.groupCount || 1
+    const metaLb = c.metaLbSum / gc
     const metaNivelServico = c.metaNivelServicoSum / gc
-    const metaDiasEstoque  = c.metaDiasEstoqueSum / gc
+    const metaDiasEstoque = c.metaDiasEstoqueSum / gc
 
-    const vendaMeta    = c.metaVendasAjustada > 0 ? (c.vendaRealizado / c.metaVendasAjustada) * 100 : 0
+    const vendaMeta = c.metaVendasAjustada > 0 ? (c.vendaRealizado / c.metaVendasAjustada) * 100 : 0
     // LB%: divide por venda_bruta (regra 5)
-    const lbPct        = c.vendaBruta > 0 ? (c.lbRealizado / c.vendaBruta) * 100 : 0
+    const lbPct = c.vendaBruta > 0 ? (c.lbRealizado / c.vendaBruta) * 100 : 0
     // Evolução: vs mesmo período ano passado (regra 6)
-    const evolucao     = c.vendaAnoPassado > 0 ? (c.vendaRealizado / c.vendaAnoPassado - 1) * 100 : 0
+    const evolucao = c.vendaAnoPassado > 0 ? (c.vendaRealizado / c.vendaAnoPassado - 1) * 100 : 0
     const produtosForaPct = c.metaProdutosForaAjustada > 0
       ? (c.vendaForaRealizado / c.metaProdutosForaAjustada) * 100 : 0
 
@@ -391,31 +391,31 @@ export const getDashboardTvCompras = async () => {
         vendaMeta >= 100 ? "DENTRO DA META" :
           vendaMeta >= 90 ? "ATENÇÃO" : "ABAIXO DA META"
 
-    let nsMedia   = c.nivelServico
+    let nsMedia = c.nivelServico
     let diasMedia = c.diasEstoque
     if (c.grupos.length > 1) {
       const vals = c.grupos.map((g) => metricsGrupoMap.get(g)).filter(Boolean)
       if (vals.length) {
-        nsMedia   = vals.reduce((s, v) => s + v!.nivelServico, 0) / vals.length
-        diasMedia = vals.reduce((s, v) => s + v!.diasEstoque,  0) / vals.length
+        nsMedia = vals.reduce((s, v) => s + v!.nivelServico, 0) / vals.length
+        diasMedia = vals.reduce((s, v) => s + v!.diasEstoque, 0) / vals.length
       }
     }
 
     return {
-      comprador:          c.comprador,
-      grupos:             c.grupoNomes.join(", "),
-      vendaRealizado:     Math.round(c.vendaRealizado),
+      comprador: c.comprador,
+      grupos: c.grupoNomes.join(", "),
+      vendaRealizado: Math.round(c.vendaRealizado),
       metaVendasAjustada: Math.round(c.metaVendasAjustada),
       vendaPercentualMeta: Number(vendaMeta.toFixed(1)),
-      lbPercentual:       Number(lbPct.toFixed(1)),
-      metaLb:             Number(metaLb.toFixed(1)),
-      nivelServico:       nsMedia !== null ? Number(nsMedia!.toFixed(1)) : null,
-      nivelServicoMeta:   Math.round(metaNivelServico),
-      diasEstoque:        diasMedia !== null ? Math.round(diasMedia!) : null,
-      diasEstoqueMeta:    Math.round(metaDiasEstoque),
+      lbPercentual: Number(lbPct.toFixed(1)),
+      metaLb: Number(metaLb.toFixed(1)),
+      nivelServico: nsMedia !== null ? Number(nsMedia!.toFixed(1)) : null,
+      nivelServicoMeta: Math.round(metaNivelServico),
+      diasEstoque: diasMedia !== null ? Math.round(diasMedia!) : null,
+      diasEstoqueMeta: Math.round(metaDiasEstoque),
       evolucaoPercentual: Number(evolucao.toFixed(1)),
       vendaForaRealizado: Math.round(c.vendaForaRealizado),
-      metaProdutosFora:   Math.round(c.metaProdutosForaAjustada),
+      metaProdutosFora: Math.round(c.metaProdutosForaAjustada),
       produtosForaPercentual: Number(produtosForaPct.toFixed(1)),
       status,
     }
@@ -423,25 +423,25 @@ export const getDashboardTvCompras = async () => {
 
   // ── KPIs globais ──────────────────────────────────────────────────────────
   const gm = r2.rows[0] ?? {}
-  const vendasValor        = safe(gm.vendas_valor)
-  const vendaBruta         = safe(gm.venda_bruta)
-  const lbValor            = safe(gm.lb_valor)
-  const produtosForaValor  = safe(gm.produtos_fora_valor)
-  const vendasMesAnt       = safe(gm.vendas_mes_anterior)
-  const vendaBrutaAnt      = safe(gm.venda_bruta_mes_anterior)
-  const lbValorAnt         = safe(gm.lb_valor_mes_anterior)
-  const produtosForaAnt    = safe(gm.produtos_fora_mes_anterior)
-  const vendasAnoPassado   = safe(gm.vendas_ano_passado)
-  const diasDecorridos     = safe(gm.dias_decorridos)
-  const totalDias          = safe(gm.total_dias)
+  const vendasValor = safe(gm.vendas_valor)
+  const vendaBruta = safe(gm.venda_bruta)
+  const lbValor = safe(gm.lb_valor)
+  const produtosForaValor = safe(gm.produtos_fora_valor)
+  const vendasMesAnt = safe(gm.vendas_mes_anterior)
+  const vendaBrutaAnt = safe(gm.venda_bruta_mes_anterior)
+  const lbValorAnt = safe(gm.lb_valor_mes_anterior)
+  const produtosForaAnt = safe(gm.produtos_fora_mes_anterior)
+  const vendasAnoPassado = safe(gm.vendas_ano_passado)
+  const diasDecorridos = safe(gm.dias_decorridos)
+  const totalDias = safe(gm.total_dias)
 
   // LB%: divide por bruta (regra 5)
-  const lbPct    = vendaBruta    > 0 ? lbValor    / vendaBruta    * 100 : 0
+  const lbPct = vendaBruta > 0 ? lbValor / vendaBruta * 100 : 0
   const lbAntPct = vendaBrutaAnt > 0 ? lbValorAnt / vendaBrutaAnt * 100 : 0
 
   // Meta pro-rata por dias corridos (regra 4)
-  const metaVendasAjustada       = totalDias > 0
-    ? Math.round(safe(gm.meta_vendas)        * diasDecorridos / totalDias) : safe(gm.meta_vendas)
+  const metaVendasAjustada = totalDias > 0
+    ? Math.round(safe(gm.meta_vendas) * diasDecorridos / totalDias) : safe(gm.meta_vendas)
   const metaProdutosForaAjustada = totalDias > 0
     ? Math.round(safe(gm.meta_produtos_fora) * diasDecorridos / totalDias) : safe(gm.meta_produtos_fora)
 
@@ -453,20 +453,20 @@ export const getDashboardTvCompras = async () => {
   // ── Séries diárias ────────────────────────────────────────────────────────
   const toSeries = (rows: any[]) =>
     rows.map((r) => ({
-      dia:          r.dia,
-      venda:        safe(r.venda),
-      vendaBruta:   safe(r.venda_bruta),
-      lb:           safe(r.lb_valor),
+      dia: r.dia,
+      venda: safe(r.venda),
+      vendaBruta: safe(r.venda_bruta),
+      lb: safe(r.lb_valor),
       produtosFora: safe(r.produtos_fora),
     }))
 
-  const series    = toSeries(r3.rows)
+  const series = toSeries(r3.rows)
   const seriesAnt = toSeries(r4.rows)
 
   // ── Ruptura e situação ────────────────────────────────────────────────────
   const ruptura = r6.rows.map((r: any) => ({
-    produto:         r.produto,
-    codgrupo:        String(r.codgrupo).trim(),
+    produto: r.produto,
+    codgrupo: String(r.codgrupo).trim(),
     lojasSemEstoque: safe(r.lojas_sem_estoque),
   }))
 
@@ -474,33 +474,33 @@ export const getDashboardTvCompras = async () => {
   const situacaoEstoque = {
     idealPct: safe(sit.ideal_pct),
     baixoPct: safe(sit.baixo_pct),
-    altoPct:  safe(sit.alto_pct),
+    altoPct: safe(sit.alto_pct),
   }
 
   const kpis = {
     vendasValor,
-    metaVendas:  metaVendasAjustada,
+    metaVendas: metaVendasAjustada,
     vendasVsMesAnterior: vendasMesAnt > 0
       ? Number(((vendasValor / vendasMesAnt - 1) * 100).toFixed(1)) : null as number | null,
 
     lbPercentual: Number(lbPct.toFixed(1)),
-    metaLb:       Number(safe(gm.meta_lb_media).toFixed(1)),
+    metaLb: Number(safe(gm.meta_lb_media).toFixed(1)),
     lbVsMesAnterior: vendaBrutaAnt > 0
       ? Number((lbPct - lbAntPct).toFixed(1)) : null as number | null,
 
-    nivelServico:              safe(gm.nivel_servico),
-    nivelServicoMeta:          98,
+    nivelServico: safe(gm.nivel_servico),
+    nivelServicoMeta: 98,
     nivelServicoVsMesAnterior: null as number | null,
 
     evolucao,
     // sem evolucaoMeta (regra 6)
 
-    diasEstoque:              safe(gm.dias_estoque),
-    diasEstoqueMeta:          45,
+    diasEstoque: safe(gm.dias_estoque),
+    diasEstoqueMeta: 45,
     diasEstoqueVsMesAnterior: null as number | null,
 
     produtosForaValor,
-    metaProdutosFora:          metaProdutosForaAjustada,
+    metaProdutosFora: metaProdutosForaAjustada,
     produtosForaVsMesAnterior: produtosForaAnt > 0
       ? Number(((produtosForaValor / produtosForaAnt - 1) * 100).toFixed(1)) : null as number | null,
 
@@ -520,7 +520,7 @@ export const getDashboardTvCompras = async () => {
     situacaoEstoque,
     graficos: {
       atingimentoVendas: compradores.map((c) => ({ label: c.comprador, valor: c.vendaPercentualMeta, meta: 100 })),
-      atingimentoLb:     compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual, meta: c.metaLb })),
+      atingimentoLb: compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual, meta: c.metaLb })),
     },
     alertas: [] as string[],
   }
