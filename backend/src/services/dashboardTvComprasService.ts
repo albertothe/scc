@@ -338,6 +338,7 @@ export const getDashboardTvCompras = async () => {
   `
 
   // ── Query 10: NS por lojas — vs_scc_estoque_media_facing_lojas ─────────────
+  // Retorna NS por grupo E o total global (codgrp = '__TOTAL__')
   // Conta pares (produto × loja) com facing como denominador,
   // e pares com facing + saldoestoque > 0 como numerador
   const queryNsLojasGrupo = `
@@ -356,6 +357,15 @@ export const getDashboardTvCompras = async () => {
     FROM vs_scc_estoque_media_facing_lojas ef
     WHERE TRIM(ef.codgrp) IN (SELECT codgrp FROM grupos_meta)
     GROUP BY TRIM(ef.codgrp)
+    UNION ALL
+    SELECT
+      '__TOTAL__' AS codgrp,
+      ROUND(
+        COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
+        / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 1
+      ) AS nivel_servico_lojas
+    FROM vs_scc_estoque_media_facing_lojas ef
+    WHERE TRIM(ef.codgrp) IN (SELECT codgrp FROM grupos_meta)
   `
 
   // ── Query 9: top 10 dias sem estoque — curva A1 ───────────────────────────
@@ -385,11 +395,12 @@ export const getDashboardTvCompras = async () => {
     pool.query(queryNsLojasGrupo),
   ])
 
-  // ── Mapa de NS por lojas (produto × loja) por grupo ──────────────────────
+  // ── Mapa de NS por lojas (produto × loja) por grupo + total global ───────
   const nsLojasMap = new Map<string, number>()
   for (const row of r10.rows) {
     nsLojasMap.set(String(row.codgrp).trim(), safe(row.nivel_servico_lojas))
   }
+  const nivelServicoLojasGlobal = nsLojasMap.get('__TOTAL__') ?? null
 
   // ── Mapa de métricas por grupo ────────────────────────────────────────────
   const metricsGrupoMap = new Map<string, { nivelServico: number; diasEstoque: number }>()
@@ -637,6 +648,7 @@ export const getDashboardTvCompras = async () => {
       ? Number((lbPct - lbAntPct).toFixed(1)) : null as number | null,
 
     nivelServico: safe(gm.nivel_servico),
+    nivelServicoLojas: nivelServicoLojasGlobal,
     nivelServicoMeta: Math.round(safe(gm.meta_nivel_servico_media)) || 98,
     nivelServicoVsMesAnterior: null as number | null,
 
