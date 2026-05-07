@@ -128,6 +128,7 @@ export default function TvComprasLojas() {
     </Box>
   )
 
+  const kpis               = data.kpis ?? {}
   const comps: any[]       = data.compradores ?? []
   const gruposFlat: any[]  = data.compradoresGrupos ?? []
   const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
@@ -162,19 +163,14 @@ export default function TvComprasLojas() {
   const nsAting   = (g: any) => (g.nivelServicoMeta || 97) > 0 ? nsVal(g) / (g.nivelServicoMeta || 97) * 100 : 0
   const diasAting = (g: any) => { const r = safe(g.diasEstoque); return r > 0 ? (g.diasEstoqueMeta || 45) / r * 100 : 0 }
 
-  // Totais gerais (média simples dos compradores)
-  const avg = (fn: (c: any) => number) =>
-    comps.length > 0 ? comps.reduce((s, c) => s + fn(c), 0) / comps.length : 0
-
-  const totalVendas = avg(c => safe(c.vendaPercentualMeta))
-  const totalLb     = avg(c => lbAting(c))
-  const totalNs     = avg(c => (c.nivelServicoMeta || 97) > 0
-    ? (c.nivelServicoLojas !== null && c.nivelServicoLojas !== undefined
-        ? safe(c.nivelServicoLojas) : safe(c.nivelServico))
-      / (c.nivelServicoMeta || 97) * 100
-    : 0)
-  const totalDias   = avg(c => diasAting(c))
-  const totalProd   = avg(c => safe(c.produtosForaPercentual))
+  // Totais gerais — usa kpis do backend (agregado real, não média de médias)
+  const totalVendas = safe(kpis.vendasAtingimento)
+  const totalLb     = safe(kpis.metaLb) > 0 ? safe(kpis.lbPercentual) / safe(kpis.metaLb) * 100 : 0
+  const nsLojasGlobal = kpis.nivelServicoLojas !== null && kpis.nivelServicoLojas !== undefined
+    ? safe(kpis.nivelServicoLojas) : safe(kpis.nivelServico)
+  const totalNs     = safe(kpis.nivelServicoMeta) > 0 ? nsLojasGlobal / safe(kpis.nivelServicoMeta) * 100 : 0
+  const totalDias   = safe(kpis.diasEstoque) > 0 ? safe(kpis.diasEstoqueMeta) / safe(kpis.diasEstoque) * 100 : 0
+  const totalProd   = safe(kpis.produtosFora)
 
   const th: React.CSSProperties = {
     color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const,
