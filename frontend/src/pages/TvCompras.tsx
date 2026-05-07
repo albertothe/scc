@@ -172,18 +172,20 @@ function BarChartH({
 
 // ─── SVG: Gráfico de rosca ───────────────────────────────────────────────────
 function Donut({
-  slices, w = 140, h = 120,
+  slices, svgSize = 130,
 }: {
-  slices: { label: string; pct: number; color: string }[]
-  w?: number; h?: number
+  slices: { label: string; pct: number; color: string; qtd?: number }[]
+  svgSize?: number
 }) {
-  const cx = w / 2, cy = h / 2, r = 46, ri = 28
+  const cx = svgSize / 2, cy = svgSize / 2
+  const r = svgSize / 2 - 5   // quase ocupa todo o SVG
+  const ri = r * 0.50          // espessura do anel = 50% do raio
   let angle = -Math.PI / 2
   const arcs: JSX.Element[] = []
   const total = slices.reduce((s, sl) => s + sl.pct, 0)
 
   if (!total) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: h, color: C.muted, fontSize: 11 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: svgSize, color: C.muted, fontSize: 11 }}>
       Sem dados
     </div>
   )
@@ -191,7 +193,7 @@ function Donut({
   slices.forEach((sl, i) => {
     if (sl.pct <= 0) return
     const sweep = (sl.pct / total) * 2 * Math.PI
-    const gap = 0.02
+    const gap = 0.025
     const s = sweep - gap
     if (s <= 0) return
     const x1 = cx + r * Math.cos(angle);       const y1 = cy + r * Math.sin(angle)
@@ -208,15 +210,21 @@ function Donut({
 
   const visible = slices.filter(sl => sl.pct > 0)
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <svg width={w} height={h}>{arcs}</svg>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px", justifyContent: "center" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
+      <svg width={svgSize} height={svgSize} style={{ flexShrink: 0 }}>{arcs}</svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
         {visible.map((sl, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: sl.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 9, color: C.text }}>
-              {sl.label}: <strong style={{ color: sl.color }}>{sl.pct}%</strong>
-            </span>
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: sl.color, flexShrink: 0 }} />
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+              <span style={{ fontSize: 9, color: C.muted }}>{sl.label}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <strong style={{ fontSize: 14, color: sl.color, fontVariantNumeric: "tabular-nums" }}>{sl.pct}%</strong>
+                {sl.qtd !== undefined && (
+                  <span style={{ fontSize: 9, color: C.muted }}>{sl.qtd} prods</span>
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -705,13 +713,13 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
         </div>
 
         {/* Situação do Estoque */}
-        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2, alignSelf: "flex-start" }}>SITUAÇÃO DO ESTOQUE</div>
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", display: "flex", flexDirection: "column" }}>
+          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>SITUAÇÃO DO ESTOQUE</div>
           <Donut slices={[
-            { label: "Normal (16-90d)", pct: Math.round(safe(sit.normalPct)),  color: C.green },
-            { label: "Crítico (≤15d)",  pct: Math.round(safe(sit.criticoPct)), color: C.red },
-            { label: "Excesso (>90d)",  pct: Math.round(safe(sit.excessoPct)), color: C.orange },
-          ]} w={150} h={100} />
+            { label: "Normal (16-90d)", pct: Math.round(safe(sit.normalPct)),  color: C.green,  qtd: Math.round(safe(sit.normalQtd)) },
+            { label: "Crítico (≤15d)",  pct: Math.round(safe(sit.criticoPct)), color: C.red,    qtd: Math.round(safe(sit.criticoQtd)) },
+            { label: "Excesso (>90d)",  pct: Math.round(safe(sit.excessoPct)), color: C.orange, qtd: Math.round(safe(sit.excessoQtd)) },
+          ]} svgSize={110} />
         </div>
 
         {/* Produtos em Ruptura por Comprador */}
