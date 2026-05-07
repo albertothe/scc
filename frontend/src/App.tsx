@@ -28,6 +28,7 @@ import Compradores from "./pages/Compradores"
 import CompradoresGrupos from "./pages/CompradoresGrupos"
 import CompradoresMetas from "./pages/CompradoresMetas"
 import TvCompras from "./pages/TvCompras"
+import TvComprasLojas from "./pages/TvComprasLojas"
 
 function App() {
   console.log("App renderizando")
@@ -38,6 +39,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/tv-compras" element={<TvCompras />} />
+            <Route path="/tv-compras-lojas" element={<TvComprasLojas />} />
             <Route
               path="/"
               element={
