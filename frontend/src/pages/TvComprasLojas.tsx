@@ -65,12 +65,17 @@ function TotalCard({ icon, label, pct }: { icon: string; label: string; pct: num
 
 // ─── Ícones de meta (V L N D P) ──────────────────────────────────────────────
 function MetaIcons({ c }: { c: any }) {
+  // NS usa nivelServicoLojas se disponível, caso contrário nivelServico
+  const nsReal = c.nivelServicoLojas !== null && c.nivelServicoLojas !== undefined
+    ? safe(c.nivelServicoLojas) : safe(c.nivelServico)
+  const nsDisponivel = c.nivelServicoLojas !== null && c.nivelServicoLojas !== undefined
+    ? true : c.nivelServico !== null
   const items = [
-    { key: "V", ok: safe(c.vendaPercentualMeta) >= 100,                                            title: "Vendas" },
-    { key: "L", ok: safe(c.lbPercentual) >= safe(c.metaLb),                                        title: "LB" },
-    { key: "N", ok: c.nivelServico !== null && safe(c.nivelServico) >= (c.nivelServicoMeta || 97), title: "Nível Serviço" },
-    { key: "D", ok: c.diasEstoque !== null && safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45),    title: "Dias Estoque" },
-    { key: "P", ok: safe(c.produtosForaPercentual) >= 100,                                          title: "Prod. Fora" },
+    { key: "V", ok: safe(c.vendaPercentualMeta) >= 100,                                         title: "Vendas" },
+    { key: "L", ok: safe(c.lbPercentual) >= safe(c.metaLb),                                     title: "LB" },
+    { key: "N", ok: nsDisponivel && nsReal >= (c.nivelServicoMeta || 97),                        title: "Nível Serviço" },
+    { key: "D", ok: c.diasEstoque !== null && safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45),  title: "Dias Estoque" },
+    { key: "P", ok: safe(c.produtosForaPercentual) >= 100,                                       title: "Prod. Fora" },
   ]
   return (
     <div style={{ display: "flex", gap: 3 }}>
@@ -149,7 +154,12 @@ export default function TvComprasLojas() {
 
   // Converte métricas para % de atingimento
   const lbAting   = (g: any) => safe(g.metaLb) > 0 ? safe(g.lbPercentual) / safe(g.metaLb) * 100 : 0
-  const nsAting   = (g: any) => (g.nivelServicoMeta || 97) > 0 ? safe(g.nivelServico) / (g.nivelServicoMeta || 97) * 100 : 0
+  // NS usa nivelServicoLojas (por produto×loja) exclusivo desta página
+  const nsVal     = (g: any) => g.nivelServicoLojas !== null && g.nivelServicoLojas !== undefined
+    ? safe(g.nivelServicoLojas) : safe(g.nivelServico)
+  const nsPresent = (g: any) => g.nivelServicoLojas !== null && g.nivelServicoLojas !== undefined
+    ? true : g.nivelServico !== null
+  const nsAting   = (g: any) => (g.nivelServicoMeta || 97) > 0 ? nsVal(g) / (g.nivelServicoMeta || 97) * 100 : 0
   const diasAting = (g: any) => { const r = safe(g.diasEstoque); return r > 0 ? (g.diasEstoqueMeta || 45) / r * 100 : 0 }
 
   // Totais gerais (média simples dos compradores)
@@ -158,7 +168,11 @@ export default function TvComprasLojas() {
 
   const totalVendas = avg(c => safe(c.vendaPercentualMeta))
   const totalLb     = avg(c => lbAting(c))
-  const totalNs     = avg(c => nsAting(c))
+  const totalNs     = avg(c => (c.nivelServicoMeta || 97) > 0
+    ? (c.nivelServicoLojas !== null && c.nivelServicoLojas !== undefined
+        ? safe(c.nivelServicoLojas) : safe(c.nivelServico))
+      / (c.nivelServicoMeta || 97) * 100
+    : 0)
   const totalDias   = avg(c => diasAting(c))
   const totalProd   = avg(c => safe(c.produtosForaPercentual))
 
@@ -263,7 +277,7 @@ export default function TvComprasLojas() {
                     <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.vendaPercentualMeta)} /></td>
                     <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={lbAting(g)} /></td>
                     <td style={{ ...tdG, ...sepStyle }}>
-                      {g.nivelServico !== null ? <AtingBar pct={nsAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
+                      {nsPresent(g) ? <AtingBar pct={nsAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
                     </td>
                     <td style={{ ...tdG, ...sepStyle }}>
                       {g.diasEstoque !== null ? <AtingBar pct={diasAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
@@ -284,7 +298,7 @@ export default function TvComprasLojas() {
                   <td style={tdSubG}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={8} /></td>
                   <td style={tdSubG}><AtingBar pct={lbAting(sub)} height={8} /></td>
                   <td style={tdSubG}>
-                    {sub.nivelServico !== null ? <AtingBar pct={nsAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
+                    {nsPresent(sub) ? <AtingBar pct={nsAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
                   </td>
                   <td style={tdSubG}>
                     {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
