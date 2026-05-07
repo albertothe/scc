@@ -8,7 +8,7 @@ const C = {
   card:    "#070D1C",
   border:  "#0F1D35",
   text:    "#F1F5F9",
-  muted:   "#64748B",
+  muted:   "#94A3B8",
   dim:     "#1E293B",
   blue:    "#1D9BF0",
   green:   "#22C55E",
@@ -484,7 +484,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
       </div>
 
       {/* ── 6 CARDS KPI: Vendas → Evolução → LB → NS → Dias → Prod. Fora ── */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
         {/* 1. Vendas */}
         <KpiCard
           title="VENDAS" icon="$"
@@ -544,7 +544,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
       </div>
 
       {/* ── GRÁFICOS (5 painéis, sem alertas) ── */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
         {/* 1. Evolução de Vendas */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
           <div style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>
@@ -552,7 +552,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
             <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Ano anterior</span>
           </div>
           <LineChart data1={chartVenda1} data2={chartVenda2} color1={C.blue} title1="Este mês" title2="Ano anterior"
-            fmtY={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)} />
+            fmtY={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)} h={140} />
         </div>
 
         {/* 2. Evolução de LB */}
@@ -562,7 +562,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
             <span style={{ color: C.muted, fontWeight: 400, marginLeft: 10, fontSize: 10 }}>— Este mês &nbsp; ‑ ‑ Ano anterior</span>
           </div>
           <LineChart data1={chartLb1} data2={chartLb2} color1={C.green} title1="Este mês" title2="Ano anterior"
-            fmtY={v => `${v.toFixed(0)}%`} />
+            fmtY={v => `${v.toFixed(0)}%`} h={140} />
         </div>
 
         {/* 3. Evolução do Nível de Serviço */}
@@ -571,7 +571,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
             🚚 NÍVEL DE SERVIÇO (%)
           </div>
           <LineChart data1={chartNs1} data2={[]} color1={C.orange} title1="Este mês" title2=""
-            fmtY={v => `${v.toFixed(0)}%`} metaLine={safe(kpis.nivelServicoMeta) || 98} />
+            fmtY={v => `${v.toFixed(0)}%`} metaLine={safe(kpis.nivelServicoMeta) || 98} h={140} />
         </div>
 
         {/* 4. Atingimento de Vendas */}
@@ -583,7 +583,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
             data={(graficos.atingimentoVendas ?? []).map((d: any) => ({ label: d.label, valor: safe(d.valor), meta: safe(d.meta) }))}
             target={100}
             fmtVal={v => `${v.toFixed(0)}%`}
-            w={240} h={160}
+            w={240} h={140}
           />
         </div>
 
@@ -596,13 +596,13 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
             data={(graficos.atingimentoLb ?? []).map((d: any) => ({ label: d.label, valor: safe(d.valor), meta: safe(d.meta) }))}
             target={safe(kpis.metaLb) || 35}
             fmtVal={v => `${v.toFixed(1).replace(".", ",")}%`}
-            w={240} h={160}
+            w={240} h={140}
           />
         </div>
       </div>
 
       {/* ── TABELA MATRIZ: COMPRADOR × GRUPO ── */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", marginBottom: 10, overflowX: "auto" }}>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", marginBottom: 6, overflowX: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <span style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em" }}>👥 DESEMPENHO POR COMPRADOR E GRUPO</span>
           <span style={{ color: C.muted, fontSize: 10 }}>Metas referentes ao mês: {mesAbrev}</span>
@@ -669,8 +669,8 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
       <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
 
         {/* Dias de Estoque por Comprador */}
-        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
-          <div style={{ color: C.cyan, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>📦 DIAS DE ESTOQUE POR COMPRADOR</div>
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px" }}>
+          <div style={{ color: C.cyan, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>📦 DIAS DE ESTOQUE POR COMPRADOR</div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr>
               <th style={th}>Comprador</th>
@@ -686,7 +686,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
                   <tr key={i}>
                     <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]}</td>
                     <td style={td}>
-                      <div style={{ width: "100%", height: 6, background: C.dim, borderRadius: 3 }}>
+                      <div style={{ width: "100%", height: 5, background: C.dim, borderRadius: 3 }}>
                         <div style={{ width: `${Math.min(100, (dias / 90) * 100)}%`, height: "100%", background: color, borderRadius: 3 }} />
                       </div>
                     </td>
@@ -699,23 +699,23 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
         </div>
 
         {/* Situação do Estoque */}
-        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4, alignSelf: "flex-start" }}>SITUAÇÃO DO ESTOQUE</div>
+        <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2, alignSelf: "flex-start" }}>SITUAÇÃO DO ESTOQUE</div>
           <Donut slices={[
             { label: "Normal (16-90d)", pct: Math.round(safe(sit.normalPct)),  color: C.green },
             { label: "Crítico (≤15d)",  pct: Math.round(safe(sit.criticoPct)), color: C.red },
             { label: "Excesso (>90d)",  pct: Math.round(safe(sit.excessoPct)), color: C.orange },
-          ]} w={160} h={120} />
+          ]} w={150} h={100} />
         </div>
 
         {/* Produtos em Ruptura por Comprador */}
-        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px" }}>
           <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2 }}>⛔ RUPTURA POR COMPRADOR</div>
-          <div style={{ color: C.muted, fontSize: 9, marginBottom: 6 }}>Produtos com facing, sem estoque e sem pedido pendente no fornecedor</div>
+          <div style={{ color: C.muted, fontSize: 9, marginBottom: 4 }}>Produtos com facing, sem estoque e sem pedido pendente no fornecedor</div>
           {ruptura.length > 0 ? (() => {
             const maxQtd = Math.max(...ruptura.map((r: any) => safe(r.qtdRuptura)), 1)
             return (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {ruptura.map((r: any, i: number) => {
                   const qtd = safe(r.qtdRuptura)
                   const pct = (qtd / maxQtd) * 100
@@ -725,7 +725,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
                       <span style={{ color: C.text, fontSize: 10, width: 80, flexShrink: 0, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                         {r.comprador.split(" ")[0]}
                       </span>
-                      <div style={{ flex: 1, height: 8, background: C.dim, borderRadius: 4 }}>
+                      <div style={{ flex: 1, height: 7, background: C.dim, borderRadius: 4 }}>
                         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 4 }} />
                       </div>
                       <span style={{ color, fontWeight: 700, fontSize: 11, width: 28, textAlign: "right", flexShrink: 0 }}>{qtd}</span>
@@ -738,15 +738,15 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
         </div>
 
         {/* TOP 10 dias sem estoque — curva A1 */}
-        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
+        <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px" }}>
           <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2 }}>
             📉 TOP 10 — DIAS SEM ESTOQUE (CURVA A1)
           </div>
-          <div style={{ color: C.muted, fontSize: 9, marginBottom: 6 }}>Produtos com saldo ≤ 0 ordenados por dias sem venda</div>
+          <div style={{ color: C.muted, fontSize: 9, marginBottom: 4 }}>Produtos com saldo ≤ 0 ordenados por dias sem venda</div>
           {rupturaCurvaA.length > 0 ? (() => {
             const maxDias = Math.max(...rupturaCurvaA.map((r: any) => safe(r.diasZerado)), 1)
             return (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 {rupturaCurvaA.map((r: any, i: number) => {
                   const dias = safe(r.diasZerado)
                   const pct = (dias / maxDias) * 100
@@ -757,7 +757,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
                       <span style={{ color: C.text, fontSize: 9, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {r.produto}
                       </span>
-                      <div style={{ width: 55, height: 6, background: C.dim, borderRadius: 3, flexShrink: 0 }}>
+                      <div style={{ width: 55, height: 5, background: C.dim, borderRadius: 3, flexShrink: 0 }}>
                         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3 }} />
                       </div>
                       <span style={{ color, fontWeight: 700, fontSize: 10, width: 30, textAlign: "right", flexShrink: 0 }}>{dias}d</span>
