@@ -226,11 +226,11 @@ function Donut({
 
 // ─── Card KPI ─────────────────────────────────────────────────────────────────
 function KpiCard({
-  title, icon, value, meta, metaAting, upGood, color, alert,
+  title, icon, value, meta, metaAting, upGood, color, alert, subtitle,
 }: {
   title: string; icon: string; value: string; meta: string
   metaAting: number | null; upGood: boolean
-  color: string; alert?: boolean
+  color: string; alert?: boolean; subtitle?: string
 }) {
   let statusLabel = ""; let statusArrow = ""; let statusColor = C.muted
   if (metaAting !== null) {
@@ -272,6 +272,9 @@ function KpiCard({
           </div>
         )}
       </div>
+      {subtitle && (
+        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.02em", lineHeight: 1.3, marginTop: -1 }}>{subtitle}</div>
+      )}
       <div style={{ fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
         {value}
       </div>
@@ -493,6 +496,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
           metaAting={safe(kpis.vendasAtingimento) > 0 ? safe(kpis.vendasAtingimento) : null}
           upGood={true} color={C.blue}
           alert={safe(kpis.vendasAtingimento) > 0 && safe(kpis.vendasAtingimento) < 90}
+          subtitle="Atingimento da meta pro-rata (dias corridos do mês)"
         />
         {/* 2. Evolução (sem meta — regra 6) */}
         <KpiCard
@@ -504,6 +508,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
           metaAting={null}
           upGood={true} color={C.purple}
           alert={kpis.evolucao !== null && kpis.evolucao !== undefined && safe(kpis.evolucao) < 0}
+          subtitle="Vs. mesmo período do ano anterior"
         />
         {/* 3. LB */}
         <KpiCard
@@ -540,6 +545,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
           metaAting={safe(kpis.produtosFora) > 0 ? safe(kpis.produtosFora) : null}
           upGood={true} color={C.red}
           alert={safe(kpis.produtosFora) > 0 && safe(kpis.produtosFora) > 110}
+          subtitle="Atingimento da meta pro-rata (dias corridos do mês)"
         />
       </div>
 
