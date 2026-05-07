@@ -17,8 +17,7 @@ const C = {
   yellow:  "#EAB308",
 }
 
-const safe  = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
-const fmtP  = (v: number, d = 1) => `${v.toFixed(d).replace(".", ",")}%`
+const safe = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
 // ─── Barra de atingimento responsiva ─────────────────────────────────────────
 function AtingBar({ pct, meta = 100, height = 7 }: { pct: number; meta?: number; height?: number }) {
@@ -33,29 +32,28 @@ function AtingBar({ pct, meta = 100, height = 7 }: { pct: number; meta?: number;
   )
 }
 
-// ─── Barra de resumo (comprador) com label ─────────────────────────────────
-function SummaryBar({ label, pct, meta = 100, highlight = false }: { label: string; pct: number; meta?: number; highlight?: boolean }) {
-  const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
+// ─── Ícones de meta (V L N D P) ──────────────────────────────────────────────
+function MetaIcons({ c }: { c: any }) {
+  const items = [
+    { key: "V", ok: safe(c.vendaPercentualMeta) >= 100,                                            title: "Vendas" },
+    { key: "L", ok: safe(c.lbPercentual) >= safe(c.metaLb),                                        title: "LB" },
+    { key: "N", ok: c.nivelServico !== null && safe(c.nivelServico) >= (c.nivelServicoMeta || 97), title: "Nível Serviço" },
+    { key: "D", ok: c.diasEstoque !== null && safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45),    title: "Dias Estoque" },
+    { key: "P", ok: safe(c.produtosForaPercentual) >= 100,                                          title: "Prod. Fora" },
+  ]
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{
-        fontSize: highlight ? 12 : 11,
-        fontWeight: highlight ? 800 : 700,
-        color: highlight ? C.text : C.muted,
-        width: highlight ? 90 : 80,
-        flexShrink: 0,
-        textOverflow: "ellipsis",
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-      }}>
-        {label}
-      </span>
-      <div style={{ flex: 1, height: highlight ? 10 : 8, background: C.dim, borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 4, transition: "width 0.5s" }} />
-      </div>
-      <span style={{ fontSize: highlight ? 13 : 11, color, fontWeight: 800, width: 44, textAlign: "right", flexShrink: 0 }}>
-        {pct.toFixed(0)}%
-      </span>
+    <div style={{ display: "flex", gap: 3 }}>
+      {items.map(({ key, ok, title }) => (
+        <div key={key} title={title} style={{
+          width: 20, height: 20, borderRadius: 3,
+          background: ok ? "#052e16" : "#3f0000",
+          border: `1px solid ${ok ? C.green : C.red}`,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        }}>
+          <span style={{ fontSize: 7, color: ok ? C.green : C.red, fontWeight: 800, lineHeight: 1 }}>{key}</span>
+          <span style={{ fontSize: 8, color: ok ? C.green : C.red, lineHeight: 1 }}>{ok ? "✓" : "✗"}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -94,9 +92,7 @@ export default function TvComprasLojas() {
     </Box>
   )
 
-  const comps: any[]       = data.compradores ?? []
   const gruposFlat: any[]  = data.compradoresGrupos ?? []
-  const kpis               = data.kpis ?? {}
   const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
   const mesAbrev = now.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase().substring(0, 3) + "/" + now.getFullYear()
   const minAgo   = lastUpdate ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000) : null
@@ -118,15 +114,6 @@ export default function TvComprasLojas() {
     const real = safe(g.diasEstoque); const meta = g.diasEstoqueMeta || 45
     return real > 0 ? (meta / real) * 100 : 0
   }
-
-  // Barras de resumo por comprador (Vendas atingimento agregado)
-  const resumoCompradores = comps.map((c: any) => ({
-    label: c.comprador.split(" ")[0],
-    pct: safe(c.vendaPercentualMeta),
-  }))
-  const totalVendaAting = comps.length > 0
-    ? comps.reduce((s: number, c: any) => s + safe(c.vendaPercentualMeta), 0) / comps.length
-    : 0
 
   const th: React.CSSProperties = {
     color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const,
@@ -166,21 +153,6 @@ export default function TvComprasLojas() {
         </div>
       </div>
 
-      {/* ── BARRAS DE RESUMO POR COMPRADOR ── */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
-        <div style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 10 }}>
-          📊 RESUMO DE ATINGIMENTO — VENDAS
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {resumoCompradores.map((r, i) => (
-            <SummaryBar key={i} label={r.label} pct={r.pct} />
-          ))}
-          {/* Separador */}
-          <div style={{ borderTop: `1px solid ${C.border}`, margin: "4px 0" }} />
-          <SummaryBar label="TOTAL GERAL" pct={totalVendaAting} highlight />
-        </div>
-      </div>
-
       {/* ── TABELA MATRIZ: COMPRADOR × GRUPO ── */}
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", overflowX: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -197,6 +169,7 @@ export default function TvComprasLojas() {
               <th style={{ ...thG, textAlign: "center", minWidth: 140 }}>Nível Serviço<br/>Atingimento</th>
               <th style={{ ...thG, textAlign: "center", minWidth: 140 }}>Dias Estoque<br/>Atingimento</th>
               <th style={{ ...thG, textAlign: "center", minWidth: 140 }}>Prod. Fora<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Metas</th>
             </tr>
           </thead>
           <tbody>
@@ -233,11 +206,14 @@ export default function TvComprasLojas() {
                     <td style={{ ...tdG, ...sepStyle }}>
                       <AtingBar pct={safe(g.produtosForaPercentual)} />
                     </td>
+                    <td style={{ ...tdG, ...sepStyle }}>
+                      <MetaIcons c={g} />
+                    </td>
                   </tr>
                 )
               })
             ) : (
-              <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
+              <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
             )}
           </tbody>
         </table>
