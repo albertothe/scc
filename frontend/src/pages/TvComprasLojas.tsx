@@ -32,6 +32,37 @@ function AtingBar({ pct, meta = 100, height = 7 }: { pct: number; meta?: number;
   )
 }
 
+// ─── Card de resumo para TOTAL GERAL ─────────────────────────────────────────
+function TotalCard({ icon, label, pct }: { icon: string; label: string; pct: number }) {
+  const color = pct >= 100 ? C.green : pct >= 90 ? C.orange : C.red
+  return (
+    <div style={{
+      background: "#040A18",
+      border: `1px solid ${color}44`,
+      borderTop: `2px solid ${color}`,
+      borderRadius: 8,
+      padding: "8px 14px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 4,
+      minWidth: 130,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 14 }}>{icon}</span>
+        <span style={{ fontSize: 9, color: C.muted, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+        {pct.toFixed(0)}%
+      </div>
+      <div style={{ width: "100%", height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 2 }} />
+      </div>
+      <span style={{ fontSize: 9, color: C.muted }}>Meta: ≥ 100%</span>
+    </div>
+  )
+}
+
 // ─── Ícones de meta (V L N D P) ──────────────────────────────────────────────
 function MetaIcons({ c }: { c: any }) {
   const items = [
@@ -92,28 +123,44 @@ export default function TvComprasLojas() {
     </Box>
   )
 
+  const comps: any[]       = data.compradores ?? []
   const gruposFlat: any[]  = data.compradoresGrupos ?? []
   const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
   const mesAbrev = now.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase().substring(0, 3) + "/" + now.getFullYear()
   const minAgo   = lastUpdate ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000) : null
 
-  // Agrupa para tabela: [{comprador, grupos:[...]}]
+  // Agrupa para tabela: [{comprador, compData, grupos:[...]}]
+  // compData = linha do array compradores (subtotal agregado por comprador)
+  const compMap = new Map<string, any>()
+  for (const c of comps) compMap.set(c.comprador, c)
+
   const matrizCompradores = (() => {
     const map = new Map<string, any[]>()
     for (const g of gruposFlat) {
       if (!map.has(g.comprador)) map.set(g.comprador, [])
       map.get(g.comprador)!.push(g)
     }
-    return Array.from(map.entries()).map(([comprador, grupos]) => ({ comprador, grupos }))
+    return Array.from(map.entries()).map(([comprador, grupos]) => ({
+      comprador,
+      grupos,
+      sub: compMap.get(comprador) ?? null,
+    }))
   })()
 
   // Converte métricas para % de atingimento
-  const lbAting  = (g: any) => safe(g.metaLb) > 0 ? safe(g.lbPercentual) / safe(g.metaLb) * 100 : 0
-  const nsAting  = (g: any) => (g.nivelServicoMeta || 97) > 0 ? safe(g.nivelServico) / (g.nivelServicoMeta || 97) * 100 : 0
-  const diasAting = (g: any) => {
-    const real = safe(g.diasEstoque); const meta = g.diasEstoqueMeta || 45
-    return real > 0 ? (meta / real) * 100 : 0
-  }
+  const lbAting   = (g: any) => safe(g.metaLb) > 0 ? safe(g.lbPercentual) / safe(g.metaLb) * 100 : 0
+  const nsAting   = (g: any) => (g.nivelServicoMeta || 97) > 0 ? safe(g.nivelServico) / (g.nivelServicoMeta || 97) * 100 : 0
+  const diasAting = (g: any) => { const r = safe(g.diasEstoque); return r > 0 ? (g.diasEstoqueMeta || 45) / r * 100 : 0 }
+
+  // Totais gerais (média simples dos compradores)
+  const avg = (fn: (c: any) => number) =>
+    comps.length > 0 ? comps.reduce((s, c) => s + fn(c), 0) / comps.length : 0
+
+  const totalVendas = avg(c => safe(c.vendaPercentualMeta))
+  const totalLb     = avg(c => lbAting(c))
+  const totalNs     = avg(c => nsAting(c))
+  const totalDias   = avg(c => diasAting(c))
+  const totalProd   = avg(c => safe(c.produtosForaPercentual))
 
   const th: React.CSSProperties = {
     color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const,
@@ -125,11 +172,21 @@ export default function TvComprasLojas() {
   const thG: React.CSSProperties = { ...th, borderLeft: `2px solid ${C.border}` }
   const tdG: React.CSSProperties = { ...td, borderLeft: `2px solid ${C.dim}` }
 
+  // Estilo da linha de sub-total por comprador
+  const tdSub: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, padding: "4px 6px",
+    background: "#0A1628",
+    borderTop: `1px solid ${C.border}`,
+    borderBottom: `1px solid ${C.border}`,
+    color: C.blue,
+  }
+  const tdSubG: React.CSSProperties = { ...tdSub, borderLeft: `2px solid ${C.border}` }
+
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, padding: "10px 14px", fontFamily: "'Segoe UI', sans-serif", boxSizing: "border-box" }}>
 
       {/* ── CABEÇALHO ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}`, paddingBottom: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}`, paddingBottom: 8, marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#0e2b5c,#1D9BF0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛒</div>
           <div>
@@ -149,6 +206,20 @@ export default function TvComprasLojas() {
           <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12 }}>
             {minAgo !== null ? `Atualizado há ${minAgo} min` : ""}
             <span onClick={fetchData} style={{ cursor: "pointer", color: loading ? C.muted : C.green, fontSize: 16 }}>↻</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── TOTAL GERAL ── */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ color: C.blue, fontWeight: 800, fontSize: 13, letterSpacing: "0.1em" }}>TOTAL GERAL</span>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <TotalCard icon="💰" label="Vendas Atingimento"    pct={totalVendas} />
+            <TotalCard icon="📊" label="LB Atingimento"        pct={totalLb} />
+            <TotalCard icon="🚚" label="Nível Serviço"         pct={totalNs} />
+            <TotalCard icon="📦" label="Dias Estoque"          pct={totalDias} />
+            <TotalCard icon="🏷️" label="Prod. Fora"           pct={totalProd} />
           </div>
         </div>
       </div>
@@ -173,46 +244,58 @@ export default function TvComprasLojas() {
             </tr>
           </thead>
           <tbody>
-            {matrizCompradores.length > 0 ? matrizCompradores.map((m, mi) =>
-              m.grupos.map((g: any, gi: number) => {
-                const rowBg = mi % 2 === 1 ? "#060C1A" : "transparent"
+            {matrizCompradores.length > 0 ? matrizCompradores.flatMap((m, mi) => {
+              const rowBg = mi % 2 === 1 ? "#060C1A" : "transparent"
+              const firstName = m.comprador.split(" ")[0]
+
+              const grupoRows = m.grupos.map((g: any, gi: number) => {
                 const sepStyle: React.CSSProperties = gi === 0 && mi > 0
                   ? { borderTop: `2px solid ${C.border}` } : {}
                 return (
                   <tr key={`${mi}-${gi}`} style={{ background: rowBg }}>
                     {gi === 0 && (
-                      <td style={{ ...td, ...sepStyle, verticalAlign: "top", fontWeight: 700, paddingTop: 8, whiteSpace: "nowrap" }}
+                      <td style={{ ...td, ...sepStyle, verticalAlign: "middle", fontWeight: 700, whiteSpace: "nowrap" }}
                         rowSpan={m.grupos.length}>
-                        {g.comprador}
+                        {m.comprador}
                       </td>
                     )}
                     <td style={{ ...tdN, ...sepStyle, fontSize: 10 }}>{g.grupoNome}</td>
+                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.vendaPercentualMeta)} /></td>
+                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={lbAting(g)} /></td>
                     <td style={{ ...tdG, ...sepStyle }}>
-                      <AtingBar pct={safe(g.vendaPercentualMeta)} />
+                      {g.nivelServico !== null ? <AtingBar pct={nsAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
                     </td>
                     <td style={{ ...tdG, ...sepStyle }}>
-                      <AtingBar pct={lbAting(g)} />
+                      {g.diasEstoque !== null ? <AtingBar pct={diasAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
                     </td>
-                    <td style={{ ...tdG, ...sepStyle }}>
-                      {g.nivelServico !== null
-                        ? <AtingBar pct={nsAting(g)} />
-                        : <span style={{ color: C.muted, fontSize: 11 }}>—</span>}
-                    </td>
-                    <td style={{ ...tdG, ...sepStyle }}>
-                      {g.diasEstoque !== null
-                        ? <AtingBar pct={diasAting(g)} />
-                        : <span style={{ color: C.muted, fontSize: 11 }}>—</span>}
-                    </td>
-                    <td style={{ ...tdG, ...sepStyle }}>
-                      <AtingBar pct={safe(g.produtosForaPercentual)} />
-                    </td>
-                    <td style={{ ...tdG, ...sepStyle }}>
-                      <MetaIcons c={g} />
-                    </td>
+                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.produtosForaPercentual)} /></td>
+                    <td style={{ ...tdG, ...sepStyle }}><MetaIcons c={g} /></td>
                   </tr>
                 )
               })
-            ) : (
+
+              // Linha de sub-total do comprador (usa dados agregados do array compradores)
+              const sub = m.sub
+              const subRow = sub ? (
+                <tr key={`${mi}-sub`}>
+                  <td style={{ ...tdSub, fontStyle: "italic" }} colSpan={2}>
+                    SUB-TOTAL {firstName.toUpperCase()}
+                  </td>
+                  <td style={tdSubG}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={8} /></td>
+                  <td style={tdSubG}><AtingBar pct={lbAting(sub)} height={8} /></td>
+                  <td style={tdSubG}>
+                    {sub.nivelServico !== null ? <AtingBar pct={nsAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
+                  </td>
+                  <td style={tdSubG}>
+                    {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
+                  </td>
+                  <td style={tdSubG}><AtingBar pct={safe(sub.produtosForaPercentual)} height={8} /></td>
+                  <td style={tdSubG}><MetaIcons c={sub} /></td>
+                </tr>
+              ) : null
+
+              return subRow ? [...grupoRows, subRow] : grupoRows
+            }) : (
               <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
             )}
           </tbody>
