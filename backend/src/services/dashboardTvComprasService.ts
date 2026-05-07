@@ -312,7 +312,43 @@ export const getDashboardTvCompras = async () => {
     FROM dias_produto
   `
 
-  const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
+  // ── Query 8: NS histórico do mês corrente (tabela scc_historico_ns_dias_estoque) ──
+  const queryNsHistorico = `
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    )
+    SELECT
+      data,
+      ROUND(
+        SUM(produtos_com_estoque)::numeric
+        / NULLIF(SUM(total_produtos_facing), 0) * 100, 1
+      ) AS nivel_servico
+    FROM scc_historico_ns_dias_estoque
+    WHERE data >= date_trunc('month', CURRENT_DATE)::date
+      AND data < CURRENT_DATE
+      AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
+    GROUP BY data
+    ORDER BY data
+  `
+
+  // ── Query 9: top 10 dias sem estoque — curva A1 ───────────────────────────
+  const queryRupturaCurvaA = `
+    SELECT
+      r.codproduto,
+      COALESCE(d.produto, r.codproduto::text) AS produto,
+      r.curva,
+      r.dias_zerado,
+      r.saldo_total
+    FROM vs_scc_ruptura_curva_abcd r
+    LEFT JOIN vs_scc_dprodutos d ON d.codproduto = r.codproduto
+    ORDER BY r.dias_zerado DESC
+    LIMIT 10
+  `
+
+  const [r1, r2, r3, r4, r5, r6, r7, r8, r9] = await Promise.all([
     pool.query(queryCompradores),
     pool.query(queryGlobal),
     pool.query(querySeries),
@@ -320,6 +356,8 @@ export const getDashboardTvCompras = async () => {
     pool.query(queryMetricsGrupo),
     pool.query(queryRuptura),
     pool.query(querySituacao),
+    pool.query(queryNsHistorico),
+    pool.query(queryRupturaCurvaA),
   ])
 
   // ── Mapa de métricas por grupo ────────────────────────────────────────────
@@ -527,6 +565,21 @@ export const getDashboardTvCompras = async () => {
     excessoPct: safe(sit.excesso_pct),
   }
 
+  // ── NS histórico por dia ──────────────────────────────────────────────────
+  const nsHistorico = r8.rows.map((r: any) => ({
+    dia: r.data,
+    nivelServico: safe(r.nivel_servico),
+  }))
+
+  // ── Top 10 ruptura curva A1 ───────────────────────────────────────────────
+  const rupturaCurvaA = r9.rows.map((r: any) => ({
+    codproduto: String(r.codproduto).trim(),
+    produto:    String(r.produto || r.codproduto).trim(),
+    curva:      String(r.curva).trim(),
+    diasZerado: safe(r.dias_zerado),
+    saldoTotal: safe(r.saldo_total),
+  }))
+
   const kpis = {
     vendasValor,
     metaVendas: metaVendasAjustada,
@@ -573,6 +626,8 @@ export const getDashboardTvCompras = async () => {
     seriesAnt,
     ruptura,
     situacaoEstoque,
+    nsHistorico,
+    rupturaCurvaA,
     graficos: {
       atingimentoVendas: compradores.map((c) => ({ label: c.comprador, valor: c.vendaPercentualMeta, meta: 100 })),
       atingimentoLb: compradores.map((c) => ({ label: c.comprador, valor: c.lbPercentual, meta: c.metaLb })),

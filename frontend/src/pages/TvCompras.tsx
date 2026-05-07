@@ -53,11 +53,11 @@ function SparkBar({ data, color, w = 90, h = 36 }: { data: number[]; color: stri
 
 // ─── SVG: Gráfico de linha comparativo ───────────────────────────────────────
 function LineChart({
-  data1, data2, color1, title1, title2, fmtY, w = 360, h = 160,
+  data1, data2, color1, title1, title2, fmtY, metaLine, w = 360, h = 160,
 }: {
   data1: number[]; data2: number[]
   color1: string; title1: string; title2: string
-  fmtY?: (v: number) => string; w?: number; h?: number
+  fmtY?: (v: number) => string; metaLine?: number; w?: number; h?: number
 }) {
   const pl = 58, pr = 8, pt = 22, pb = 20
   const cw = w - pl - pr; const ch = h - pt - pb
@@ -108,6 +108,12 @@ function LineChart({
           {String(d).padStart(2, "0")}
         </text>
       ))}
+      {metaLine !== undefined && isFinite(ty(metaLine)) && (
+        <g>
+          <line x1={pl} y1={ty(metaLine)} x2={w - pr} y2={ty(metaLine)} stroke={C.green} strokeWidth="1" strokeDasharray="5,3" opacity="0.7" />
+          <text x={w - pr - 2} y={ty(metaLine) - 3} fill={C.green} fontSize={8} textAnchor="end" opacity="0.8">META</text>
+        </g>
+      )}
       {data2.some(isFinite) && <path d={makePath(data2)} fill="none" stroke={C.muted} strokeWidth="1.5" strokeDasharray="4,3" />}
       {data1.some(isFinite) && <path d={makePath(data1)} fill="none" stroke={color1} strokeWidth="2" strokeLinecap="round" />}
     </svg>
@@ -287,11 +293,11 @@ function KpiCard({
 function AtingBar({ pct, meta = 100 }: { pct: number; meta?: number }) {
   const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 110 }}>
-      <div style={{ width: 80, height: 7, background: C.dim, borderRadius: 3, flexShrink: 0, overflow: "hidden" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 5, width: "100%" }}>
+      <div style={{ flex: 1, height: 7, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 3 }} />
       </div>
-      <span style={{ fontSize: 11, color, fontWeight: 700, width: 38 }}>{pct.toFixed(0)}%</span>
+      <span style={{ fontSize: 11, color, fontWeight: 700, width: 38, flexShrink: 0 }}>{pct.toFixed(0)}%</span>
     </div>
   )
 }
@@ -356,13 +362,15 @@ export default function TvCompras() {
   )
 
   const kpis = data.kpis ?? {}
-  const comps: any[]      = data.compradores ?? []
-  const gruposFlat: any[] = data.compradoresGrupos ?? []
-  const series: any[]     = data.series ?? []
-  const seriesAnt: any[]  = data.seriesAnt ?? []
-  const ruptura: any[]    = data.ruptura ?? []
-  const sit               = data.situacaoEstoque ?? {}
-  const graficos          = data.graficos ?? {}
+  const comps: any[]        = data.compradores ?? []
+  const gruposFlat: any[]   = data.compradoresGrupos ?? []
+  const series: any[]       = data.series ?? []
+  const seriesAnt: any[]    = data.seriesAnt ?? []
+  const ruptura: any[]      = data.ruptura ?? []
+  const sit                 = data.situacaoEstoque ?? {}
+  const graficos            = data.graficos ?? {}
+  const nsHistorico: any[]  = data.nsHistorico ?? []
+  const rupturaCurvaA: any[] = data.rupturaCurvaA ?? []
 
   // Agrupa para a tabela matriz: [{comprador, grupos:[...]}]
   const matrizCompradores = (() => {
@@ -422,18 +430,25 @@ export default function TvCompras() {
   const chartLb1    = cumulLbPctDays(series)
   const chartLb2    = cumulLbPctDays(seriesAnt)
   const nsVal       = safe(kpis.nivelServico)
-  // NS line: flat value for days 1..today, NaN for future days
-  const chartNs1    = new Array(daysInMonth).fill(NaN).map((_, i) => i < today ? nsVal : NaN)
+
+  // NS histórico: daily point-in-time NS from scc_historico_ns_dias_estoque
+  // Today's value comes from kpis (table only populated at end of day)
+  const nsHistoricoByDay = new Map<number, number>()
+  for (const r of nsHistorico) {
+    nsHistoricoByDay.set(dayOf(r.dia), safe(r.nivelServico))
+  }
+  nsHistoricoByDay.set(today, nsVal) // patch today from live kpi
+  const chartNs1 = new Array(daysInMonth).fill(NaN).map((_, i) => {
+    const d = i + 1
+    return d <= today ? (nsHistoricoByDay.get(d) ?? NaN) : NaN
+  })
 
   const mesLabel = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())
   const mesAbrev = now.toLocaleDateString("pt-BR", { month: "long" }).toUpperCase().substring(0, 3) + "/" + now.getFullYear()
   const minAgo   = lastUpdate ? Math.round((now.getTime() - lastUpdate.getTime()) / 60000) : null
 
-  const compByVenda = [...comps].sort((a, b) => b.vendaRealizado - a.vendaRealizado)
-  const top5 = compByVenda.slice(0, 5)
-
-  const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "4px 6px", whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }
-  const td: React.CSSProperties = { color: C.text, fontSize: 11, padding: "4px 6px", borderBottom: `1px solid ${C.dim}` }
+const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.05em", padding: "2px 4px", whiteSpace: "nowrap", borderBottom: `1px solid ${C.border}` }
+  const td: React.CSSProperties = { color: C.text, fontSize: 11, padding: "2px 4px", borderBottom: `1px solid ${C.dim}` }
   const tdN: React.CSSProperties = { ...td, color: C.muted }
   // Separador visual entre grupos de colunas
   const thG: React.CSSProperties = { ...th, borderLeft: `2px solid ${C.border}` }
@@ -556,7 +571,7 @@ export default function TvCompras() {
             🚚 NÍVEL DE SERVIÇO (%)
           </div>
           <LineChart data1={chartNs1} data2={[]} color1={C.orange} title1="Este mês" title2=""
-            fmtY={v => `${v.toFixed(0)}%`} />
+            fmtY={v => `${v.toFixed(0)}%`} metaLine={safe(kpis.nivelServicoMeta) || 98} />
         </div>
 
         {/* 4. Atingimento de Vendas */}
@@ -722,25 +737,36 @@ export default function TvCompras() {
           })() : <div style={{ fontSize: 11, color: C.green }}>✓ Sem rupturas</div>}
         </div>
 
-        {/* TOP 5 */}
+        {/* TOP 10 dias sem estoque — curva A1 */}
         <div style={{ flex: 3, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
-          <div style={{ color: C.green, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>🏆 TOP 5 GRUPOS — VENDAS (R$)</div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr>
-              <th style={th}>Comprador</th>
-              <th style={{ ...th, textAlign: "right" }}>Vendas</th>
-              <th style={th}>Atingimento</th>
-            </tr></thead>
-            <tbody>
-              {top5.map((c: any, i: number) => (
-                <tr key={i}>
-                  <td style={{ ...td, fontSize: 10 }}>{c.comprador.split(" ")[0]} ({c.grupos})</td>
-                  <td style={{ ...td, textAlign: "right", fontSize: 11 }}>{fmtR$(safe(c.vendaRealizado))}</td>
-                  <td style={td}><AtingBar pct={safe(c.vendaPercentualMeta)} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2 }}>
+            📉 TOP 10 — DIAS SEM ESTOQUE (CURVA A1)
+          </div>
+          <div style={{ color: C.muted, fontSize: 9, marginBottom: 6 }}>Produtos com saldo ≤ 0 ordenados por dias sem venda</div>
+          {rupturaCurvaA.length > 0 ? (() => {
+            const maxDias = Math.max(...rupturaCurvaA.map((r: any) => safe(r.diasZerado)), 1)
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {rupturaCurvaA.map((r: any, i: number) => {
+                  const dias = safe(r.diasZerado)
+                  const pct = (dias / maxDias) * 100
+                  const color = dias >= 60 ? C.red : dias >= 30 ? C.orange : C.yellow
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ color: C.muted, fontSize: 9, width: 14, flexShrink: 0, textAlign: "right" }}>{i + 1}.</span>
+                      <span style={{ color: C.text, fontSize: 9, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.produto}
+                      </span>
+                      <div style={{ width: 55, height: 6, background: C.dim, borderRadius: 3, flexShrink: 0 }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3 }} />
+                      </div>
+                      <span style={{ color, fontWeight: 700, fontSize: 10, width: 30, textAlign: "right", flexShrink: 0 }}>{dias}d</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })() : <div style={{ fontSize: 11, color: C.green }}>✓ Sem rupturas na curva A1</div>}
         </div>
       </div>
 
