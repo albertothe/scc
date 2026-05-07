@@ -303,12 +303,15 @@ export const getDashboardTvCompras = async () => {
         AND facing > 0
     )
     SELECT
+      COUNT(CASE WHEN dias <= 15 THEN 1 END)                                        AS critico_qtd,
+      COUNT(CASE WHEN dias > 15 AND dias <= 90 THEN 1 END)                          AS normal_qtd,
+      COUNT(CASE WHEN dias > 90 THEN 1 END)                                         AS excesso_qtd,
       ROUND(COUNT(CASE WHEN dias <= 15 THEN 1 END)::numeric
-            / NULLIF(COUNT(*), 0) * 100, 0) AS critico_pct,
+            / NULLIF(COUNT(*), 0) * 100, 0)                                         AS critico_pct,
       ROUND(COUNT(CASE WHEN dias > 15 AND dias <= 90 THEN 1 END)::numeric
-            / NULLIF(COUNT(*), 0) * 100, 0) AS normal_pct,
+            / NULLIF(COUNT(*), 0) * 100, 0)                                         AS normal_pct,
       ROUND(COUNT(CASE WHEN dias > 90 THEN 1 END)::numeric
-            / NULLIF(COUNT(*), 0) * 100, 0) AS excesso_pct
+            / NULLIF(COUNT(*), 0) * 100, 0)                                         AS excesso_pct
     FROM dias_produto
   `
 
@@ -563,6 +566,9 @@ export const getDashboardTvCompras = async () => {
     criticoPct: safe(sit.critico_pct),
     normalPct:  safe(sit.normal_pct),
     excessoPct: safe(sit.excesso_pct),
+    criticoQtd: safe(sit.critico_qtd),
+    normalQtd:  safe(sit.normal_qtd),
+    excessoQtd: safe(sit.excesso_qtd),
   }
 
   // ── NS histórico por dia ──────────────────────────────────────────────────
