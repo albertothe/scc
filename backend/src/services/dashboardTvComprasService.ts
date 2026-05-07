@@ -337,6 +337,27 @@ export const getDashboardTvCompras = async () => {
     ORDER BY data
   `
 
+  // ── Query 10: NS por lojas — vs_scc_estoque_media_facing_lojas ─────────────
+  // Conta pares (produto × loja) com facing como denominador,
+  // e pares com facing + saldoestoque > 0 como numerador
+  const queryNsLojasGrupo = `
+    WITH grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    )
+    SELECT
+      TRIM(ef.codgrp) AS codgrp,
+      ROUND(
+        COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
+        / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 1
+      ) AS nivel_servico_lojas
+    FROM vs_scc_estoque_media_facing_lojas ef
+    WHERE TRIM(ef.codgrp) IN (SELECT codgrp FROM grupos_meta)
+    GROUP BY TRIM(ef.codgrp)
+  `
+
   // ── Query 9: top 10 dias sem estoque — curva A1 ───────────────────────────
   const queryRupturaCurvaA = `
     SELECT
@@ -351,7 +372,7 @@ export const getDashboardTvCompras = async () => {
     LIMIT 10
   `
 
-  const [r1, r2, r3, r4, r5, r6, r7, r8, r9] = await Promise.all([
+  const [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10] = await Promise.all([
     pool.query(queryCompradores),
     pool.query(queryGlobal),
     pool.query(querySeries),
@@ -361,7 +382,14 @@ export const getDashboardTvCompras = async () => {
     pool.query(querySituacao),
     pool.query(queryNsHistorico),
     pool.query(queryRupturaCurvaA),
+    pool.query(queryNsLojasGrupo),
   ])
+
+  // ── Mapa de NS por lojas (produto × loja) por grupo ──────────────────────
+  const nsLojasMap = new Map<string, number>()
+  for (const row of r10.rows) {
+    nsLojasMap.set(String(row.codgrp).trim(), safe(row.nivel_servico_lojas))
+  }
 
   // ── Mapa de métricas por grupo ────────────────────────────────────────────
   const metricsGrupoMap = new Map<string, { nivelServico: number; diasEstoque: number }>()
@@ -389,6 +417,8 @@ export const getDashboardTvCompras = async () => {
     metaDiasEstoqueSum: number
     groupCount: number
     nivelServico: number | null
+    nivelServicoLojasSum: number
+    nivelServicoLojasCount: number
     diasEstoque: number | null
   }
 
@@ -413,8 +443,11 @@ export const getDashboardTvCompras = async () => {
       c.metaNivelServicoSum += safe(row.meta_nivel_servico)
       c.metaDiasEstoqueSum += safe(row.meta_dias_estoque)
       c.groupCount++
+      const nsLojas = nsLojasMap.get(codgrp)
+      if (nsLojas !== undefined) { c.nivelServicoLojasSum += nsLojas; c.nivelServicoLojasCount++ }
     } else {
       const mg = metricsGrupoMap.get(codgrp)
+      const nsLojas = nsLojasMap.get(codgrp)
       compMap.set(key, {
         comprador: row.comprador,
         grupos: [codgrp],
@@ -431,6 +464,8 @@ export const getDashboardTvCompras = async () => {
         metaDiasEstoqueSum: safe(row.meta_dias_estoque),
         groupCount: 1,
         nivelServico: mg ? mg.nivelServico : null,
+        nivelServicoLojasSum: nsLojas !== undefined ? nsLojas : 0,
+        nivelServicoLojasCount: nsLojas !== undefined ? 1 : 0,
         diasEstoque: mg ? mg.diasEstoque : null,
       })
     }
@@ -474,6 +509,9 @@ export const getDashboardTvCompras = async () => {
       lbPercentual: Number(lbPct.toFixed(1)),
       metaLb: Number(metaLb.toFixed(1)),
       nivelServico: nsMedia !== null ? Number(nsMedia!.toFixed(1)) : null,
+      nivelServicoLojas: c.nivelServicoLojasCount > 0
+        ? Number((c.nivelServicoLojasSum / c.nivelServicoLojasCount).toFixed(1))
+        : null,
       nivelServicoMeta: Math.round(metaNivelServico),
       diasEstoque: diasMedia !== null ? Math.round(diasMedia!) : null,
       diasEstoqueMeta: Math.round(metaDiasEstoque),
@@ -530,6 +568,7 @@ export const getDashboardTvCompras = async () => {
       lbPercentual: Number(lbPct.toFixed(1)),
       metaLb: Number(safe(row.meta_lb).toFixed(1)),
       nivelServico: mg ? Number(mg.nivelServico.toFixed(1)) : null,
+      nivelServicoLojas: nsLojasMap.has(codgrp) ? Number(nsLojasMap.get(codgrp)!.toFixed(1)) : null,
       nivelServicoMeta: safe(row.meta_nivel_servico) || 97,
       diasEstoque: mg ? Math.round(mg.diasEstoque) : null,
       diasEstoqueMeta: safe(row.meta_dias_estoque) || 45,
