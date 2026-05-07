@@ -172,20 +172,18 @@ function BarChartH({
 
 // ─── SVG: Gráfico de rosca ───────────────────────────────────────────────────
 function Donut({
-  slices, svgSize = 130,
+  slices,
 }: {
   slices: { label: string; pct: number; color: string; qtd?: number }[]
-  svgSize?: number
 }) {
-  const cx = svgSize / 2, cy = svgSize / 2
-  const r = svgSize / 2 - 5   // quase ocupa todo o SVG
-  const ri = r * 0.50          // espessura do anel = 50% do raio
+  // viewBox fixo 200×200 — SVG escala via CSS para preencher o espaço disponível
+  const vb = 200, cx = 100, cy = 100, r = 94, ri = 50
   let angle = -Math.PI / 2
   const arcs: JSX.Element[] = []
   const total = slices.reduce((s, sl) => s + sl.pct, 0)
 
   if (!total) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: svgSize, color: C.muted, fontSize: 11 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: C.muted, fontSize: 11 }}>
       Sem dados
     </div>
   )
@@ -210,16 +208,19 @@ function Donut({
 
   const visible = slices.filter(sl => sl.pct > 0)
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-      <svg width={svgSize} height={svgSize} style={{ flexShrink: 0 }}>{arcs}</svg>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+    // SVG cresce para preencher a altura disponível; legenda fica à direita
+    <div style={{ display: "flex", alignItems: "stretch", gap: 12, flex: 1, minHeight: 0 }}>
+      <svg viewBox={`0 0 ${vb} ${vb}`} style={{ flex: "0 0 auto", height: "100%", width: "auto", maxHeight: 160, maxWidth: 160 }}>
+        {arcs}
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, flex: 1 }}>
         {visible.map((sl, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: 3, background: sl.color, flexShrink: 0 }} />
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
               <span style={{ fontSize: 9, color: C.muted }}>{sl.label}</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <strong style={{ fontSize: 14, color: sl.color, fontVariantNumeric: "tabular-nums" }}>{sl.pct}%</strong>
+                <strong style={{ fontSize: 15, color: sl.color, fontVariantNumeric: "tabular-nums" }}>{sl.pct}%</strong>
                 {sl.qtd !== undefined && (
                   <span style={{ fontSize: 9, color: C.muted }}>{sl.qtd} prods</span>
                 )}
@@ -280,12 +281,12 @@ function KpiCard({
           </div>
         )}
       </div>
-      {subtitle && (
-        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.02em", lineHeight: 1.3, marginTop: -1 }}>{subtitle}</div>
-      )}
       <div style={{ fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1, letterSpacing: "-0.5px", fontVariantNumeric: "tabular-nums" }}>
         {value}
       </div>
+      {subtitle && (
+        <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.02em", lineHeight: 1.3 }}>{subtitle}</div>
+      )}
       {meta && (
         <div style={{ fontSize: 11, color: C.muted }}>Meta: {meta}</div>
       )}
@@ -504,7 +505,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
           metaAting={safe(kpis.vendasAtingimento) > 0 ? safe(kpis.vendasAtingimento) : null}
           upGood={true} color={C.blue}
           alert={safe(kpis.vendasAtingimento) > 0 && safe(kpis.vendasAtingimento) < 90}
-          subtitle="Atingimento da meta pro-rata (dias corridos do mês)"
+          subtitle="Atingimento da meta proporcional aos dias corridos do mês"
         />
         {/* 2. Evolução (sem meta — regra 6) */}
         <KpiCard
@@ -516,7 +517,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
           metaAting={null}
           upGood={true} color={C.purple}
           alert={kpis.evolucao !== null && kpis.evolucao !== undefined && safe(kpis.evolucao) < 0}
-          subtitle="Vs. mesmo período do ano anterior"
+          subtitle="Comparativo com o mesmo período do ano anterior"
         />
         {/* 3. LB */}
         <KpiCard
@@ -553,7 +554,7 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
           metaAting={safe(kpis.produtosFora) > 0 ? safe(kpis.produtosFora) : null}
           upGood={true} color={C.red}
           alert={safe(kpis.produtosFora) > 0 && safe(kpis.produtosFora) > 110}
-          subtitle="Atingimento da meta pro-rata (dias corridos do mês)"
+          subtitle="Atingimento da meta proporcional aos dias corridos do mês"
         />
       </div>
 
@@ -714,12 +715,12 @@ const th: React.CSSProperties = { color: C.muted, fontSize: 10, fontWeight: 600,
 
         {/* Situação do Estoque */}
         <div style={{ flex: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", display: "flex", flexDirection: "column" }}>
-          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 6 }}>SITUAÇÃO DO ESTOQUE</div>
+          <div style={{ color: C.yellow, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em", marginBottom: 4 }}>SITUAÇÃO DO ESTOQUE</div>
           <Donut slices={[
             { label: "Normal (16-90d)", pct: Math.round(safe(sit.normalPct)),  color: C.green,  qtd: Math.round(safe(sit.normalQtd)) },
             { label: "Crítico (≤15d)",  pct: Math.round(safe(sit.criticoPct)), color: C.red,    qtd: Math.round(safe(sit.criticoQtd)) },
             { label: "Excesso (>90d)",  pct: Math.round(safe(sit.excessoPct)), color: C.orange, qtd: Math.round(safe(sit.excessoQtd)) },
-          ]} svgSize={110} />
+          ]} />
         </div>
 
         {/* Produtos em Ruptura por Comprador */}
