@@ -368,6 +368,53 @@ export const getDashboardTvCompras = async () => {
     WHERE TRIM(ef.codgrp) IN (SELECT codgrp FROM grupos_meta)
   `
 
+  // ── Query 11: NS por loja, detalhado por codgrp e por comprador ─────────────
+  // Retorna duas séries via UNION:
+  //   tipo='grupo'    → codgrp + codloja (para cada linha de grupo na tabela)
+  //   tipo='comprador' → comprador + codloja (para a linha de sub-total)
+  const queryNsLojasDetalhe = `
+    WITH
+    grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    ),
+    ga AS (
+      SELECT TRIM(cg.codgrp) AS codgrp, c.nome AS comprador
+      FROM scc_comprador_grupo cg
+      JOIN scc_compradores c ON c.id = cg.comprador_id
+      WHERE cg.dt_fim IS NULL
+        AND TRIM(cg.codgrp) IN (SELECT codgrp FROM grupos_meta)
+    )
+    SELECT
+      'grupo'              AS tipo,
+      TRIM(ef.codgrp)      AS codgrp,
+      NULL::text           AS comprador,
+      TRIM(ef.codloja)     AS codloja,
+      ROUND(
+        COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
+        / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 0
+      ) AS nivel_servico
+    FROM vs_scc_estoque_media_facing_lojas ef
+    WHERE TRIM(ef.codgrp) IN (SELECT codgrp FROM grupos_meta)
+    GROUP BY TRIM(ef.codgrp), TRIM(ef.codloja)
+    UNION ALL
+    SELECT
+      'comprador'          AS tipo,
+      NULL::text           AS codgrp,
+      ga.comprador,
+      TRIM(ef.codloja)     AS codloja,
+      ROUND(
+        COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
+        / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 0
+      ) AS nivel_servico
+    FROM vs_scc_estoque_media_facing_lojas ef
+    JOIN ga ON ga.codgrp = TRIM(ef.codgrp)
+    GROUP BY ga.comprador, TRIM(ef.codloja)
+    ORDER BY tipo, codgrp, comprador, codloja
+  `
+
   // ── Query 9: top 10 dias sem estoque — curva A1 ───────────────────────────
   const queryRupturaCurvaA = `
     SELECT
@@ -382,7 +429,7 @@ export const getDashboardTvCompras = async () => {
     LIMIT 10
   `
 
-  const [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10] = await Promise.all([
+  const [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11] = await Promise.all([
     pool.query(queryCompradores),
     pool.query(queryGlobal),
     pool.query(querySeries),
@@ -393,6 +440,7 @@ export const getDashboardTvCompras = async () => {
     pool.query(queryNsHistorico),
     pool.query(queryRupturaCurvaA),
     pool.query(queryNsLojasGrupo),
+    pool.query(queryNsLojasDetalhe),
   ])
 
   // ── Mapa de NS por lojas (produto × loja) por grupo + total global ───────
@@ -401,6 +449,24 @@ export const getDashboardTvCompras = async () => {
     nsLojasMap.set(String(row.codgrp).trim(), safe(row.nivel_servico_lojas))
   }
   const nivelServicoLojasGlobal = nsLojasMap.get('__TOTAL__') ?? null
+
+  // ── Mapa NS por loja: codgrp → [{codloja, nivelServico}] ─────────────────
+  const nsLojasDetalheGrupoMap = new Map<string, { codloja: string; nivelServico: number }[]>()
+  // ── Mapa NS por loja: comprador → [{codloja, nivelServico}] (sub-totais) ──
+  const nsLojasDetalheCompMap  = new Map<string, { codloja: string; nivelServico: number }[]>()
+  for (const row of r11.rows) {
+    const ns = safe(row.nivel_servico)
+    const loja = String(row.codloja).trim()
+    if (row.tipo === 'grupo') {
+      const key = String(row.codgrp).trim()
+      if (!nsLojasDetalheGrupoMap.has(key)) nsLojasDetalheGrupoMap.set(key, [])
+      nsLojasDetalheGrupoMap.get(key)!.push({ codloja: loja, nivelServico: ns })
+    } else {
+      const key = String(row.comprador).trim()
+      if (!nsLojasDetalheCompMap.has(key)) nsLojasDetalheCompMap.set(key, [])
+      nsLojasDetalheCompMap.get(key)!.push({ codloja: loja, nivelServico: ns })
+    }
+  }
 
   // ── Mapa de métricas por grupo ────────────────────────────────────────────
   const metricsGrupoMap = new Map<string, { nivelServico: number; diasEstoque: number }>()
@@ -519,6 +585,7 @@ export const getDashboardTvCompras = async () => {
       vendaPercentualMeta: Number(vendaMeta.toFixed(1)),
       lbPercentual: Number(lbPct.toFixed(1)),
       metaLb: Number(metaLb.toFixed(1)),
+      nsPorLoja: nsLojasDetalheCompMap.get(c.comprador) ?? [],
       nivelServico: nsMedia !== null ? Number(nsMedia!.toFixed(1)) : null,
       nivelServicoLojas: c.nivelServicoLojasCount > 0
         ? Number((c.nivelServicoLojasSum / c.nivelServicoLojasCount).toFixed(1))
@@ -580,6 +647,7 @@ export const getDashboardTvCompras = async () => {
       metaLb: Number(safe(row.meta_lb).toFixed(1)),
       nivelServico: mg ? Number(mg.nivelServico.toFixed(1)) : null,
       nivelServicoLojas: nsLojasMap.has(codgrp) ? Number(nsLojasMap.get(codgrp)!.toFixed(1)) : null,
+      nsPorLoja: nsLojasDetalheGrupoMap.get(codgrp) ?? [],
       nivelServicoMeta: safe(row.meta_nivel_servico) || 97,
       diasEstoque: mg ? Math.round(mg.diasEstoque) : null,
       diasEstoqueMeta: safe(row.meta_dias_estoque) || 45,
