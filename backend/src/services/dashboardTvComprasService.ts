@@ -423,6 +423,66 @@ export const getDashboardTvCompras = async () => {
     ORDER BY tipo, codgrp, comprador, codloja
   `
 
+  // ── Query 12: evolução por loja (vs mesmo período ano passado) ───────────────
+  // Usa vs_scc_vendas_devolucoes_lojas — mesma lógica do período atual × ano ant.
+  const queryEvolLojasDetalhe = `
+    WITH
+    grupos_meta AS (
+      SELECT DISTINCT TRIM(codgrp) AS codgrp
+      FROM scc_metas_compradores
+      WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
+        AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    ),
+    atual AS (
+      SELECT
+        TRIM(codgrp)  AS codgrp,
+        TRIM(codloja) AS codloja,
+        SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0))        AS venda,
+        SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_custos_vendas,0)
+              - COALESCE(vlr_impostos_vendas,0))                                           AS lb,
+        SUM(COALESCE(vlr_total_vendas_bruta,0))                                            AS venda_bruta,
+        SUM(CASE WHEN tipo IN ('Fora','Encomenda','FORA','ENCO')
+                 THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
+                 ELSE 0 END)                                                               AS venda_fora
+      FROM vs_scc_vendas_devolucoes_lojas
+      WHERE data BETWEEN date_trunc('month', CURRENT_DATE)::date AND CURRENT_DATE
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
+      GROUP BY TRIM(codgrp), TRIM(codloja)
+    ),
+    anterior AS (
+      SELECT
+        TRIM(codgrp)  AS codgrp,
+        TRIM(codloja) AS codloja,
+        SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0))        AS venda,
+        SUM(COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_custos_vendas,0)
+              - COALESCE(vlr_impostos_vendas,0))                                           AS lb,
+        SUM(COALESCE(vlr_total_vendas_bruta,0))                                            AS venda_bruta,
+        SUM(CASE WHEN tipo IN ('Fora','Encomenda','FORA','ENCO')
+                 THEN COALESCE(vlr_total_vendas_bruta,0) - COALESCE(vlr_total_devolucoes,0)
+                 ELSE 0 END)                                                               AS venda_fora
+      FROM vs_scc_vendas_devolucoes_lojas
+      WHERE data BETWEEN date_trunc('month', CURRENT_DATE - interval '1 year')::date
+                     AND (CURRENT_DATE - interval '1 year')::date
+        AND TRIM(codgrp) IN (SELECT codgrp FROM grupos_meta)
+      GROUP BY TRIM(codgrp), TRIM(codloja)
+    )
+    SELECT
+      a.codgrp,
+      a.codloja,
+      ROUND(CASE WHEN COALESCE(ant.venda,0) > 0
+                 THEN (a.venda / ant.venda - 1) * 100
+                 ELSE NULL END, 1)                                        AS evol_vendas,
+      ROUND(CASE WHEN COALESCE(ant.venda_bruta,0) > 0 AND COALESCE(a.venda_bruta,0) > 0
+                 THEN ((a.lb / a.venda_bruta) - (ant.lb / ant.venda_bruta)) * 100
+                 ELSE NULL END, 1)                                        AS evol_lb,
+      ROUND(CASE WHEN COALESCE(ant.venda_fora,0) > 0
+                 THEN (a.venda_fora / ant.venda_fora - 1) * 100
+                 ELSE NULL END, 1)                                        AS evol_prod_fora
+    FROM atual a
+    LEFT JOIN anterior ant USING (codgrp, codloja)
+    ORDER BY a.codgrp, a.codloja
+  `
+
   // ── Query 9: top 10 dias sem estoque — curva A1 ───────────────────────────
   const queryRupturaCurvaA = `
     SELECT
@@ -437,7 +497,7 @@ export const getDashboardTvCompras = async () => {
     LIMIT 10
   `
 
-  const [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11] = await Promise.all([
+  const [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12] = await Promise.all([
     pool.query(queryCompradores),
     pool.query(queryGlobal),
     pool.query(querySeries),
@@ -449,6 +509,7 @@ export const getDashboardTvCompras = async () => {
     pool.query(queryRupturaCurvaA),
     pool.query(queryNsLojasGrupo),
     pool.query(queryNsLojasDetalhe),
+    pool.query(queryEvolLojasDetalhe).catch(() => ({ rows: [] })),
   ])
 
   // ── Mapa de NS por lojas (produto × loja) por grupo + total global ───────
@@ -469,6 +530,19 @@ export const getDashboardTvCompras = async () => {
     if (!diasLojasDetalheGrupoMap.has(key)) diasLojasDetalheGrupoMap.set(key, [])
     nsLojasDetalheGrupoMap.get(key)!.push({ codloja: loja, nivelServico: safe(row.nivel_servico) })
     diasLojasDetalheGrupoMap.get(key)!.push({ codloja: loja, diasEstoque: safe(row.dias_estoque) })
+  }
+
+  // ── Mapa de evolução por (codgrp, codloja) ───────────────────────────────
+  const evolLojasMap = new Map<string, { codloja: string; evolVendas: number | null; evolLb: number | null; evolProdFora: number | null }[]>()
+  for (const row of r12.rows) {
+    const key = String(row.codgrp).trim()
+    if (!evolLojasMap.has(key)) evolLojasMap.set(key, [])
+    evolLojasMap.get(key)!.push({
+      codloja:    String(row.codloja).trim(),
+      evolVendas: row.evol_vendas  !== null ? Number(row.evol_vendas)   : null,
+      evolLb:     row.evol_lb      !== null ? Number(row.evol_lb)       : null,
+      evolProdFora: row.evol_prod_fora !== null ? Number(row.evol_prod_fora) : null,
+    })
   }
 
   // ── Mapa de métricas por grupo ────────────────────────────────────────────
@@ -651,6 +725,7 @@ export const getDashboardTvCompras = async () => {
       nivelServicoLojas: nsLojasMap.has(codgrp) ? Number(nsLojasMap.get(codgrp)!.toFixed(1)) : null,
       nsPorLoja:   nsLojasDetalheGrupoMap.get(codgrp) ?? [],
       diasPorLoja: diasLojasDetalheGrupoMap.get(codgrp) ?? [],
+      evolPorLoja: evolLojasMap.get(codgrp) ?? [],
       nivelServicoMeta: safe(row.meta_nivel_servico) || 97,
       diasEstoque: mg ? Math.round(mg.diasEstoque) : null,
       diasEstoqueMeta: safe(row.meta_dias_estoque) || 45,
