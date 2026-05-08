@@ -137,6 +137,9 @@ function DiasLojaChips({ lojas, meta = 45 }: {
 }
 
 // ─── Chips de evolução por loja (vs mesmo período ano passado) ────────────────
+// v === null → sem venda em nenhum dos dois anos → exibe "–" em muted
+// v === -100 → tinha ano passado, não tem este → vermelho
+// v === +100 → não tinha ano passado, tem este → verde
 function EvolLojaChips({ lojas, field }: {
   lojas: { codloja: string; evolVendas: number | null; evolLb: number | null; evolProdFora: number | null }[]
   field: "evolVendas" | "evolLb" | "evolProdFora"
@@ -146,9 +149,24 @@ function EvolLojaChips({ lojas, field }: {
     <div style={{ display: "flex", flexWrap: "nowrap", gap: 1, marginTop: 2 }}>
       {lojas.map(l => {
         const v = l[field]
-        if (v === null) return null
+        if (v === null) {
+          // sem venda em nenhum dos dois períodos
+          return (
+            <div key={l.codloja} style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              background: C.dim + "88",
+              border: `1px solid ${C.border}`,
+              borderRadius: 2,
+              padding: "0px 3px",
+              minWidth: 20,
+            }}>
+              <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+              <span style={{ fontSize: 7, color: C.muted, fontWeight: 500, lineHeight: 1.2 }}>–</span>
+            </div>
+          )
+        }
         const color = v >= 0 ? C.green : v >= -10 ? C.orange : C.red
-        const sign  = v >= 0 ? "+" : ""
+        const sign  = v > 0 ? "+" : ""
         return (
           <div key={l.codloja} style={{
             display: "flex", flexDirection: "column", alignItems: "center",
