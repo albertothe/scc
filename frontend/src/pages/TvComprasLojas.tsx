@@ -20,14 +20,14 @@ const C = {
 const safe = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
 // ─── Barra de atingimento responsiva ─────────────────────────────────────────
-function AtingBar({ pct, meta = 100, height = 7 }: { pct: number; meta?: number; height?: number }) {
+function AtingBar({ pct, meta = 100, height = 5 }: { pct: number; meta?: number; height?: number }) {
   const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, width: "100%" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 3, width: "100%" }}>
       <div style={{ flex: 1, height, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 3 }} />
       </div>
-      <span style={{ fontSize: 11, color, fontWeight: 700, width: 38, flexShrink: 0 }}>{pct.toFixed(0)}%</span>
+      <span style={{ fontSize: 10, color, fontWeight: 700, width: 32, flexShrink: 0 }}>{pct.toFixed(0)}%</span>
     </div>
   )
 }
@@ -40,25 +40,24 @@ function TotalCard({ icon, label, pct }: { icon: string; label: string; pct: num
       background: "#040A18",
       border: `1px solid ${color}44`,
       borderTop: `2px solid ${color}`,
-      borderRadius: 8,
-      padding: "8px 14px",
+      borderRadius: 6,
+      padding: "4px 10px",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: 4,
-      minWidth: 130,
+      gap: 2,
+      minWidth: 105,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
-        <span style={{ fontSize: 9, color: C.muted, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <span style={{ fontSize: 11 }}>{icon}</span>
+        <span style={{ fontSize: 8, color: C.muted, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</span>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
         {pct.toFixed(0)}%
       </div>
-      <div style={{ width: "100%", height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ width: "100%", height: 3, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 2 }} />
       </div>
-      <span style={{ fontSize: 9, color: C.muted }}>Meta: ≥ 100%</span>
     </div>
   )
 }
@@ -69,23 +68,23 @@ function NsLojaChips({ lojas, meta = 97, overall }: {
   meta?: number
   overall?: number
 }) {
-  if (!lojas.length) return <span style={{ color: C.muted, fontSize: 11 }}>—</span>
+  if (!lojas.length) return <span style={{ color: C.muted, fontSize: 10 }}>—</span>
   const overallColor = overall !== undefined
     ? (overall >= meta ? C.green : overall >= meta * 0.9 ? C.orange : C.red)
     : C.muted
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {overall !== undefined && (
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
             {overall.toFixed(0)}%
           </span>
-          <div style={{ flex: 1, height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ flex: 1, height: 3, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
             <div style={{ width: `${Math.min(100, overall / meta * 100)}%`, height: "100%", background: overallColor, borderRadius: 2 }} />
           </div>
         </div>
       )}
-      <div style={{ display: "flex", flexWrap: "nowrap", gap: 2 }}>
+      <div style={{ display: "flex", flexWrap: "nowrap", gap: 1 }}>
         {lojas.map(l => {
           const ns = l.nivelServico
           const color = ns >= meta ? C.green : ns >= meta * 0.9 ? C.orange : C.red
@@ -94,12 +93,12 @@ function NsLojaChips({ lojas, meta = 97, overall }: {
               display: "flex", flexDirection: "column", alignItems: "center",
               background: color + "1A",
               border: `1px solid ${color}55`,
-              borderRadius: 3,
-              padding: "1px 4px",
-              minWidth: 26,
+              borderRadius: 2,
+              padding: "0px 3px",
+              minWidth: 20,
             }}>
-              <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
-              <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{ns}%</span>
+              <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+              <span style={{ fontSize: 7, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{ns}%</span>
             </div>
           )
         })}
@@ -115,7 +114,7 @@ function DiasLojaChips({ lojas, meta = 45 }: {
 }) {
   if (!lojas.length) return null
   return (
-    <div style={{ display: "flex", flexWrap: "nowrap", gap: 2, marginTop: 3 }}>
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: 1, marginTop: 2 }}>
       {lojas.map(l => {
         const d = l.diasEstoque
         const color = d <= meta ? C.green : d <= meta * 1.2 ? C.orange : C.red
@@ -124,12 +123,12 @@ function DiasLojaChips({ lojas, meta = 45 }: {
             display: "flex", flexDirection: "column", alignItems: "center",
             background: color + "1A",
             border: `1px solid ${color}55`,
-            borderRadius: 3,
-            padding: "1px 4px",
-            minWidth: 26,
+            borderRadius: 2,
+            padding: "0px 3px",
+            minWidth: 20,
           }}>
-            <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
-            <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{d}d</span>
+            <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+            <span style={{ fontSize: 7, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{d}d</span>
           </div>
         )
       })}
@@ -144,7 +143,7 @@ function EvolLojaChips({ lojas, field }: {
 }) {
   if (!lojas.length) return null
   return (
-    <div style={{ display: "flex", flexWrap: "nowrap", gap: 2, marginTop: 3 }}>
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: 1, marginTop: 2 }}>
       {lojas.map(l => {
         const v = l[field]
         if (v === null) return null
@@ -155,12 +154,12 @@ function EvolLojaChips({ lojas, field }: {
             display: "flex", flexDirection: "column", alignItems: "center",
             background: color + "1A",
             border: `1px solid ${color}55`,
-            borderRadius: 3,
-            padding: "1px 4px",
-            minWidth: 26,
+            borderRadius: 2,
+            padding: "0px 3px",
+            minWidth: 20,
           }}>
-            <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
-            <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{sign}{v.toFixed(0)}%</span>
+            <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+            <span style={{ fontSize: 7, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{sign}{v.toFixed(0)}%</span>
           </div>
         )
       })}
@@ -183,16 +182,16 @@ function MetaIcons({ c }: { c: any }) {
     { key: "P", ok: safe(c.produtosForaPercentual) >= 100,                                       title: "Prod. Fora" },
   ]
   return (
-    <div style={{ display: "flex", gap: 3 }}>
+    <div style={{ display: "flex", gap: 2 }}>
       {items.map(({ key, ok, title }) => (
         <div key={key} title={title} style={{
-          width: 20, height: 20, borderRadius: 3,
+          width: 16, height: 16, borderRadius: 2,
           background: ok ? "#052e16" : "#3f0000",
           border: `1px solid ${ok ? C.green : C.red}`,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <span style={{ fontSize: 7, color: ok ? C.green : C.red, fontWeight: 800, lineHeight: 1 }}>{key}</span>
-          <span style={{ fontSize: 8, color: ok ? C.green : C.red, lineHeight: 1 }}>{ok ? "✓" : "✗"}</span>
+          <span style={{ fontSize: 6, color: ok ? C.green : C.red, fontWeight: 800, lineHeight: 1 }}>{key}</span>
+          <span style={{ fontSize: 7, color: ok ? C.green : C.red, lineHeight: 1 }}>{ok ? "✓" : "✗"}</span>
         </div>
       ))}
     </div>
@@ -278,18 +277,21 @@ export default function TvComprasLojas() {
   const totalProd   = safe(kpis.produtosFora)
 
   const th: React.CSSProperties = {
-    color: C.muted, fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const,
-    letterSpacing: "0.05em", padding: "4px 6px", whiteSpace: "nowrap",
+    color: C.muted, fontSize: 9, fontWeight: 600, textTransform: "uppercase" as const,
+    letterSpacing: "0.04em", padding: "3px 5px", whiteSpace: "nowrap",
     borderBottom: `1px solid ${C.border}`,
   }
-  const td: React.CSSProperties = { color: C.text, fontSize: 11, padding: "3px 6px", borderBottom: `1px solid ${C.dim}` }
+  const td: React.CSSProperties = { color: C.text, fontSize: 10, padding: "2px 4px", borderBottom: `1px solid ${C.dim}` }
   const tdN: React.CSSProperties = { ...td, color: C.muted }
   const thG: React.CSSProperties = { ...th, borderLeft: `2px solid ${C.border}` }
   const tdG: React.CSSProperties = { ...td, borderLeft: `2px solid ${C.dim}` }
 
+  // Separador visível entre compradores
+  const SEP: React.CSSProperties = { borderTop: "2px solid rgba(148,163,184,0.30)" }
+
   // Estilo da linha de sub-total por comprador
   const tdSub: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, padding: "4px 6px",
+    fontSize: 10, fontWeight: 700, padding: "2px 4px",
     background: "#0A1628",
     borderTop: `1px solid ${C.border}`,
     borderBottom: `1px solid ${C.border}`,
@@ -298,37 +300,35 @@ export default function TvComprasLojas() {
   const tdSubG: React.CSSProperties = { ...tdSub, borderLeft: `2px solid ${C.border}` }
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", color: C.text, padding: "10px 14px", fontFamily: "'Segoe UI', sans-serif", boxSizing: "border-box" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.text, padding: "6px 10px", fontFamily: "'Segoe UI', sans-serif", boxSizing: "border-box" }}>
 
       {/* ── CABEÇALHO ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}`, paddingBottom: 8, marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#0e2b5c,#1D9BF0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛒</div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.04em", lineHeight: 1 }}>J MONTE CENTER</div>
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}`, paddingBottom: 5, marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#0e2b5c,#1D9BF0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🛒</div>
+          <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "0.04em", lineHeight: 1 }}>J MONTE CENTER</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, color: C.muted, fontSize: 11 }}>
             📅 <span style={{ color: C.text }}>{now.toLocaleDateString("pt-BR")}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 13 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, color: C.muted, fontSize: 11 }}>
             🕐 <span style={{ color: C.text, fontVariantNumeric: "tabular-nums" }}>
               {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, color: C.muted, fontSize: 10 }}>
             {minAgo !== null ? `Atualizado há ${minAgo} min` : ""}
-            <span onClick={fetchData} style={{ cursor: "pointer", color: loading ? C.muted : C.green, fontSize: 16 }}>↻</span>
+            <span onClick={fetchData} style={{ cursor: "pointer", color: loading ? C.muted : C.green, fontSize: 14 }}>↻</span>
           </div>
         </div>
       </div>
 
       {/* ── TOTAL GERAL ── */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: "5px 10px", marginBottom: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ color: C.blue, fontWeight: 800, fontSize: 13, letterSpacing: "0.1em" }}>TOTAL GERAL</span>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ color: C.blue, fontWeight: 800, fontSize: 11, letterSpacing: "0.1em" }}>TOTAL GERAL</span>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <TotalCard icon="💰" label="Vendas Atingimento"    pct={totalVendas} />
             <TotalCard icon="📊" label="LB Atingimento"        pct={totalLb} />
             <TotalCard icon="🚚" label="Nível Serviço"         pct={totalNs} />
@@ -339,21 +339,21 @@ export default function TvComprasLojas() {
       </div>
 
       {/* ── TABELA MATRIZ: COMPRADOR × GRUPO ── */}
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 8px", overflowX: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <span style={{ color: C.blue, fontWeight: 700, fontSize: 11, letterSpacing: "0.08em" }}>👥 DESEMPENHO POR COMPRADOR E GRUPO</span>
-          <span style={{ color: C.muted, fontSize: 10 }}>Metas referentes ao mês: {mesAbrev}</span>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 6px", overflowX: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <span style={{ color: C.blue, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em" }}>👥 DESEMPENHO POR COMPRADOR E GRUPO</span>
+          <span style={{ color: C.muted, fontSize: 9 }}>Metas referentes ao mês: {mesAbrev}</span>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
               <th style={th}>Comprador</th>
               <th style={th}>Grupo</th>
-              <th style={{ ...thG, textAlign: "center" }}>Vendas<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center" }}>LB<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center" }}>Nível Serviço<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center" }}>Dias Estoque<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center" }}>Prod. Fora<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Vendas Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>LB Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Nível Serviço Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Dias Estoque Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Prod. Fora Atingimento</th>
               <th style={{ ...thG, textAlign: "center" }}>Metas</th>
             </tr>
           </thead>
@@ -363,44 +363,43 @@ export default function TvComprasLojas() {
               const firstName = m.comprador.split(" ")[0]
 
               const grupoRows = m.grupos.map((g: any, gi: number) => {
-                const sepStyle: React.CSSProperties = gi === 0 && mi > 0
-                  ? { borderTop: `2px solid ${C.border}` } : {}
+                const sep = gi === 0 && mi > 0 ? SEP : {}
                 return (
                   <tr key={`${mi}-${gi}`} style={{ background: rowBg }}>
                     {gi === 0 && (
-                      <td style={{ ...td, ...sepStyle, verticalAlign: "middle", fontWeight: 700, whiteSpace: "nowrap" }}
+                      <td style={{ ...td, ...sep, verticalAlign: "middle", fontWeight: 700, whiteSpace: "nowrap", color: C.blue }}
                         rowSpan={m.grupos.length}>
                         {m.comprador}
                       </td>
                     )}
-                    <td style={{ ...tdN, ...sepStyle, fontSize: 10 }}>{g.grupoNome}</td>
-                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdN, ...sep, fontSize: 9 }}>{g.grupoNome}</td>
+                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
                       <AtingBar pct={safe(g.vendaPercentualMeta)} />
                       <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolVendas" />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
                       <AtingBar pct={lbAting(g)} />
                       <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolLb" />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
                       <NsLojaChips
                         lojas={g.nsPorLoja ?? []}
                         meta={g.nivelServicoMeta || 97}
                         overall={nsPresent(g) ? nsVal(g) : undefined}
                       />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
                       <AtingBar pct={diasAting(g)} />
                       <DiasLojaChips
                         lojas={g.diasPorLoja ?? []}
                         meta={g.diasEstoqueMeta || 45}
                       />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
                       <AtingBar pct={safe(g.produtosForaPercentual)} />
                       <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolProdFora" />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle }}><MetaIcons c={g} /></td>
+                    <td style={{ ...tdG, ...sep }}><MetaIcons c={g} /></td>
                   </tr>
                 )
               })
