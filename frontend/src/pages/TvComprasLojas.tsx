@@ -85,7 +85,7 @@ function NsLojaChips({ lojas, meta = 97, overall }: {
           </div>
         </div>
       )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+      <div style={{ display: "flex", flexWrap: "nowrap", gap: 2 }}>
         {lojas.map(l => {
           const ns = l.nivelServico
           const color = ns >= meta ? C.green : ns >= meta * 0.9 ? C.orange : C.red
@@ -108,47 +108,62 @@ function NsLojaChips({ lojas, meta = 97, overall }: {
   )
 }
 
-// ─── Chips de Dias de Estoque por loja ───────────────────────────────────────
-function DiasLojaChips({ lojas, meta = 45, overall }: {
+// ─── Chips de Dias de Estoque por loja (sem barra overall — AtingBar cuida disso) ─
+function DiasLojaChips({ lojas, meta = 45 }: {
   lojas: { codloja: string; diasEstoque: number }[]
   meta?: number
-  overall?: number
 }) {
-  if (!lojas.length) return <span style={{ color: C.muted, fontSize: 11 }}>—</span>
-  const overallColor = overall !== undefined
-    ? (overall <= meta ? C.green : overall <= meta * 1.2 ? C.orange : C.red)
-    : C.muted
+  if (!lojas.length) return null
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {overall !== undefined && (
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
-            {Math.round(overall)}d
-          </span>
-          <div style={{ flex: 1, height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ width: `${Math.min(100, (meta / Math.max(overall, 1)) * 100)}%`, height: "100%", background: overallColor, borderRadius: 2 }} />
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: 2, marginTop: 3 }}>
+      {lojas.map(l => {
+        const d = l.diasEstoque
+        const color = d <= meta ? C.green : d <= meta * 1.2 ? C.orange : C.red
+        return (
+          <div key={l.codloja} style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: color + "1A",
+            border: `1px solid ${color}55`,
+            borderRadius: 3,
+            padding: "1px 4px",
+            minWidth: 26,
+          }}>
+            <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
+            <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{d}d</span>
           </div>
-        </div>
-      )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-        {lojas.map(l => {
-          const d = l.diasEstoque
-          const color = d <= meta ? C.green : d <= meta * 1.2 ? C.orange : C.red
-          return (
-            <div key={l.codloja} style={{
-              display: "flex", flexDirection: "column", alignItems: "center",
-              background: color + "1A",
-              border: `1px solid ${color}55`,
-              borderRadius: 3,
-              padding: "1px 4px",
-              minWidth: 26,
-            }}>
-              <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
-              <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{d}d</span>
-            </div>
-          )
-        })}
-      </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Chips de evolução por loja (vs mesmo período ano passado) ────────────────
+function EvolLojaChips({ lojas, field }: {
+  lojas: { codloja: string; evolVendas: number | null; evolLb: number | null; evolProdFora: number | null }[]
+  field: "evolVendas" | "evolLb" | "evolProdFora"
+}) {
+  if (!lojas.length) return null
+  return (
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: 2, marginTop: 3 }}>
+      {lojas.map(l => {
+        const v = l[field]
+        if (v === null) return null
+        const color = v >= 0 ? C.green : v >= -10 ? C.orange : C.red
+        const sign  = v >= 0 ? "+" : ""
+        return (
+          <div key={l.codloja} style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: color + "1A",
+            border: `1px solid ${color}55`,
+            borderRadius: 3,
+            padding: "1px 4px",
+            minWidth: 26,
+          }}>
+            <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
+            <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{sign}{v.toFixed(0)}%</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -290,8 +305,7 @@ export default function TvComprasLojas() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#0e2b5c,#1D9BF0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛒</div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.04em", lineHeight: 1 }}>DASHBOARD COMPRAS</div>
-            <div style={{ fontSize: 11, color: "#4B7FB5", letterSpacing: "0.1em" }}>DESEMPENHO POR COMPRADOR E GRUPO — {mesLabel.toUpperCase()}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.04em", lineHeight: 1 }}>J MONTE CENTER</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -335,11 +349,11 @@ export default function TvComprasLojas() {
             <tr>
               <th style={th}>Comprador</th>
               <th style={th}>Grupo</th>
-              <th style={{ ...thG, textAlign: "center", minWidth: 140 }}>Vendas<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center", minWidth: 140 }}>LB<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center", minWidth: 380 }}>Nível Serviço<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center", minWidth: 380 }}>Dias Estoque<br/>Atingimento</th>
-              <th style={{ ...thG, textAlign: "center", minWidth: 140 }}>Prod. Fora<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Vendas<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>LB<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Nível Serviço<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Dias Estoque<br/>Atingimento</th>
+              <th style={{ ...thG, textAlign: "center" }}>Prod. Fora<br/>Atingimento</th>
               <th style={{ ...thG, textAlign: "center" }}>Metas</th>
             </tr>
           </thead>
@@ -360,23 +374,32 @@ export default function TvComprasLojas() {
                       </td>
                     )}
                     <td style={{ ...tdN, ...sepStyle, fontSize: 10 }}>{g.grupoNome}</td>
-                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.vendaPercentualMeta)} /></td>
-                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={lbAting(g)} /></td>
-                    <td style={{ ...tdG, ...sepStyle }}>
+                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                      <AtingBar pct={safe(g.vendaPercentualMeta)} />
+                      <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolVendas" />
+                    </td>
+                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                      <AtingBar pct={lbAting(g)} />
+                      <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolLb" />
+                    </td>
+                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
                       <NsLojaChips
                         lojas={g.nsPorLoja ?? []}
                         meta={g.nivelServicoMeta || 97}
                         overall={nsPresent(g) ? nsVal(g) : undefined}
                       />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle }}>
+                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                      <AtingBar pct={diasAting(g)} />
                       <DiasLojaChips
                         lojas={g.diasPorLoja ?? []}
                         meta={g.diasEstoqueMeta || 45}
-                        overall={g.diasEstoque !== null ? safe(g.diasEstoque) : undefined}
                       />
                     </td>
-                    <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.produtosForaPercentual)} /></td>
+                    <td style={{ ...tdG, ...sepStyle, whiteSpace: "nowrap" }}>
+                      <AtingBar pct={safe(g.produtosForaPercentual)} />
+                      <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolProdFora" />
+                    </td>
                     <td style={{ ...tdG, ...sepStyle }}><MetaIcons c={g} /></td>
                   </tr>
                 )
