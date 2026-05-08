@@ -304,8 +304,8 @@ export default function TvComprasLojas() {
   const thG: React.CSSProperties = { ...th, borderLeft: `2px solid ${C.border}` }
   const tdG: React.CSSProperties = { ...td, borderLeft: `2px solid ${C.dim}` }
 
-  // Separador visível entre compradores
-  const SEP: React.CSSProperties = { borderTop: "2px solid rgba(148,163,184,0.30)" }
+  // Borda branca que contorna cada bloco de comprador
+  const W = "2px solid rgba(255,255,255,0.42)"
 
   // Estilo da linha de sub-total por comprador
   const tdSub: React.CSSProperties = {
@@ -381,68 +381,77 @@ export default function TvComprasLojas() {
               const firstName = m.comprador.split(" ")[0]
 
               const grupoRows = m.grupos.map((g: any, gi: number) => {
-                const sep = gi === 0 && mi > 0 ? SEP : {}
+                const isFirst = gi === 0
+                // topo branco somente na primeira linha do bloco
+                const topB: React.CSSProperties = isFirst ? { borderTop: W } : {}
+                // esquerda branca na célula mais à esquerda de cada linha:
+                //   gi=0 → cell comprador (rowspan) | gi>0 → cell grupoNome
+                const leftGrupo: React.CSSProperties = isFirst ? {} : { borderLeft: W }
                 return (
                   <tr key={`${mi}-${gi}`} style={{ background: rowBg }}>
-                    {gi === 0 && (
-                      <td style={{ ...td, ...sep, verticalAlign: "middle", fontWeight: 700, whiteSpace: "nowrap", color: C.blue }}
+                    {isFirst && (
+                      <td style={{ ...td, ...topB, borderLeft: W, verticalAlign: "middle", fontWeight: 700, whiteSpace: "nowrap", color: C.blue }}
                         rowSpan={m.grupos.length}>
                         {m.comprador}
                       </td>
                     )}
-                    <td style={{ ...tdN, ...sep, fontSize: 9 }}>{g.grupoNome}</td>
-                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdN, ...topB, ...leftGrupo, fontSize: 9 }}>{g.grupoNome}</td>
+                    <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
                       <AtingBar pct={safe(g.vendaPercentualMeta)} />
                       <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolVendas" />
                     </td>
-                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
                       <AtingBar pct={lbAting(g)} />
                       <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolLb" />
                     </td>
-                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
                       <NsLojaChips
                         lojas={g.nsPorLoja ?? []}
                         meta={g.nivelServicoMeta || 97}
                         overall={nsPresent(g) ? nsVal(g) : undefined}
                       />
                     </td>
-                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
                       <AtingBar pct={diasAting(g)} />
                       <DiasLojaChips
                         lojas={g.diasPorLoja ?? []}
                         meta={g.diasEstoqueMeta || 45}
                       />
                     </td>
-                    <td style={{ ...tdG, ...sep, whiteSpace: "nowrap" }}>
+                    <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
                       <AtingBar pct={safe(g.produtosForaPercentual)} />
                       <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolProdFora" />
                     </td>
-                    <td style={{ ...tdG, ...sep }}><MetaIcons c={g} /></td>
+                    {/* Metas: direita branca em todas as linhas do bloco */}
+                    <td style={{ ...tdG, ...topB, borderRight: W }}><MetaIcons c={g} /></td>
                   </tr>
                 )
               })
 
-              // Linha de sub-total do comprador (usa dados agregados do array compradores)
+              // Linha de sub-total: fundo branco completa o box
               const sub = m.sub
               const subRow = sub ? (
                 <tr key={`${mi}-sub`}>
-                  <td style={{ ...tdSub, fontStyle: "italic" }} colSpan={2}>
+                  <td style={{ ...tdSub, borderLeft: W, borderBottom: W, fontStyle: "italic" }} colSpan={2}>
                     SUB-TOTAL {firstName.toUpperCase()}
                   </td>
-                  <td style={tdSubG}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={8} /></td>
-                  <td style={tdSubG}><AtingBar pct={lbAting(sub)} height={8} /></td>
-                  <td style={tdSubG}>
+                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={8} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={lbAting(sub)} height={8} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W }}>
                     {nsPresent(sub) ? <AtingBar pct={nsAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
                   </td>
-                  <td style={tdSubG}>
+                  <td style={{ ...tdSubG, borderBottom: W }}>
                     {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
                   </td>
-                  <td style={tdSubG}><AtingBar pct={safe(sub.produtosForaPercentual)} height={8} /></td>
-                  <td style={tdSubG}><MetaIcons c={sub} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.produtosForaPercentual)} height={8} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W, borderRight: W }}><MetaIcons c={sub} /></td>
                 </tr>
               ) : null
 
-              return subRow ? [...grupoRows, subRow] : grupoRows
+              // Linha espaçadora entre blocos de compradores
+              const spacer = <tr key={`${mi}-spacer`} style={{ height: 4 }}><td colSpan={8} style={{ padding: 0, border: "none", background: "transparent" }} /></tr>
+              const rows = subRow ? [...grupoRows, subRow] : grupoRows
+              return mi < matrizCompradores.length - 1 ? [...rows, spacer] : rows
             }) : (
               <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: C.muted }}>Nenhum dado disponível</td></tr>
             )}
