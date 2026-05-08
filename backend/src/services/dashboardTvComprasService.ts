@@ -424,7 +424,13 @@ export const getDashboardTvCompras = async () => {
   `
 
   // ── Query 12: evolução por loja (vs mesmo período ano passado) ───────────────
-  // Usa vs_scc_vendas_devolucoes_lojas — mesma lógica do período atual × ano ant.
+  // Sempre retorna as 12 lojas (00–11) × cada codgrp com meta.
+  // Regras por métrica de vendas/prod.fora:
+  //   atual=0  e ant=0  → NULL  (sem venda em nenhum ano → exibe "–")
+  //   atual>0  e ant=0  → +100% (nova loja / primeiro mês)
+  //   atual=0  e ant>0  → -100% (loja parou de vender)
+  //   ambos>0           → evolução normal
+  // Para LB (comparação de %) → NULL quando falta qualquer lado (sem sentido ±100%)
   const queryEvolLojasDetalhe = `
     WITH
     grupos_meta AS (
@@ -432,6 +438,15 @@ export const getDashboardTvCompras = async () => {
       FROM scc_metas_compradores
       WHERE mes = EXTRACT(MONTH FROM CURRENT_DATE)::int
         AND ano = EXTRACT(YEAR  FROM CURRENT_DATE)::int
+    ),
+    lojas AS (
+      SELECT lpad(gs::text, 2, '0') AS codloja
+      FROM generate_series(0, 11) gs
+    ),
+    base AS (
+      SELECT gm.codgrp, l.codloja
+      FROM grupos_meta gm
+      CROSS JOIN lojas l
     ),
     atual AS (
       SELECT
@@ -467,20 +482,32 @@ export const getDashboardTvCompras = async () => {
       GROUP BY TRIM(codgrp), TRIM(codloja)
     )
     SELECT
-      a.codgrp,
-      a.codloja,
-      ROUND(CASE WHEN COALESCE(ant.venda,0) > 0
-                 THEN (a.venda / ant.venda - 1) * 100
-                 ELSE NULL END, 1)                                        AS evol_vendas,
-      ROUND(CASE WHEN COALESCE(ant.venda_bruta,0) > 0 AND COALESCE(a.venda_bruta,0) > 0
-                 THEN ((a.lb / a.venda_bruta) - (ant.lb / ant.venda_bruta)) * 100
-                 ELSE NULL END, 1)                                        AS evol_lb,
-      ROUND(CASE WHEN COALESCE(ant.venda_fora,0) > 0
-                 THEN (a.venda_fora / ant.venda_fora - 1) * 100
-                 ELSE NULL END, 1)                                        AS evol_prod_fora
-    FROM atual a
+      b.codgrp,
+      b.codloja,
+      -- Vendas: NULL = sem dados em nenhum ano, ±100 quando só um lado tem dados
+      ROUND(CASE
+        WHEN COALESCE(a.venda,0) = 0 AND COALESCE(ant.venda,0) = 0 THEN NULL
+        WHEN COALESCE(ant.venda,0) = 0                              THEN  100.0
+        WHEN COALESCE(a.venda,0)   = 0                              THEN -100.0
+        ELSE (a.venda / ant.venda - 1) * 100
+      END, 1) AS evol_vendas,
+      -- LB% (pp): NULL quando falta qualquer lado (±100 não faz sentido para %)
+      ROUND(CASE
+        WHEN COALESCE(a.venda_bruta,0) > 0 AND COALESCE(ant.venda_bruta,0) > 0
+          THEN ((a.lb / a.venda_bruta) - (ant.lb / ant.venda_bruta)) * 100
+        ELSE NULL
+      END, 1) AS evol_lb,
+      -- Prod. Fora: mesma lógica de Vendas
+      ROUND(CASE
+        WHEN COALESCE(a.venda_fora,0) = 0 AND COALESCE(ant.venda_fora,0) = 0 THEN NULL
+        WHEN COALESCE(ant.venda_fora,0) = 0                                   THEN  100.0
+        WHEN COALESCE(a.venda_fora,0)   = 0                                   THEN -100.0
+        ELSE (a.venda_fora / ant.venda_fora - 1) * 100
+      END, 1) AS evol_prod_fora
+    FROM base b
+    LEFT JOIN atual    a   USING (codgrp, codloja)
     LEFT JOIN anterior ant USING (codgrp, codloja)
-    ORDER BY a.codgrp, a.codloja
+    ORDER BY b.codgrp, b.codloja
   `
 
   // ── Query 9: top 10 dias sem estoque — curva A1 ───────────────────────────
