@@ -63,6 +63,51 @@ function TotalCard({ icon, label, pct }: { icon: string; label: string; pct: num
   )
 }
 
+// ─── Chips de NS por loja ─────────────────────────────────────────────────────
+function NsLojaChips({ lojas, meta = 97, overall }: {
+  lojas: { codloja: string; nivelServico: number }[]
+  meta?: number
+  overall?: number
+}) {
+  if (!lojas.length) return <span style={{ color: C.muted, fontSize: 11 }}>—</span>
+  const overallColor = overall !== undefined
+    ? (overall >= meta ? C.green : overall >= meta * 0.9 ? C.orange : C.red)
+    : C.muted
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      {overall !== undefined && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
+            {overall.toFixed(0)}%
+          </span>
+          <div style={{ flex: 1, height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${Math.min(100, overall / meta * 100)}%`, height: "100%", background: overallColor, borderRadius: 2 }} />
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+        {lojas.map(l => {
+          const ns = l.nivelServico
+          const color = ns >= meta ? C.green : ns >= meta * 0.9 ? C.orange : C.red
+          return (
+            <div key={l.codloja} style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              background: color + "1A",
+              border: `1px solid ${color}55`,
+              borderRadius: 3,
+              padding: "1px 4px",
+              minWidth: 26,
+            }}>
+              <span style={{ fontSize: 7, color: C.muted, lineHeight: 1.2 }}>{l.codloja}</span>
+              <span style={{ fontSize: 9, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{ns}%</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Ícones de meta (V L N D P) ──────────────────────────────────────────────
 function MetaIcons({ c }: { c: any }) {
   // NS usa nivelServicoLojas se disponível, caso contrário nivelServico
@@ -273,7 +318,11 @@ export default function TvComprasLojas() {
                     <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={safe(g.vendaPercentualMeta)} /></td>
                     <td style={{ ...tdG, ...sepStyle }}><AtingBar pct={lbAting(g)} /></td>
                     <td style={{ ...tdG, ...sepStyle }}>
-                      {nsPresent(g) ? <AtingBar pct={nsAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
+                      <NsLojaChips
+                        lojas={g.nsPorLoja ?? []}
+                        meta={g.nivelServicoMeta || 97}
+                        overall={nsPresent(g) ? nsVal(g) : undefined}
+                      />
                     </td>
                     <td style={{ ...tdG, ...sepStyle }}>
                       {g.diasEstoque !== null ? <AtingBar pct={diasAting(g)} /> : <span style={{ color: C.muted }}>—</span>}
@@ -294,7 +343,11 @@ export default function TvComprasLojas() {
                   <td style={tdSubG}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={8} /></td>
                   <td style={tdSubG}><AtingBar pct={lbAting(sub)} height={8} /></td>
                   <td style={tdSubG}>
-                    {nsPresent(sub) ? <AtingBar pct={nsAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
+                    <NsLojaChips
+                      lojas={sub.nsPorLoja ?? []}
+                      meta={sub.nivelServicoMeta || 97}
+                      overall={nsPresent(sub) ? nsVal(sub) : undefined}
+                    />
                   </td>
                   <td style={tdSubG}>
                     {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
