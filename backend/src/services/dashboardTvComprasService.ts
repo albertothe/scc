@@ -395,7 +395,11 @@ export const getDashboardTvCompras = async () => {
       ROUND(
         COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
         / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 0
-      ) AS nivel_servico
+      ) AS nivel_servico,
+      ROUND(
+        SUM(CASE WHEN ef.mediadia > 0 THEN ef.saldoestoque ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN ef.mediadia > 0 THEN ef.mediadia ELSE 0 END), 0), 0
+      ) AS dias_estoque
     FROM vs_scc_estoque_media_facing_lojas ef
     WHERE TRIM(ef.codgrp) IN (SELECT codgrp FROM grupos_meta)
     GROUP BY TRIM(ef.codgrp), TRIM(ef.codloja)
@@ -408,7 +412,11 @@ export const getDashboardTvCompras = async () => {
       ROUND(
         COUNT(CASE WHEN ef.facing > 0 AND ef.saldoestoque > 0 THEN 1 END)::numeric
         / NULLIF(COUNT(CASE WHEN ef.facing > 0 THEN 1 END), 0) * 100, 0
-      ) AS nivel_servico
+      ) AS nivel_servico,
+      ROUND(
+        SUM(CASE WHEN ef.mediadia > 0 THEN ef.saldoestoque ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN ef.mediadia > 0 THEN ef.mediadia ELSE 0 END), 0), 0
+      ) AS dias_estoque
     FROM vs_scc_estoque_media_facing_lojas ef
     JOIN ga ON ga.codgrp = TRIM(ef.codgrp)
     GROUP BY ga.comprador, TRIM(ef.codloja)
@@ -450,22 +458,17 @@ export const getDashboardTvCompras = async () => {
   }
   const nivelServicoLojasGlobal = nsLojasMap.get('__TOTAL__') ?? null
 
-  // ── Mapa NS por loja: codgrp → [{codloja, nivelServico}] ─────────────────
-  const nsLojasDetalheGrupoMap = new Map<string, { codloja: string; nivelServico: number }[]>()
-  // ── Mapa NS por loja: comprador → [{codloja, nivelServico}] (sub-totais) ──
-  const nsLojasDetalheCompMap  = new Map<string, { codloja: string; nivelServico: number }[]>()
+  // ── Mapas NS e Dias por loja (apenas para linhas de grupo — sub-totais usam AtingBar) ──
+  const nsLojasDetalheGrupoMap   = new Map<string, { codloja: string; nivelServico: number }[]>()
+  const diasLojasDetalheGrupoMap = new Map<string, { codloja: string; diasEstoque: number }[]>()
   for (const row of r11.rows) {
-    const ns = safe(row.nivel_servico)
+    if (row.tipo !== 'grupo') continue
     const loja = String(row.codloja).trim()
-    if (row.tipo === 'grupo') {
-      const key = String(row.codgrp).trim()
-      if (!nsLojasDetalheGrupoMap.has(key)) nsLojasDetalheGrupoMap.set(key, [])
-      nsLojasDetalheGrupoMap.get(key)!.push({ codloja: loja, nivelServico: ns })
-    } else {
-      const key = String(row.comprador).trim()
-      if (!nsLojasDetalheCompMap.has(key)) nsLojasDetalheCompMap.set(key, [])
-      nsLojasDetalheCompMap.get(key)!.push({ codloja: loja, nivelServico: ns })
-    }
+    const key  = String(row.codgrp).trim()
+    if (!nsLojasDetalheGrupoMap.has(key))   nsLojasDetalheGrupoMap.set(key, [])
+    if (!diasLojasDetalheGrupoMap.has(key)) diasLojasDetalheGrupoMap.set(key, [])
+    nsLojasDetalheGrupoMap.get(key)!.push({ codloja: loja, nivelServico: safe(row.nivel_servico) })
+    diasLojasDetalheGrupoMap.get(key)!.push({ codloja: loja, diasEstoque: safe(row.dias_estoque) })
   }
 
   // ── Mapa de métricas por grupo ────────────────────────────────────────────
@@ -585,7 +588,6 @@ export const getDashboardTvCompras = async () => {
       vendaPercentualMeta: Number(vendaMeta.toFixed(1)),
       lbPercentual: Number(lbPct.toFixed(1)),
       metaLb: Number(metaLb.toFixed(1)),
-      nsPorLoja: nsLojasDetalheCompMap.get(c.comprador) ?? [],
       nivelServico: nsMedia !== null ? Number(nsMedia!.toFixed(1)) : null,
       nivelServicoLojas: c.nivelServicoLojasCount > 0
         ? Number((c.nivelServicoLojasSum / c.nivelServicoLojasCount).toFixed(1))
@@ -647,7 +649,8 @@ export const getDashboardTvCompras = async () => {
       metaLb: Number(safe(row.meta_lb).toFixed(1)),
       nivelServico: mg ? Number(mg.nivelServico.toFixed(1)) : null,
       nivelServicoLojas: nsLojasMap.has(codgrp) ? Number(nsLojasMap.get(codgrp)!.toFixed(1)) : null,
-      nsPorLoja: nsLojasDetalheGrupoMap.get(codgrp) ?? [],
+      nsPorLoja:   nsLojasDetalheGrupoMap.get(codgrp) ?? [],
+      diasPorLoja: diasLojasDetalheGrupoMap.get(codgrp) ?? [],
       nivelServicoMeta: safe(row.meta_nivel_servico) || 97,
       diasEstoque: mg ? Math.round(mg.diasEstoque) : null,
       diasEstoqueMeta: safe(row.meta_dias_estoque) || 45,
