@@ -20,14 +20,14 @@ const C = {
 const safe = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
 // ─── Barra de atingimento responsiva ─────────────────────────────────────────
-function AtingBar({ pct, meta = 100, height = 5 }: { pct: number; meta?: number; height?: number }) {
+function AtingBar({ pct, meta = 100, height = 7 }: { pct: number; meta?: number; height?: number }) {
   const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, width: "100%" }}>
       <div style={{ flex: 1, height, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 3 }} />
       </div>
-      <span style={{ fontSize: 10, color, fontWeight: 700, width: 32, flexShrink: 0 }}>{pct.toFixed(0)}%</span>
+      <span style={{ fontSize: 12, color, fontWeight: 700, width: 36, flexShrink: 0 }}>{pct.toFixed(0)}%</span>
     </div>
   )
 }
@@ -76,10 +76,10 @@ function NsLojaChips({ lojas, meta = 97, overall }: {
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {overall !== undefined && (
         <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
             {overall.toFixed(0)}%
           </span>
-          <div style={{ flex: 1, height: 3, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ flex: 1, height: 5, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
             <div style={{ width: `${Math.min(100, overall / meta * 100)}%`, height: "100%", background: overallColor, borderRadius: 2 }} />
           </div>
         </div>
@@ -435,15 +435,15 @@ export default function TvComprasLojas() {
                   <td style={{ ...tdSub, borderLeft: W, borderBottom: W, fontStyle: "italic" }} colSpan={2}>
                     SUB-TOTAL {firstName.toUpperCase()}
                   </td>
-                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={8} /></td>
-                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={lbAting(sub)} height={8} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={10} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={lbAting(sub)} height={10} /></td>
                   <td style={{ ...tdSubG, borderBottom: W }}>
-                    {nsPresent(sub) ? <AtingBar pct={nsAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
+                    {nsPresent(sub) ? <AtingBar pct={nsAting(sub)} height={10} /> : <span style={{ color: C.muted }}>—</span>}
                   </td>
                   <td style={{ ...tdSubG, borderBottom: W }}>
-                    {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={8} /> : <span style={{ color: C.muted }}>—</span>}
+                    {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={10} /> : <span style={{ color: C.muted }}>—</span>}
                   </td>
-                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.produtosForaPercentual)} height={8} /></td>
+                  <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.produtosForaPercentual)} height={10} /></td>
                   <td style={{ ...tdSubG, borderBottom: W, borderRight: W }}><MetaIcons c={sub} /></td>
                 </tr>
               ) : null
