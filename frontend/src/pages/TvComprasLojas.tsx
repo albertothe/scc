@@ -41,21 +41,21 @@ function TotalCard({ icon, label, pct }: { icon: string; label: string; pct: num
       border: `1px solid ${color}44`,
       borderTop: `2px solid ${color}`,
       borderRadius: 6,
-      padding: "4px 10px",
+      padding: "8px 12px",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: 2,
+      gap: 4,
       minWidth: 105,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <span style={{ fontSize: 11 }}>{icon}</span>
-        <span style={{ fontSize: 8, color: C.muted, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</span>
+        <span style={{ fontSize: 13 }}>{icon}</span>
+        <span style={{ fontSize: 9, color: C.muted, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</span>
       </div>
-      <div style={{ fontSize: 20, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+      <div style={{ fontSize: 24, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
         {pct.toFixed(0)}%
       </div>
-      <div style={{ width: "100%", height: 3, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ width: "100%", height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
         <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 2 }} />
       </div>
     </div>
