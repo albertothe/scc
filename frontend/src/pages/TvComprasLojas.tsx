@@ -272,7 +272,7 @@ export default function TvComprasLojas() {
       comprador,
       grupos,
       sub: compMap.get(comprador) ?? null,
-    }))
+    })).sort((a, b) => safe(b.sub?.vendaRealizado) - safe(a.sub?.vendaRealizado))
   })()
 
   // Converte métricas para % de atingimento
