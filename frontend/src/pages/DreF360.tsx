@@ -47,7 +47,7 @@ const NULL_MARKER = "\x00"
 // ── Helpers ────────────────────────────────────────────────────────────────
 const somarCampo = (
   items: DreF360Registro[],
-  campo: "realizado" | "orcado" | "rlr" | "rlo",
+  campo: "realizado" | "orcado",
 ): number | null => {
   const nums = items.map((r) => r[campo]).filter((v): v is number => v !== null)
   return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : null
@@ -360,15 +360,13 @@ const DreF360: React.FC = () => {
       <>
         <TableCell align="right" sx={sx}>{formatarValor(somarCampo(items, "realizado"))}</TableCell>
         <TableCell align="right" sx={sx}>{formatarValor(somarCampo(items, "orcado"))}</TableCell>
-        <TableCell align="right" sx={{ color: "text.secondary" }}>{formatarValor(somarCampo(items, "rlr"))}</TableCell>
-        <TableCell align="right" sx={{ color: "text.secondary" }}>{formatarValor(somarCampo(items, "rlo"))}</TableCell>
         {podeEditar && <TableCell />}
       </>
     )
   }
 
   // ── Número de colunas (para colspan em mensagem vazia) ────────────────────
-  const numCols = podeEditar ? 9 : 8
+  const numCols = podeEditar ? 7 : 6
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -466,8 +464,6 @@ const DreF360: React.FC = () => {
               <TableCell>Mês</TableCell>
               <TableCell align="right">Realizado</TableCell>
               <TableCell align="right">Orçado</TableCell>
-              <TableCell align="right">RLR</TableCell>
-              <TableCell align="right">RLO</TableCell>
               {podeEditar && <TableCell>Ações</TableCell>}
             </TableRow>
           </TableHead>
@@ -605,14 +601,6 @@ const DreF360: React.FC = () => {
                                 onBlur={() => finalizarEdicaoValor(registro, "orcado")}
                                 disabled={!podeEditar}
                               />
-                            </TableCell>
-
-                            {/* RLR / RLO — somente leitura */}
-                            <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.8125rem" }}>
-                              {registro.rlr !== null ? formatarValor(registro.rlr) : "—"}
-                            </TableCell>
-                            <TableCell align="right" sx={{ color: "text.secondary", fontSize: "0.8125rem" }}>
-                              {registro.rlo !== null ? formatarValor(registro.rlo) : "—"}
                             </TableCell>
 
                             {podeEditar && (
