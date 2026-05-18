@@ -20,6 +20,7 @@ import ControleAcessoModulos from "./pages/ControleAcessoModulos"
 import ControleAcessoNiveis from "./pages/ControleAcessoNiveis"
 import ControleAcessoPermissoes from "./pages/ControleAcessoPermissoes"
 import Dre from "./pages/Dre"
+import DreF360 from "./pages/DreF360"
 import HelpDeskChamados from "./pages/HelpDeskChamados"
 import HelpDeskAtivos from "./pages/HelpDeskAtivos"
 import { AuthProvider } from "./contexts/AuthContext"
@@ -187,6 +188,16 @@ function App() {
                 <ProtectedRoute rota="dre">
                   <Layout>
                     <Dre />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controladoria/dre-f360"
+              element={
+                <ProtectedRoute rota="dre">
+                  <Layout>
+                    <DreF360 />
                   </Layout>
                 </ProtectedRoute>
               }
