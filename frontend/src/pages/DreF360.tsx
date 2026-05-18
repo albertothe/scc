@@ -49,7 +49,16 @@ const somarCampo = (
   items: DreF360Registro[],
   campo: "realizado" | "orcado",
 ): number | null => {
-  const nums = items.map((r) => r[campo]).filter((v): v is number => v !== null)
+  // Converte cada valor para número antes de somar — o PostgreSQL retorna
+  // colunas numeric como string, e (0 + "100" + "200") resultaria em "0100200".
+  const nums = items
+    .map((r) => {
+      const v = r[campo]
+      if (v === null || v === undefined) return null
+      const n = Number(v)
+      return Number.isNaN(n) ? null : n
+    })
+    .filter((v): v is number => v !== null)
   return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) : null
 }
 
