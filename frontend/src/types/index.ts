@@ -170,6 +170,20 @@ export interface DreRegistro {
   orcado: number | null
 }
 
+export interface DreF360Registro {
+  sequencial: string
+  descricao: string
+  subdescricao: string | null
+  detalhamento: string | null
+  codloja: string
+  ano: number
+  mes: number
+  realizado: number | null
+  orcado: number | null
+  rlr: number | null
+  rlo: number | null
+}
+
 
 export interface ChamadoHelpDesk {
   id?: number
