@@ -8,6 +8,7 @@ import vendedorMetaRoutes from "./routes/vendedorMetaRoutes"
 import autorizacaoCompraRoutes from "./routes/autorizacaoCompraRoutes"
 import controleAcessoRoutes from "./routes/controleAcessoRoutes"
 import dreRoutes from "./routes/dreRoutes"
+import dreF360Routes from "./routes/dreF360Routes"
 import helpDeskRoutes from "./routes/helpDeskRoutes"
 import compradoresRoutes from "./routes/compradoresRoutes"
 import dashboardTvComprasRoutes from "./routes/dashboardTvComprasRoutes"
@@ -32,6 +33,7 @@ app.use("/api/vendedor-metas", vendedorMetaRoutes)
 app.use("/api/autorizacao-compra", autorizacaoCompraRoutes)
 app.use("/api/controle-acesso", controleAcessoRoutes)
 app.use("/api/dre", dreRoutes)
+app.use("/api/dre-f360", dreF360Routes)
 app.use("/api/help-desk", helpDeskRoutes)
 app.use("/api", compradoresRoutes)
 app.use("/", dashboardTvComprasRoutes)
