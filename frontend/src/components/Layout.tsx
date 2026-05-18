@@ -158,6 +158,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             subItems: [
                 { text: "Autorização Compra", icon: <AutorizacaoIcon />, path: "/controladoria/autorizacao-compra" },
                 { text: "DRE", icon: <DreIcon />, path: "/controladoria/dre" },
+                { text: "DRE F360", icon: <DreIcon />, path: "/controladoria/dre-f360" },
             ],
         },
         {
