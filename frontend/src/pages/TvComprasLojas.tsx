@@ -228,11 +228,11 @@ function KpiCard({ icon, label, pct }: { icon: string; label: string; pct: numbe
       display: "flex", flexDirection: "column", gap: 8,
       height: "100%", boxSizing: "border-box",
     }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span> {label}
+      <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
+        <span style={{ fontSize: 17 }}>{icon}</span> {label}
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
-        <span style={{ fontSize: 68, fontWeight: 900, lineHeight: 1, color, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
+        <span style={{ fontSize: 80, fontWeight: 900, lineHeight: 1, color, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
           {pct !== null ? `${pct.toFixed(0)}%` : "—"}
         </span>
       </div>
@@ -394,23 +394,23 @@ export default function TvComprasLojas() {
 
         {/* ── Header ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
-          <div style={{ background: C.blue, color: "#fff", fontSize: 11, fontWeight: 800,
-            letterSpacing: ".12em", padding: "3px 14px", borderRadius: 20, whiteSpace: "nowrap" }}>
+          <div style={{ background: C.blue, color: "#fff", fontSize: 13, fontWeight: 800,
+            letterSpacing: ".12em", padding: "4px 16px", borderRadius: 20, whiteSpace: "nowrap" }}>
             COMPRADOR {slideIndex} DE {matrizCompradores.length}
           </div>
-          <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1, flex: 1 }}>
+          <div style={{ fontSize: 48, fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1, flex: 1 }}>
             {m?.comprador?.toUpperCase()}
           </div>
-          <div style={{ fontSize: 15, color: C.muted, fontWeight: 600, letterSpacing: ".06em", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 18, color: C.muted, fontWeight: 600, letterSpacing: ".06em", whiteSpace: "nowrap" }}>
             {mesAbrev}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
-            <span style={{ fontSize: 9, color: C.muted, letterSpacing: ".08em", textTransform: "uppercase" }}>próxima tela em</span>
+            <span style={{ fontSize: 11, color: C.muted, letterSpacing: ".08em", textTransform: "uppercase" }}>próxima tela em</span>
             <div style={{ width: 180, height: 6, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
               <div style={{ width: `${(countdown / 45) * 100}%`, height: "100%",
                 background: `linear-gradient(90deg, ${C.blue}, #60c8ff)`, borderRadius: 3, transition: "width 1s linear" }} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.blue, fontVariantNumeric: "tabular-nums" }}>{countdown}s</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: C.blue, fontVariantNumeric: "tabular-nums" }}>{countdown}s</span>
           </div>
         </div>
 
@@ -451,7 +451,7 @@ export default function TvComprasLojas() {
                   display: "flex", alignItems: "center", overflow: "hidden",
                 }}>
                   <span style={{
-                    fontSize: 14, fontWeight: 800, letterSpacing: "0.07em",
+                    fontSize: 20, fontWeight: 800, letterSpacing: "0.06em",
                     textTransform: "uppercase", color: C.text,
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
@@ -483,12 +483,12 @@ export default function TvComprasLojas() {
                         transition: "height 0.6s ease",
                       }} />
                       {/* Label */}
-                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted, flexShrink: 0 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted, flexShrink: 0 }}>
                         {label}
                       </span>
                       {/* Número */}
                       <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
-                        <span style={{ fontSize: 26, fontWeight: 900, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                        <span style={{ fontSize: 38, fontWeight: 900, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                           {pct !== null ? `${pct.toFixed(0)}%` : "—"}
                         </span>
                       </div>
@@ -515,7 +515,7 @@ export default function TvComprasLojas() {
               }} />
             ))}
           </div>
-          <div style={{ fontSize: 13, color: C.muted }}>
+          <div style={{ fontSize: 15, color: C.muted }}>
             Próximo: <strong style={{ color: C.text }}>{nextLabel}</strong>
           </div>
         </div>
