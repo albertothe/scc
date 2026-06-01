@@ -373,7 +373,7 @@ export default function TvComprasLojas() {
   if (slideIndex > 0 && matrizCompradores.length > 0) {
     const m    = matrizCompradores[slideIndex - 1]
     const sub  = m?.sub
-    const nextIdx   = (slideIndex) % (matrizCompradores.length + 1)
+    const nextIdx   = (slideIndex + 1) % (matrizCompradores.length + 1)
     const nextLabel = nextIdx === 0 ? "Visão Geral" : matrizCompradores[nextIdx - 1]?.comprador ?? ""
 
     const vendaPct = safe(sub?.vendaPercentualMeta)
@@ -449,8 +449,20 @@ export default function TvComprasLojas() {
                   padding: "7px 20px", alignItems: "center", gap: 8,
                   background: gi % 2 === 0 ? "#060C1A" : "transparent",
                   borderBottom: gi < (m?.grupos?.length ?? 0) - 1 ? `1px solid ${C.dim}` : "none" }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {g.grupoNome}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
+                    {/* Indicador de status de vendas */}
+                    <div style={{
+                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                      background: gc(safe(g.vendaPercentualMeta)),
+                      boxShadow: `0 0 6px ${gc(safe(g.vendaPercentualMeta))}88`,
+                    }} />
+                    <span style={{
+                      fontSize: 15, fontWeight: 700, letterSpacing: "0.06em",
+                      textTransform: "uppercase", color: C.text,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {g.grupoNome}
+                    </span>
                   </div>
                   {metrics.map((pct, mi) => {
                     const color = pct === null ? C.muted : gc(pct)
