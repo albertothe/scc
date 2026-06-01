@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<title>TV — Comprador Individual</title>
+<style>
+  :root {
+    --bg:       #04091A;
+    --card:     #070D1C;
+    --card2:    #0A1428;
+    --border:   #0F1D35;
+    --dim:      #1E293B;
+    --text:     #F1F5F9;
+    --muted:    #94A3B8;
+    --blue:     #1D9BF0;
+    --green:    #22C55E;
+    --orange:   #FB923C;
+    --red:      #EF4444;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 24px 14px;
+    gap: 14px;
+  }
+
+  /* ── HEADER ──────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+
+  .slide-badge {
+    background: var(--blue);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .buyer-name {
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: -.01em;
+    line-height: 1;
+    flex: 1;
+    color: var(--text);
+  }
+
+  .month-label {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* countdown */
+  .countdown-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    min-width: 160px;
+  }
+  .countdown-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .countdown-bar-track {
+    width: 160px;
+    height: 6px;
+    background: var(--dim);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .countdown-bar-fill {
+    height: 100%;
+    width: 62%;            /* ~28s of 45s */
+    background: linear-gradient(90deg, var(--blue), #60c8ff);
+    border-radius: 3px;
+    transition: width .5s linear;
+  }
+  .countdown-secs {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--blue);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── KPI CARDS ───────────────────────────────────────── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 10px 10px 0 0;
+  }
+  .kpi-card.green::before  { background: var(--green); }
+  .kpi-card.orange::before { background: var(--orange); }
+  .kpi-card.red::before    { background: var(--red); }
+
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .kpi-icon { font-size: 13px; }
+
+  .kpi-pct {
+    font-size: 68px;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+  }
+  .green  .kpi-pct { color: var(--green); }
+  .orange .kpi-pct { color: var(--orange); }
+  .red    .kpi-pct { color: var(--red); }
+
+  .kpi-bar-track {
+    height: 14px;
+    background: var(--dim);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .kpi-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+  }
+  .green  .kpi-bar-fill { background: var(--green); }
+  .orange .kpi-bar-fill { background: var(--orange); }
+  .red    .kpi-bar-fill { background: var(--red); }
+
+  .kpi-meta {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .meta-chip {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .meta-chip.ok  { background: #052e16; border: 1px solid var(--green); }
+  .meta-chip.nok { background: #3f0000; border: 1px solid var(--red); }
+  .meta-chip .mk { font-size: 7px; line-height: 1; }
+  .meta-chip .ms { font-size: 8px; line-height: 1; }
+  .meta-chip.ok  .mk, .meta-chip.ok  .ms { color: var(--green); }
+  .meta-chip.nok .mk, .meta-chip.nok .ms { color: var(--red); }
+
+  /* ── GROUPS TABLE ────────────────────────────────────── */
+  .groups-section {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .groups-header {
+    padding: 10px 20px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .groups-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+  .groups-subtitle {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .groups-table {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .groups-thead {
+    display: grid;
+    grid-template-columns: 2fr repeat(5, 1fr);
+    padding: 6px 20px;
+    background: #060C1A;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .groups-thead span {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .groups-thead span:not(:first-child) { text-align: center; }
+
+  .groups-tbody {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    padding: 4px 0;
+  }
+
+  .group-row {
+    display: grid;
+    grid-template-columns: 2fr repeat(5, 1fr);
+    padding: 8px 20px;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--dim);
+  }
+  .group-row:last-child { border-bottom: none; }
+  .group-row:nth-child(odd) { background: #060C1A; }
+
+  .group-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .group-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .group-pct {
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .group-bar-track {
+    width: 100%;
+    height: 10px;
+    background: var(--dim);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .group-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  /* ── FOOTER ──────────────────────────────────────────── */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: 0 4px;
+  }
+
+  .nav-dots {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--dim);
+    transition: all .3s;
+  }
+  .dot.active {
+    width: 22px;
+    border-radius: 4px;
+    background: var(--blue);
+  }
+  .dot.done { background: var(--muted); opacity: .5; }
+
+  .next-label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .next-label strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* helper */
+  .c-green  { color: var(--green); }
+  .c-orange { color: var(--orange); }
+  .c-red    { color: var(--red); }
+  .bg-green  { background: var(--green); }
+  .bg-orange { background: var(--orange); }
+  .bg-red    { background: var(--red); }
+</style>
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <div class="slide-badge">COMPRADOR 2 DE 5</div>
+    <div class="buyer-name">MARIA CRISTINA</div>
+    <div class="month-label">JUNHO / 2026</div>
+    <div class="countdown-wrap">
+      <div class="countdown-label">próxima tela em</div>
+      <div class="countdown-bar-track">
+        <div class="countdown-bar-fill"></div>
+      </div>
+      <div class="countdown-secs">28s</div>
+    </div>
+  </div>
+
+  <!-- ── KPI CARDS ── -->
+  <div class="kpi-row">
+
+    <!-- Vendas -->
+    <div class="kpi-card orange">
+      <div class="kpi-label"><span class="kpi-icon">💰</span> Vendas</div>
+      <div class="kpi-pct">94%</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:94%"></div></div>
+      <div class="kpi-meta">
+        <div class="meta-chip nok"><span class="mk">V</span><span class="ms">✗</span></div>
+        <div class="meta-chip nok"><span class="mk">L</span><span class="ms">✗</span></div>
+        <div class="meta-chip ok" ><span class="mk">N</span><span class="ms">✓</span></div>
+        <div class="meta-chip ok" ><span class="mk">D</span><span class="ms">✓</span></div>
+        <div class="meta-chip nok"><span class="mk">P</span><span class="ms">✗</span></div>
+      </div>
+    </div>
+
+    <!-- LB -->
+    <div class="kpi-card red">
+      <div class="kpi-label"><span class="kpi-icon">📊</span> LB Atingimento</div>
+      <div class="kpi-pct">81%</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:81%"></div></div>
+      <div class="kpi-meta">
+        <div class="meta-chip nok"><span class="mk">V</span><span class="ms">✗</span></div>
+        <div class="meta-chip nok"><span class="mk">L</span><span class="ms">✗</span></div>
+        <div class="meta-chip ok" ><span class="mk">N</span><span class="ms">✓</span></div>
+        <div class="meta-chip ok" ><span class="mk">D</span><span class="ms">✓</span></div>
+        <div class="meta-chip nok"><span class="mk">P</span><span class="ms">✗</span></div>
+      </div>
+    </div>
+
+    <!-- Nível Serviço -->
+    <div class="kpi-card green">
+      <div class="kpi-label"><span class="kpi-icon">🚚</span> Nível Serviço</div>
+      <div class="kpi-pct">98%</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:98%"></div></div>
+      <div class="kpi-meta">
+        <div class="meta-chip nok"><span class="mk">V</span><span class="ms">✗</span></div>
+        <div class="meta-chip nok"><span class="mk">L</span><span class="ms">✗</span></div>
+        <div class="meta-chip ok" ><span class="mk">N</span><span class="ms">✓</span></div>
+        <div class="meta-chip ok" ><span class="mk">D</span><span class="ms">✓</span></div>
+        <div class="meta-chip nok"><span class="mk">P</span><span class="ms">✗</span></div>
+      </div>
+    </div>
+
+    <!-- Dias Estoque -->
+    <div class="kpi-card green">
+      <div class="kpi-label"><span class="kpi-icon">📦</span> Dias Estoque</div>
+      <div class="kpi-pct">112%</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:100%"></div></div>
+      <div class="kpi-meta">
+        <div class="meta-chip nok"><span class="mk">V</span><span class="ms">✗</span></div>
+        <div class="meta-chip nok"><span class="mk">L</span><span class="ms">✗</span></div>
+        <div class="meta-chip ok" ><span class="mk">N</span><span class="ms">✓</span></div>
+        <div class="meta-chip ok" ><span class="mk">D</span><span class="ms">✓</span></div>
+        <div class="meta-chip nok"><span class="mk">P</span><span class="ms">✗</span></div>
+      </div>
+    </div>
+
+    <!-- Prod. Fora -->
+    <div class="kpi-card red">
+      <div class="kpi-label"><span class="kpi-icon">🏷️</span> Prod. Fora</div>
+      <div class="kpi-pct">67%</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:67%"></div></div>
+      <div class="kpi-meta">
+        <div class="meta-chip nok"><span class="mk">V</span><span class="ms">✗</span></div>
+        <div class="meta-chip nok"><span class="mk">L</span><span class="ms">✗</span></div>
+        <div class="meta-chip ok" ><span class="mk">N</span><span class="ms">✓</span></div>
+        <div class="meta-chip ok" ><span class="mk">D</span><span class="ms">✓</span></div>
+        <div class="meta-chip nok"><span class="mk">P</span><span class="ms">✗</span></div>
+      </div>
+    </div>
+
+  </div><!-- /kpi-row -->
+
+  <!-- ── GROUPS TABLE ── -->
+  <div class="groups-section">
+    <div class="groups-header">
+      <span class="groups-title">📋 Grupos do Comprador</span>
+      <span class="groups-subtitle">— detalhamento por grupo de produtos</span>
+    </div>
+    <div class="groups-table">
+      <div class="groups-thead">
+        <span>Grupo</span>
+        <span>Vendas %</span>
+        <span>LB %</span>
+        <span>N. Serviço</span>
+        <span>Dias Est.</span>
+        <span>Prod. Fora</span>
+      </div>
+      <div class="groups-tbody">
+
+        <!-- Row 1 -->
+        <div class="group-row">
+          <div class="group-name">ELETRODOMÉSTICOS</div>
+          <div class="group-metric">
+            <span class="group-pct c-orange">97%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-orange" style="width:97%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-red">79%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-red" style="width:79%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-green">99%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-green" style="width:99%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-green">115%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-green" style="width:100%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-red">62%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-red" style="width:62%"></div></div>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="group-row">
+          <div class="group-name">ELETRÔNICOS</div>
+          <div class="group-metric">
+            <span class="group-pct c-orange">91%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-orange" style="width:91%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-red">83%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-red" style="width:83%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-green">97%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-green" style="width:97%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-green">108%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-green" style="width:100%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-red">71%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-red" style="width:71%"></div></div>
+          </div>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="group-row">
+          <div class="group-name">TELEFONIA</div>
+          <div class="group-metric">
+            <span class="group-pct c-green">103%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-green" style="width:100%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-orange">92%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-orange" style="width:92%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-green">100%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-green" style="width:100%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-orange">94%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-orange" style="width:94%"></div></div>
+          </div>
+          <div class="group-metric">
+            <span class="group-pct c-red">58%</span>
+            <div class="group-bar-track"><div class="group-bar-fill bg-red" style="width:58%"></div></div>
+          </div>
+        </div>
+
+      </div><!-- /groups-tbody -->
+    </div>
+  </div><!-- /groups-section -->
+
+  <!-- ── FOOTER ── -->
+  <div class="footer">
+    <div class="nav-dots">
+      <!-- dot 0 = geral (done) -->
+      <div class="dot done" title="Geral"></div>
+      <!-- dot 1 (done) -->
+      <div class="dot done"></div>
+      <!-- dot 2 = current -->
+      <div class="dot active"></div>
+      <!-- dots 3-4 (ahead) -->
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <!-- dot 5 = geral again -->
+      <div class="dot" style="border:1px solid #1D9BF0;background:transparent" title="Geral"></div>
+    </div>
+    <div class="next-label">Próximo: <strong>JOÃO SANTOS</strong></div>
+  </div>
+
+</body>
+</html>
