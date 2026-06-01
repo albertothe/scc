@@ -225,15 +225,18 @@ function KpiCard({ icon, label, pct }: { icon: string; label: string; pct: numbe
       background: C.card, border: `1px solid ${C.border}`,
       borderTop: `3px solid ${pct !== null ? color : C.border}`,
       borderRadius: 10, padding: "16px 18px 14px",
-      display: "flex", flexDirection: "column", gap: 8, flex: 1,
+      display: "flex", flexDirection: "column", gap: 8,
+      height: "100%", boxSizing: "border-box",
     }}>
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
         <span style={{ fontSize: 14 }}>{icon}</span> {label}
       </div>
-      <div style={{ fontSize: 68, fontWeight: 900, lineHeight: 1, color, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
-        {pct !== null ? `${pct.toFixed(0)}%` : "—"}
+      <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+        <span style={{ fontSize: 68, fontWeight: 900, lineHeight: 1, color, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
+          {pct !== null ? `${pct.toFixed(0)}%` : "—"}
+        </span>
       </div>
-      <div style={{ height: 18, background: C.dim, borderRadius: 4, overflow: "hidden" }}>
+      <div style={{ height: 18, background: C.dim, borderRadius: 4, overflow: "hidden", flexShrink: 0 }}>
         <div style={{ width: `${barW}%`, height: "100%", background: pct !== null ? color : C.dim, borderRadius: 4 }} />
       </div>
     </div>
@@ -411,18 +414,22 @@ export default function TvComprasLojas() {
           </div>
         </div>
 
-        {/* ── KPI Cards ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, flexShrink: 0 }}>
-          <KpiCard icon="💰" label="Vendas"         pct={vendaPct} />
-          <KpiCard icon="📊" label="LB Atingimento" pct={lbPct} />
-          <KpiCard icon="🚚" label="Nível Serviço"  pct={nsPct} />
-          <KpiCard icon="📦" label="Dias Estoque"   pct={diasPct} />
-          <KpiCard icon="🏷️" label="Prod. Fora"    pct={prodPct} />
-        </div>
+        {/* ── Área principal: KPIs + separador + Grupos (alturas iguais) ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, minHeight: 0, overflow: "hidden" }}>
 
-        {/* ── Cards de Grupos ── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-evenly",
-          gap: 8, minHeight: 0, overflow: "hidden" }}>
+          {/* KPI Cards — flex: 1 igual aos grupos */}
+          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, minHeight: 0 }}>
+            <KpiCard icon="💰" label="Vendas"         pct={vendaPct} />
+            <KpiCard icon="📊" label="LB Atingimento" pct={lbPct} />
+            <KpiCard icon="🚚" label="Nível Serviço"  pct={nsPct} />
+            <KpiCard icon="📦" label="Dias Estoque"   pct={diasPct} />
+            <KpiCard icon="🏷️" label="Prod. Fora"    pct={prodPct} />
+          </div>
+
+          {/* Separador ghost */}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.07)", flexShrink: 0, margin: "0 4px" }} />
+
+          {/* Cards de Grupos — cada linha com flex: 1 igual */}
           {(m?.grupos ?? []).map((g: any, gi: number) => {
             const metricDefs = [
               { label: "VENDAS %",   pct: safe(g.vendaPercentualMeta) as number | null },
@@ -433,7 +440,7 @@ export default function TvComprasLojas() {
             ]
             const groupColor = gc(safe(g.vendaPercentualMeta))
             return (
-              <div key={gi} style={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)", gap: 8, flexShrink: 0 }}>
+              <div key={gi} style={{ flex: 1, display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)", gap: 10, minHeight: 0 }}>
 
                 {/* Card do nome do grupo */}
                 <div style={{
@@ -452,23 +459,39 @@ export default function TvComprasLojas() {
                   </span>
                 </div>
 
-                {/* Cards de métricas */}
+                {/* Cards de métricas com barra vertical */}
                 {metricDefs.map(({ label, pct }, mi) => {
                   const color = pct === null ? C.muted : gc(pct)
+                  const barH  = pct !== null ? Math.min(100, pct) : 0
                   return (
                     <div key={mi} style={{
                       background: C.card, borderRadius: 8,
-                      borderLeft: `4px solid ${pct !== null ? color : C.dim}`,
+                      position: "relative", overflow: "hidden",
                       boxShadow: pct !== null ? `inset 0 0 0 1px ${color}22` : `inset 0 0 0 1px ${C.border}`,
-                      padding: "8px 14px",
-                      display: "flex", flexDirection: "column", gap: 2,
+                      padding: "10px 12px 10px 18px",
+                      display: "flex", flexDirection: "column", gap: 4,
+                      height: "100%", boxSizing: "border-box",
                     }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>
+                      {/* Trilha da barra vertical */}
+                      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 7, background: C.dim }} />
+                      {/* Preenchimento da barra (de baixo para cima) */}
+                      <div style={{
+                        position: "absolute", left: 0, bottom: 0, width: 7,
+                        height: `${barH}%`,
+                        background: pct !== null ? color : C.dim,
+                        borderRadius: "0 0 0 8px",
+                        transition: "height 0.6s ease",
+                      }} />
+                      {/* Label */}
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted, flexShrink: 0 }}>
                         {label}
                       </span>
-                      <span style={{ fontSize: 26, fontWeight: 900, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-                        {pct !== null ? `${pct.toFixed(0)}%` : "—"}
-                      </span>
+                      {/* Número */}
+                      <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+                        <span style={{ fontSize: 26, fontWeight: 900, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                          {pct !== null ? `${pct.toFixed(0)}%` : "—"}
+                        </span>
+                      </div>
                     </div>
                   )
                 })}
@@ -476,6 +499,7 @@ export default function TvComprasLojas() {
               </div>
             )
           })}
+
         </div>
 
         {/* ── Footer ── */}
