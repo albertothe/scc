@@ -326,8 +326,6 @@ export default function CompradoresDesempenho() {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <TotalCard icon="💰" label="Vendas Atingimento" pct={totalVendas} />
                 <TotalCard icon="📊" label="LB Atingimento"     pct={totalLb} />
-                <TotalCard icon="🚚" label="Nível Serviço"      pct={totalNs} />
-                <TotalCard icon="📦" label="Dias Estoque"       pct={totalDias} />
                 <TotalCard icon="🏷️" label="Prod. Fora"        pct={totalProd} />
               </div>
             </div>
