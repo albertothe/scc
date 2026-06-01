@@ -1,0 +1,441 @@
+import React, { useState } from "react"
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Typography,
+} from "@mui/material"
+import { getCompradoresHistorico } from "../services/compradoresHistoricoService"
+
+// ─── Paleta (idêntica ao TvComprasLojas) ─────────────────────────────────────
+const C = {
+  bg:     "#04091A",
+  card:   "#070D1C",
+  border: "#0F1D35",
+  text:   "#F1F5F9",
+  muted:  "#94A3B8",
+  dim:    "#1E293B",
+  blue:   "#1D9BF0",
+  green:  "#22C55E",
+  orange: "#FB923C",
+  red:    "#EF4444",
+  yellow: "#EAB308",
+}
+
+const safe = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0)
+
+// ─── Barra de atingimento ─────────────────────────────────────────────────────
+function AtingBar({ pct, meta = 100, height = 7 }: { pct: number; meta?: number; height?: number }) {
+  const color = pct >= meta ? C.green : pct >= 90 ? C.orange : C.red
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3, width: "100%" }}>
+      <div style={{ flex: 1, height, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 3 }} />
+      </div>
+      <span style={{ fontSize: 12, color, fontWeight: 700, width: 36, flexShrink: 0 }}>{pct.toFixed(0)}%</span>
+    </div>
+  )
+}
+
+// ─── Card KPI total geral ─────────────────────────────────────────────────────
+function TotalCard({ icon, label, pct }: { icon: string; label: string; pct: number }) {
+  const color = pct >= 100 ? C.green : pct >= 90 ? C.orange : C.red
+  return (
+    <div style={{
+      background: "#040A18", border: `1px solid ${color}44`,
+      borderTop: `2px solid ${color}`, borderRadius: 6,
+      padding: "8px 12px", display: "flex", flexDirection: "column",
+      alignItems: "center", gap: 4, minWidth: 105,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <span style={{ fontSize: 13 }}>{icon}</span>
+        <span style={{ fontSize: 9, color: C.muted, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase" }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+        {pct.toFixed(0)}%
+      </div>
+      <div style={{ width: "100%", height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 2 }} />
+      </div>
+    </div>
+  )
+}
+
+// ─── Chips de NS por loja ─────────────────────────────────────────────────────
+function NsLojaChips({ lojas, meta = 97, overall }: {
+  lojas: { codloja: string; nivelServico: number }[]
+  meta?: number
+  overall?: number
+}) {
+  if (!lojas.length) return <span style={{ color: C.muted, fontSize: 10 }}>—</span>
+  const overallColor = overall !== undefined
+    ? (overall >= meta ? C.green : overall >= meta * 0.9 ? C.orange : C.red) : C.muted
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {overall !== undefined && (
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: overallColor, fontVariantNumeric: "tabular-nums" }}>
+            {overall.toFixed(0)}%
+          </span>
+          <div style={{ flex: 1, height: 5, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${Math.min(100, overall / meta * 100)}%`, height: "100%", background: overallColor, borderRadius: 2 }} />
+          </div>
+        </div>
+      )}
+      <div style={{ display: "flex", flexWrap: "nowrap", gap: 1 }}>
+        {lojas.map(l => {
+          const ns = l.nivelServico
+          const color = ns >= meta ? C.green : ns >= meta * 0.9 ? C.orange : C.red
+          return (
+            <div key={l.codloja} style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              background: color + "1A", border: `1px solid ${color}55`,
+              borderRadius: 2, padding: "0px 3px", minWidth: 20,
+            }}>
+              <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+              <span style={{ fontSize: 7, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{ns}%</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Chips de dias de estoque por loja ───────────────────────────────────────
+function DiasLojaChips({ lojas, meta = 45 }: { lojas: { codloja: string; diasEstoque: number }[]; meta?: number }) {
+  if (!lojas.length) return null
+  return (
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: 1, marginTop: 2 }}>
+      {lojas.map(l => {
+        const d = l.diasEstoque
+        const color = d <= meta ? C.green : d <= meta * 1.2 ? C.orange : C.red
+        return (
+          <div key={l.codloja} style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: color + "1A", border: `1px solid ${color}55`,
+            borderRadius: 2, padding: "0px 3px", minWidth: 20,
+          }}>
+            <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+            <span style={{ fontSize: 7, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{d}d</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Chips de evolução por loja ───────────────────────────────────────────────
+function EvolLojaChips({ lojas, field }: {
+  lojas: { codloja: string; evolVendas: number | null; evolLb: number | null; evolProdFora: number | null }[]
+  field: "evolVendas" | "evolLb" | "evolProdFora"
+}) {
+  if (!lojas.length) return null
+  return (
+    <div style={{ display: "flex", flexWrap: "nowrap", gap: 1, marginTop: 2 }}>
+      {lojas.map(l => {
+        const v = l[field]
+        if (v === null) {
+          return (
+            <div key={l.codloja} style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              background: C.dim + "88", border: `1px solid ${C.border}`,
+              borderRadius: 2, padding: "0px 3px", minWidth: 20,
+            }}>
+              <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+              <span style={{ fontSize: 7, color: C.muted, fontWeight: 500, lineHeight: 1.2 }}>–</span>
+            </div>
+          )
+        }
+        const color = v >= 0 ? C.green : v >= -10 ? C.orange : C.red
+        const sign  = v > 0 ? "+" : ""
+        return (
+          <div key={l.codloja} style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: color + "1A", border: `1px solid ${color}55`,
+            borderRadius: 2, padding: "0px 3px", minWidth: 20,
+          }}>
+            <span style={{ fontSize: 6, color: C.muted, lineHeight: 1.3 }}>{l.codloja}</span>
+            <span style={{ fontSize: 7, color, fontWeight: 700, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>{sign}{v.toFixed(0)}%</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Ícones de meta (V L N D P) ──────────────────────────────────────────────
+function MetaIcons({ c }: { c: any }) {
+  const nsReal = c.nivelServicoLojas !== null && c.nivelServicoLojas !== undefined
+    ? safe(c.nivelServicoLojas) : safe(c.nivelServico)
+  const nsDisponivel = c.nivelServicoLojas !== null && c.nivelServicoLojas !== undefined
+    ? true : c.nivelServico !== null
+  const items = [
+    { key: "V", ok: safe(c.vendaPercentualMeta) >= 100,                                        title: "Vendas" },
+    { key: "L", ok: safe(c.lbPercentual) >= safe(c.metaLb),                                    title: "LB" },
+    { key: "N", ok: nsDisponivel && nsReal >= (c.nivelServicoMeta || 97),                       title: "Nível Serviço" },
+    { key: "D", ok: c.diasEstoque !== null && safe(c.diasEstoque) <= (c.diasEstoqueMeta || 45), title: "Dias Estoque" },
+    { key: "P", ok: safe(c.produtosForaPercentual) >= 100,                                      title: "Prod. Fora" },
+  ]
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      {items.map(({ key, ok, title }) => (
+        <div key={key} title={title} style={{
+          width: 16, height: 16, borderRadius: 2,
+          background: ok ? "#052e16" : "#3f0000",
+          border: `1px solid ${ok ? C.green : C.red}`,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        }}>
+          <span style={{ fontSize: 6, color: ok ? C.green : C.red, fontWeight: 800, lineHeight: 1 }}>{key}</span>
+          <span style={{ fontSize: 7, color: ok ? C.green : C.red, lineHeight: 1 }}>{ok ? "✓" : "✗"}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+
+const anoAtual = new Date().getFullYear()
+const mesAtual = new Date().getMonth() + 1
+// Padrão: mês passado
+const defaultAno = mesAtual === 1 ? anoAtual - 1 : anoAtual
+const defaultMes = mesAtual === 1 ? 12 : mesAtual - 1
+
+export default function CompradoresDesempenho() {
+  const [ano, setAno]       = useState(defaultAno)
+  const [mes, setMes]       = useState(defaultMes)
+  const [data, setData]     = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [erro, setErro]     = useState<string | null>(null)
+
+  const anos = Array.from({ length: 5 }, (_, i) => anoAtual - i)
+
+  const carregar = async () => {
+    setLoading(true); setErro(null)
+    try {
+      const result = await getCompradoresHistorico(ano, mes)
+      setData(result)
+    } catch (e: any) {
+      setErro(e?.response?.data?.message ?? "Erro ao carregar dados.")
+    } finally { setLoading(false) }
+  }
+
+  const kpis               = data?.kpis ?? {}
+  const comps: any[]       = data?.compradores ?? []
+  const gruposFlat: any[]  = data?.compradoresGrupos ?? []
+  const mesLabel           = `${MESES[mes - 1]}/${ano}`
+
+  const totalVendas = safe(kpis.vendasAtingimento)
+  const totalLb     = safe(kpis.metaLb) > 0 ? safe(kpis.lbPercentual) / safe(kpis.metaLb) * 100 : 0
+  const nsLojasGlobal = kpis.nivelServicoLojas !== null && kpis.nivelServicoLojas !== undefined
+    ? safe(kpis.nivelServicoLojas) : safe(kpis.nivelServico)
+  const totalNs     = safe(kpis.nivelServicoMeta) > 0 ? nsLojasGlobal / safe(kpis.nivelServicoMeta) * 100 : 0
+  const totalDias   = safe(kpis.diasEstoque) > 0 ? safe(kpis.diasEstoqueMeta) / safe(kpis.diasEstoque) * 100 : 0
+  const totalProd   = safe(kpis.produtosFora)
+
+  // Matriz comprador × grupos (ordenada por faturamento, igual ao TV)
+  const compMap = new Map<string, any>()
+  for (const c of comps) compMap.set(c.comprador, c)
+  const matrizCompradores = (() => {
+    const map = new Map<string, any[]>()
+    for (const g of gruposFlat) {
+      if (!map.has(g.comprador)) map.set(g.comprador, [])
+      map.get(g.comprador)!.push(g)
+    }
+    return Array.from(map.entries()).map(([comprador, grupos]) => ({
+      comprador, grupos, sub: compMap.get(comprador) ?? null,
+    })).sort((a, b) => safe(b.sub?.vendaRealizado) - safe(a.sub?.vendaRealizado))
+  })()
+
+  const lbAting   = (g: any) => safe(g.metaLb) > 0 ? safe(g.lbPercentual) / safe(g.metaLb) * 100 : 0
+  const nsVal     = (g: any) => g.nivelServicoLojas !== null && g.nivelServicoLojas !== undefined
+    ? safe(g.nivelServicoLojas) : safe(g.nivelServico)
+  const nsPresent = (g: any) => g.nivelServicoLojas !== null && g.nivelServicoLojas !== undefined
+    ? true : g.nivelServico !== null
+  const nsAting   = (g: any) => (g.nivelServicoMeta || 97) > 0 ? nsVal(g) / (g.nivelServicoMeta || 97) * 100 : 0
+  const diasAting = (g: any) => { const r = safe(g.diasEstoque); return r > 0 ? (g.diasEstoqueMeta || 45) / r * 100 : 0 }
+
+  const th: React.CSSProperties = {
+    color: C.muted, fontSize: 9, fontWeight: 600, textTransform: "uppercase",
+    letterSpacing: "0.04em", padding: "3px 5px", whiteSpace: "nowrap",
+    borderBottom: `1px solid ${C.border}`,
+  }
+  const td: React.CSSProperties = { color: C.text, fontSize: 10, padding: "2px 4px", borderBottom: `1px solid ${C.dim}` }
+  const tdN: React.CSSProperties = { ...td, color: C.muted }
+  const thG: React.CSSProperties = { ...th, borderLeft: `2px solid ${C.border}` }
+  const tdG: React.CSSProperties = { ...td, borderLeft: `2px solid ${C.dim}` }
+  const W = "2px solid rgba(255,255,255,0.42)"
+  const tdSub: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, padding: "2px 4px",
+    background: "#0A1628", borderTop: `1px solid ${C.border}`,
+    borderBottom: `1px solid ${C.border}`, color: C.blue,
+  }
+  const tdSubG: React.CSSProperties = { ...tdSub, borderLeft: `2px solid ${C.border}` }
+
+  return (
+    <Box p={3}>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>
+        Desempenho de Compradores
+      </Typography>
+
+      {/* ── Filtro de período ── */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>Ano</InputLabel>
+            <Select value={ano} label="Ano" onChange={(e) => setAno(Number(e.target.value))}>
+              {anos.map((a) => <MenuItem key={a} value={a}>{a}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Mês</InputLabel>
+            <Select value={mes} label="Mês" onChange={(e) => setMes(Number(e.target.value))}>
+              {MESES.map((m, i) => <MenuItem key={i + 1} value={i + 1}>{m}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <Button variant="contained" onClick={carregar} disabled={loading}>
+            {loading ? <CircularProgress size={18} sx={{ color: "white" }} /> : "Filtrar"}
+          </Button>
+          {data && (
+            <Typography variant="body2" color="text.secondary">
+              Exibindo: <strong>{mesLabel}</strong>
+            </Typography>
+          )}
+        </Box>
+        {erro && <Alert severity="error" sx={{ mt: 1 }}>{erro}</Alert>}
+      </Paper>
+
+      {/* ── Resultado (mesmo visual do TvComprasLojas) ── */}
+      {data && (
+        <div style={{ background: C.bg, color: C.text, padding: "6px 10px", borderRadius: 8, fontFamily: "'Segoe UI', sans-serif" }}>
+
+          {/* TOTAL GERAL */}
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: "5px 10px", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: C.blue, fontWeight: 800, fontSize: 11, letterSpacing: "0.1em" }}>
+                TOTAL GERAL — {mesLabel.toUpperCase()}
+              </span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <TotalCard icon="💰" label="Vendas Atingimento" pct={totalVendas} />
+                <TotalCard icon="📊" label="LB Atingimento"     pct={totalLb} />
+                <TotalCard icon="🚚" label="Nível Serviço"      pct={totalNs} />
+                <TotalCard icon="📦" label="Dias Estoque"       pct={totalDias} />
+                <TotalCard icon="🏷️" label="Prod. Fora"        pct={totalProd} />
+              </div>
+            </div>
+          </div>
+
+          {/* TABELA MATRIZ */}
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 6, padding: "4px 6px", overflowX: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ color: C.blue, fontWeight: 700, fontSize: 10, letterSpacing: "0.08em" }}>👥 DESEMPENHO POR COMPRADOR E GRUPO</span>
+              <span style={{ color: C.muted, fontSize: 9 }}>Referência: {mesLabel}</span>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={th}>Comprador</th>
+                  <th style={th}>Grupo</th>
+                  <th style={{ ...thG, textAlign: "center" }}>Vendas Atingimento</th>
+                  <th style={{ ...thG, textAlign: "center" }}>LB Atingimento</th>
+                  <th style={{ ...thG, textAlign: "center" }}>Nível Serviço Atingimento</th>
+                  <th style={{ ...thG, textAlign: "center" }}>Dias Estoque Atingimento</th>
+                  <th style={{ ...thG, textAlign: "center" }}>Prod. Fora Atingimento</th>
+                  <th style={{ ...thG, textAlign: "center" }}>Metas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matrizCompradores.length > 0 ? matrizCompradores.flatMap((m, mi) => {
+                  const rowBg    = mi % 2 === 1 ? "#060C1A" : "transparent"
+                  const firstName = m.comprador.split(" ")[0]
+
+                  const grupoRows = m.grupos.map((g: any, gi: number) => {
+                    const isFirst  = gi === 0
+                    const topB: React.CSSProperties     = isFirst ? { borderTop: W } : {}
+                    const leftGrupo: React.CSSProperties = isFirst ? {} : { borderLeft: W }
+                    return (
+                      <tr key={`${mi}-${gi}`} style={{ background: rowBg }}>
+                        {isFirst && (
+                          <td style={{ ...td, ...topB, borderLeft: W, verticalAlign: "middle", fontWeight: 700, whiteSpace: "nowrap", color: C.blue }}
+                            rowSpan={m.grupos.length}>
+                            {m.comprador}
+                          </td>
+                        )}
+                        <td style={{ ...tdN, ...topB, ...leftGrupo, fontSize: 9 }}>{g.grupoNome}</td>
+                        <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
+                          <AtingBar pct={safe(g.vendaPercentualMeta)} />
+                          <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolVendas" />
+                        </td>
+                        <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
+                          <AtingBar pct={lbAting(g)} />
+                          <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolLb" />
+                        </td>
+                        <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
+                          <NsLojaChips
+                            lojas={g.nsPorLoja ?? []}
+                            meta={g.nivelServicoMeta || 97}
+                            overall={nsPresent(g) ? nsVal(g) : undefined}
+                          />
+                        </td>
+                        <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
+                          <AtingBar pct={diasAting(g)} />
+                          <DiasLojaChips lojas={g.diasPorLoja ?? []} meta={g.diasEstoqueMeta || 45} />
+                        </td>
+                        <td style={{ ...tdG, ...topB, whiteSpace: "nowrap" }}>
+                          <AtingBar pct={safe(g.produtosForaPercentual)} />
+                          <EvolLojaChips lojas={g.evolPorLoja ?? []} field="evolProdFora" />
+                        </td>
+                        <td style={{ ...tdG, ...topB, borderRight: W }}><MetaIcons c={g} /></td>
+                      </tr>
+                    )
+                  })
+
+                  const sub = m.sub
+                  const subRow = sub ? (
+                    <tr key={`${mi}-sub`}>
+                      <td style={{ ...tdSub, borderLeft: W, borderBottom: W, fontStyle: "italic" }} colSpan={2}>
+                        SUB-TOTAL {firstName.toUpperCase()}
+                      </td>
+                      <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.vendaPercentualMeta)} height={10} /></td>
+                      <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={lbAting(sub)} height={10} /></td>
+                      <td style={{ ...tdSubG, borderBottom: W }}>
+                        {nsPresent(sub) ? <AtingBar pct={nsAting(sub)} height={10} /> : <span style={{ color: C.muted }}>—</span>}
+                      </td>
+                      <td style={{ ...tdSubG, borderBottom: W }}>
+                        {sub.diasEstoque !== null ? <AtingBar pct={diasAting(sub)} height={10} /> : <span style={{ color: C.muted }}>—</span>}
+                      </td>
+                      <td style={{ ...tdSubG, borderBottom: W }}><AtingBar pct={safe(sub.produtosForaPercentual)} height={10} /></td>
+                      <td style={{ ...tdSubG, borderBottom: W, borderRight: W }}><MetaIcons c={sub} /></td>
+                    </tr>
+                  ) : null
+
+                  const spacer = <tr key={`${mi}-spacer`} style={{ height: 4 }}><td colSpan={8} style={{ padding: 0, border: "none", background: "transparent" }} /></tr>
+                  const rows = subRow ? [...grupoRows, subRow] : grupoRows
+                  return mi < matrizCompradores.length - 1 ? [...rows, spacer] : rows
+                }) : (
+                  <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: C.muted, padding: "20px 0" }}>
+                    Nenhum dado encontrado para {mesLabel}.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!data && !loading && (
+        <Paper sx={{ p: 3 }}>
+          <Typography color="text.secondary">Selecione ano e mês e clique em Filtrar para carregar o desempenho.</Typography>
+        </Paper>
+      )}
+    </Box>
+  )
+}

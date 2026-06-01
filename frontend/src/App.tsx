@@ -28,6 +28,7 @@ import { ThemeProvider } from "./contexts/ThemeContext"
 import Compradores from "./pages/Compradores"
 import CompradoresGrupos from "./pages/CompradoresGrupos"
 import CompradoresMetas from "./pages/CompradoresMetas"
+import CompradoresDesempenho from "./pages/CompradoresDesempenho"
 import TvCompras from "./pages/TvCompras"
 import TvComprasLojas from "./pages/TvComprasLojas"
 
@@ -296,6 +297,7 @@ function App() {
             <Route path="/compradores" element={<ProtectedRoute><Layout><Compradores /></Layout></ProtectedRoute>} />
             <Route path="/compradores/grupos" element={<ProtectedRoute><Layout><CompradoresGrupos /></Layout></ProtectedRoute>} />
             <Route path="/compradores/metas" element={<ProtectedRoute><Layout><CompradoresMetas /></Layout></ProtectedRoute>} />
+            <Route path="/compradores/desempenho" element={<ProtectedRoute><Layout><CompradoresDesempenho /></Layout></ProtectedRoute>} />
           </Routes>
         </AuthProvider>
       </Router>

@@ -11,6 +11,7 @@ import dreRoutes from "./routes/dreRoutes"
 import dreF360Routes from "./routes/dreF360Routes"
 import helpDeskRoutes from "./routes/helpDeskRoutes"
 import compradoresRoutes from "./routes/compradoresRoutes"
+import compradoresHistoricoRoutes from "./routes/compradoresHistoricoRoutes"
 import dashboardTvComprasRoutes from "./routes/dashboardTvComprasRoutes"
 import { corsMiddleware } from "./config/cors"
 
@@ -36,6 +37,7 @@ app.use("/api/dre", dreRoutes)
 app.use("/api/dre-f360", dreF360Routes)
 app.use("/api/help-desk", helpDeskRoutes)
 app.use("/api", compradoresRoutes)
+app.use("/api/compradores", compradoresHistoricoRoutes)
 app.use("/", dashboardTvComprasRoutes)
 
 // Rota de teste para verificar se o servidor está funcionando
