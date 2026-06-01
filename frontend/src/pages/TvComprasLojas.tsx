@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Box, CircularProgress, Stack, Typography } from "@mui/material"
 import { getDashboardTvCompras } from "../services/dashboardTvComprasService"
 
@@ -216,6 +216,30 @@ function MetaIcons({ c }: { c: any }) {
   )
 }
 
+// ─── KPI Card grande para a tela individual do comprador ─────────────────────
+function KpiCard({ icon, label, pct }: { icon: string; label: string; pct: number | null }) {
+  const color = pct === null ? C.muted : pct >= 100 ? C.green : pct >= 90 ? C.orange : C.red
+  const barW  = pct !== null ? Math.min(100, pct) : 0
+  return (
+    <div style={{
+      background: C.card, border: `1px solid ${C.border}`,
+      borderTop: `3px solid ${pct !== null ? color : C.border}`,
+      borderRadius: 10, padding: "16px 18px 14px",
+      display: "flex", flexDirection: "column", gap: 8, flex: 1,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
+        <span style={{ fontSize: 14 }}>{icon}</span> {label}
+      </div>
+      <div style={{ fontSize: 68, fontWeight: 900, lineHeight: 1, color, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
+        {pct !== null ? `${pct.toFixed(0)}%` : "—"}
+      </div>
+      <div style={{ height: 14, background: C.dim, borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${barW}%`, height: "100%", background: pct !== null ? color : C.dim, borderRadius: 4 }} />
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TvComprasLojas() {
   const [data, setData] = useState<any>({ kpis: {}, compradores: [], compradoresGrupos: [] })
@@ -223,6 +247,11 @@ export default function TvComprasLojas() {
   const [error, setError]     = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [now, setNow] = useState(new Date())
+
+  // ── Carrossel: 0 = visão geral, 1..N = comprador individual ──────────────
+  const [slideIndex, setSlideIndex] = useState(0)
+  const [countdown, setCountdown]   = useState(45)
+  const totalRef = useRef(1) // atualizado quando matrizCompradores muda
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
@@ -240,6 +269,26 @@ export default function TvComprasLojas() {
   }
 
   useEffect(() => { fetchData(); const t = setInterval(fetchData, 1800000); return () => clearInterval(t) }, [])
+
+  // Ticker de 1 segundo para contagem regressiva (só inicia após primeiro carregamento)
+  useEffect(() => {
+    if (!lastUpdate) return
+    const t = setInterval(() => setCountdown(c => (c > 0 ? c - 1 : 0)), 1000)
+    return () => clearInterval(t)
+  }, [lastUpdate])
+
+  // Avança slide quando countdown chega a 0
+  useEffect(() => {
+    if (countdown === 0 && totalRef.current > 1) {
+      setSlideIndex(si => (si + 1) % totalRef.current)
+      setCountdown(45)
+    }
+  }, [countdown])
+
+  // Reseta ao recarregar dados
+  useEffect(() => {
+    if (lastUpdate) { setSlideIndex(0); setCountdown(45) }
+  }, [lastUpdate])
 
   if (loading && !lastUpdate) return (
     <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bgcolor={C.bg}>
@@ -274,6 +323,9 @@ export default function TvComprasLojas() {
       sub: compMap.get(comprador) ?? null,
     })).sort((a, b) => safe(b.sub?.vendaRealizado) - safe(a.sub?.vendaRealizado))
   })()
+
+  // Mantém totalRef atualizado (1 slide geral + N compradores)
+  totalRef.current = matrizCompradores.length + 1
 
   // Converte métricas para % de atingimento
   const lbAting   = (g: any) => safe(g.metaLb) > 0 ? safe(g.lbPercentual) / safe(g.metaLb) * 100 : 0
@@ -316,6 +368,130 @@ export default function TvComprasLojas() {
     color: C.blue,
   }
   const tdSubG: React.CSSProperties = { ...tdSub, borderLeft: `2px solid ${C.border}` }
+
+  // ── SLIDE INDIVIDUAL DO COMPRADOR ──────────────────────────────────────────
+  if (slideIndex > 0 && matrizCompradores.length > 0) {
+    const m    = matrizCompradores[slideIndex - 1]
+    const sub  = m?.sub
+    const nextIdx   = (slideIndex) % (matrizCompradores.length + 1)
+    const nextLabel = nextIdx === 0 ? "Visão Geral" : matrizCompradores[nextIdx - 1]?.comprador ?? ""
+
+    const vendaPct = safe(sub?.vendaPercentualMeta)
+    const lbPct    = sub ? lbAting(sub) : null
+    const nsPct    = sub && nsPresent(sub) ? nsAting(sub) : null
+    const diasPct  = sub && sub.diasEstoque !== null ? diasAting(sub) : null
+    const prodPct  = safe(sub?.produtosForaPercentual)
+
+    // Cor de um metric em linha de grupo
+    const gc = (pct: number) => pct >= 100 ? C.green : pct >= 90 ? C.orange : C.red
+
+    return (
+      <div style={{ background: C.bg, height: "100vh", color: C.text, fontFamily: "'Segoe UI', sans-serif",
+        display: "flex", flexDirection: "column", padding: "18px 28px 14px", gap: 14, boxSizing: "border-box", overflow: "hidden" }}>
+
+        {/* ── Header ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+          <div style={{ background: C.blue, color: "#fff", fontSize: 11, fontWeight: 800,
+            letterSpacing: ".12em", padding: "3px 14px", borderRadius: 20, whiteSpace: "nowrap" }}>
+            COMPRADOR {slideIndex} DE {matrizCompradores.length}
+          </div>
+          <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: "-.01em", lineHeight: 1, flex: 1 }}>
+            {m?.comprador?.toUpperCase()}
+          </div>
+          <div style={{ fontSize: 15, color: C.muted, fontWeight: 600, letterSpacing: ".06em", whiteSpace: "nowrap" }}>
+            {mesAbrev}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
+            <span style={{ fontSize: 9, color: C.muted, letterSpacing: ".08em", textTransform: "uppercase" }}>próxima tela em</span>
+            <div style={{ width: 180, height: 6, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ width: `${(countdown / 45) * 100}%`, height: "100%",
+                background: `linear-gradient(90deg, ${C.blue}, #60c8ff)`, borderRadius: 3, transition: "width 1s linear" }} />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.blue, fontVariantNumeric: "tabular-nums" }}>{countdown}s</span>
+          </div>
+        </div>
+
+        {/* ── KPI Cards ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, flexShrink: 0 }}>
+          <KpiCard icon="💰" label="Vendas"         pct={vendaPct} />
+          <KpiCard icon="📊" label="LB Atingimento" pct={lbPct} />
+          <KpiCard icon="🚚" label="Nível Serviço"  pct={nsPct} />
+          <KpiCard icon="📦" label="Dias Estoque"   pct={diasPct} />
+          <KpiCard icon="🏷️" label="Prod. Fora"    pct={prodPct} />
+        </div>
+
+        {/* ── Tabela de Grupos ── */}
+        <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 10, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+          <div style={{ padding: "8px 20px 6px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: C.blue }}>📋 Grupos do Comprador</span>
+          </div>
+          {/* thead */}
+          <div style={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)",
+            padding: "5px 20px", background: "#060C1A", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+            {["Grupo", "Vendas %", "LB %", "N. Serviço", "Dias Est.", "Prod. Fora"].map((h, i) => (
+              <span key={i} style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em",
+                textTransform: "uppercase", color: C.muted, textAlign: i > 0 ? "center" : "left" }}>{h}</span>
+            ))}
+          </div>
+          {/* tbody */}
+          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 0" }}>
+            {(m?.grupos ?? []).map((g: any, gi: number) => {
+              const metrics = [
+                safe(g.vendaPercentualMeta),
+                lbAting(g),
+                nsPresent(g) ? nsAting(g) : null,
+                g.diasEstoque !== null ? diasAting(g) : null,
+                safe(g.produtosForaPercentual),
+              ] as (number | null)[]
+              return (
+                <div key={gi} style={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)",
+                  padding: "7px 20px", alignItems: "center", gap: 8,
+                  background: gi % 2 === 0 ? "#060C1A" : "transparent",
+                  borderBottom: gi < (m?.grupos?.length ?? 0) - 1 ? `1px solid ${C.dim}` : "none" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {g.grupoNome}
+                  </div>
+                  {metrics.map((pct, mi) => {
+                    const color = pct === null ? C.muted : gc(pct)
+                    return (
+                      <div key={mi} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                          {pct !== null ? `${pct.toFixed(0)}%` : "—"}
+                        </span>
+                        <div style={{ width: "100%", height: 10, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ width: `${Math.min(100, pct ?? 0)}%`, height: "100%", background: pct !== null ? color : C.dim, borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
+            {/* dot 0 = geral */}
+            {[0, ...matrizCompradores.map((_, i) => i + 1)].map((idx) => (
+              <div key={idx} style={{
+                height: 8, borderRadius: 4, transition: "all .3s",
+                width: idx === slideIndex ? 22 : 8,
+                background: idx === slideIndex ? C.blue : idx < slideIndex ? C.muted : C.dim,
+                opacity: idx < slideIndex ? 0.5 : 1,
+              }} />
+            ))}
+          </div>
+          <div style={{ fontSize: 13, color: C.muted }}>
+            Próximo: <strong style={{ color: C.text }}>{nextLabel}</strong>
+          </div>
+        </div>
+
+      </div>
+    )
+  }
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, padding: "6px 10px", fontFamily: "'Segoe UI', sans-serif", boxSizing: "border-box" }}>
