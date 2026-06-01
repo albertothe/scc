@@ -150,6 +150,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 { text: "Compradores", icon: <PersonIcon />, path: "/compradores" },
                 { text: "Grupos", icon: <BarChart />, path: "/compradores/grupos" },
                 { text: "Metas", icon: <AttachMoney />, path: "/compradores/metas" },
+                { text: "Desempenho", icon: <BarChart />, path: "/compradores/desempenho" },
             ],
         },
         {
