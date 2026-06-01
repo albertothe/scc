@@ -233,7 +233,7 @@ function KpiCard({ icon, label, pct }: { icon: string; label: string; pct: numbe
       <div style={{ fontSize: 68, fontWeight: 900, lineHeight: 1, color, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
         {pct !== null ? `${pct.toFixed(0)}%` : "—"}
       </div>
-      <div style={{ height: 14, background: C.dim, borderRadius: 4, overflow: "hidden" }}>
+      <div style={{ height: 18, background: C.dim, borderRadius: 4, overflow: "hidden" }}>
         <div style={{ width: `${barW}%`, height: "100%", background: pct !== null ? color : C.dim, borderRadius: 4 }} />
       </div>
     </div>
@@ -456,10 +456,10 @@ export default function TvComprasLojas() {
                     const color = pct === null ? C.muted : gc(pct)
                     return (
                       <div key={mi} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 20, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                        <span style={{ fontSize: 26, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                           {pct !== null ? `${pct.toFixed(0)}%` : "—"}
                         </span>
-                        <div style={{ width: "100%", height: 10, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: "100%", height: 14, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
                           <div style={{ width: `${Math.min(100, pct ?? 0)}%`, height: "100%", background: pct !== null ? color : C.dim, borderRadius: 3 }} />
                         </div>
                       </div>
