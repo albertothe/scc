@@ -420,67 +420,62 @@ export default function TvComprasLojas() {
           <KpiCard icon="🏷️" label="Prod. Fora"    pct={prodPct} />
         </div>
 
-        {/* ── Tabela de Grupos ── */}
-        <div style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`,
-          borderRadius: 10, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
-          <div style={{ padding: "8px 20px 6px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: C.blue }}>📋 Grupos do Comprador</span>
-          </div>
-          {/* thead */}
-          <div style={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)",
-            padding: "5px 20px", background: "#060C1A", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-            {["Grupo", "Vendas %", "LB %", "N. Serviço", "Dias Est.", "Prod. Fora"].map((h, i) => (
-              <span key={i} style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em",
-                textTransform: "uppercase", color: C.muted, textAlign: i > 0 ? "center" : "left" }}>{h}</span>
-            ))}
-          </div>
-          {/* tbody */}
-          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 0" }}>
-            {(m?.grupos ?? []).map((g: any, gi: number) => {
-              const metrics = [
-                safe(g.vendaPercentualMeta),
-                lbAting(g),
-                nsPresent(g) ? nsAting(g) : null,
-                g.diasEstoque !== null ? diasAting(g) : null,
-                safe(g.produtosForaPercentual),
-              ] as (number | null)[]
-              return (
-                <div key={gi} style={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)",
-                  padding: "7px 20px", alignItems: "center", gap: 8,
-                  background: gi % 2 === 0 ? "#060C1A" : "transparent",
-                  borderBottom: gi < (m?.grupos?.length ?? 0) - 1 ? `1px solid ${C.dim}` : "none" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
-                    {/* Indicador de status de vendas */}
-                    <div style={{
-                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                      background: gc(safe(g.vendaPercentualMeta)),
-                      boxShadow: `0 0 6px ${gc(safe(g.vendaPercentualMeta))}88`,
-                    }} />
-                    <span style={{
-                      fontSize: 15, fontWeight: 700, letterSpacing: "0.06em",
-                      textTransform: "uppercase", color: C.text,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {g.grupoNome}
-                    </span>
-                  </div>
-                  {metrics.map((pct, mi) => {
-                    const color = pct === null ? C.muted : gc(pct)
-                    return (
-                      <div key={mi} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 26, fontWeight: 800, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-                          {pct !== null ? `${pct.toFixed(0)}%` : "—"}
-                        </span>
-                        <div style={{ width: "100%", height: 14, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
-                          <div style={{ width: `${Math.min(100, pct ?? 0)}%`, height: "100%", background: pct !== null ? color : C.dim, borderRadius: 3 }} />
-                        </div>
-                      </div>
-                    )
-                  })}
+        {/* ── Cards de Grupos ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-evenly",
+          gap: 8, minHeight: 0, overflow: "hidden" }}>
+          {(m?.grupos ?? []).map((g: any, gi: number) => {
+            const metricDefs = [
+              { label: "VENDAS %",   pct: safe(g.vendaPercentualMeta) as number | null },
+              { label: "LB %",       pct: lbAting(g) as number | null },
+              { label: "N. SERVIÇO", pct: (nsPresent(g) ? nsAting(g) : null) as number | null },
+              { label: "DIAS EST.",  pct: (g.diasEstoque !== null ? diasAting(g) : null) as number | null },
+              { label: "PROD. FORA", pct: safe(g.produtosForaPercentual) as number | null },
+            ]
+            const groupColor = gc(safe(g.vendaPercentualMeta))
+            return (
+              <div key={gi} style={{ display: "grid", gridTemplateColumns: "2fr repeat(5, 1fr)", gap: 8, flexShrink: 0 }}>
+
+                {/* Card do nome do grupo */}
+                <div style={{
+                  background: C.card, borderRadius: 8,
+                  borderLeft: `4px solid ${groupColor}`,
+                  boxShadow: `inset 0 0 0 1px ${groupColor}22`,
+                  padding: "10px 14px",
+                  display: "flex", alignItems: "center", overflow: "hidden",
+                }}>
+                  <span style={{
+                    fontSize: 14, fontWeight: 800, letterSpacing: "0.07em",
+                    textTransform: "uppercase", color: C.text,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {g.grupoNome}
+                  </span>
                 </div>
-              )
-            })}
-          </div>
+
+                {/* Cards de métricas */}
+                {metricDefs.map(({ label, pct }, mi) => {
+                  const color = pct === null ? C.muted : gc(pct)
+                  return (
+                    <div key={mi} style={{
+                      background: C.card, borderRadius: 8,
+                      borderLeft: `4px solid ${pct !== null ? color : C.dim}`,
+                      boxShadow: pct !== null ? `inset 0 0 0 1px ${color}22` : `inset 0 0 0 1px ${C.border}`,
+                      padding: "8px 14px",
+                      display: "flex", flexDirection: "column", gap: 2,
+                    }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.muted }}>
+                        {label}
+                      </span>
+                      <span style={{ fontSize: 26, fontWeight: 900, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                        {pct !== null ? `${pct.toFixed(0)}%` : "—"}
+                      </span>
+                    </div>
+                  )
+                })}
+
+              </div>
+            )
+          })}
         </div>
 
         {/* ── Footer ── */}
