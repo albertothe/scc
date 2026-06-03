@@ -9,6 +9,7 @@ import autorizacaoCompraRoutes from "./routes/autorizacaoCompraRoutes"
 import controleAcessoRoutes from "./routes/controleAcessoRoutes"
 import dreRoutes from "./routes/dreRoutes"
 import dreF360Routes from "./routes/dreF360Routes"
+import dreF360DurafixRoutes from "./routes/dreF360DurafixRoutes"
 import helpDeskRoutes from "./routes/helpDeskRoutes"
 import compradoresRoutes from "./routes/compradoresRoutes"
 import compradoresHistoricoRoutes from "./routes/compradoresHistoricoRoutes"
@@ -35,6 +36,7 @@ app.use("/api/autorizacao-compra", autorizacaoCompraRoutes)
 app.use("/api/controle-acesso", controleAcessoRoutes)
 app.use("/api/dre", dreRoutes)
 app.use("/api/dre-f360", dreF360Routes)
+app.use("/api/dre-f360-durafix", dreF360DurafixRoutes)
 app.use("/api/help-desk", helpDeskRoutes)
 app.use("/api", compradoresRoutes)
 app.use("/api/compradores", compradoresHistoricoRoutes)

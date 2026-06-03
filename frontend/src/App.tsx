@@ -21,6 +21,7 @@ import ControleAcessoNiveis from "./pages/ControleAcessoNiveis"
 import ControleAcessoPermissoes from "./pages/ControleAcessoPermissoes"
 import Dre from "./pages/Dre"
 import DreF360 from "./pages/DreF360"
+import DreF360Durafix from "./pages/DreF360Durafix"
 import HelpDeskChamados from "./pages/HelpDeskChamados"
 import HelpDeskAtivos from "./pages/HelpDeskAtivos"
 import { AuthProvider } from "./contexts/AuthContext"
@@ -199,6 +200,16 @@ function App() {
                 <ProtectedRoute rota="dre">
                   <Layout>
                     <DreF360 />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/controladoria/dre-f360-durafix"
+              element={
+                <ProtectedRoute rota="dre">
+                  <Layout>
+                    <DreF360Durafix />
                   </Layout>
                 </ProtectedRoute>
               }
