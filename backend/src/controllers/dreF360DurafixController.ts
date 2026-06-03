@@ -3,8 +3,8 @@ import { atualizarDreF360Durafix, listarDreF360Durafix, listarLojasF360Durafix }
 
 export const getDreF360Durafix = async (req: Request, res: Response) => {
   try {
-    const ano       = req.query.ano       ? String(req.query.ano)       : undefined
-    const mes       = req.query.mes       ? String(req.query.mes)       : undefined
+    const ano       = req.query.ano       ? Number(req.query.ano)       : undefined
+    const mes       = req.query.mes       ? Number(req.query.mes)       : undefined
     const codloja   = req.query.codloja   ? String(req.query.codloja)   : undefined
     const descricao = req.query.descricao ? String(req.query.descricao) : undefined
 
