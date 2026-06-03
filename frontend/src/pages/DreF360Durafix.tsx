@@ -26,14 +26,14 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
 import MoreVertIcon from "@mui/icons-material/MoreVert"
 import * as XLSX from "xlsx"
 import type { DreF360Registro } from "../types"
-import { atualizarDreF360, getDreF360, getLojasF360 } from "../services/dreF360Service"
+import { atualizarDreF360Durafix, getDreF360Durafix, getLojasF360Durafix } from "../services/dreF360DurafixService"
 import { useAuth } from "../contexts/AuthContext"
 
-const TEMA = { cor: "#ef4444", bg: "rgba(239, 68, 68, 0.04)", borda: "3px solid #ef4444" }
+const TEMA = { cor: "#1D9BF0", bg: "rgba(29, 155, 240, 0.04)", borda: "3px solid #1D9BF0" }
 
 // ── Tipos internos da árvore ───────────────────────────────────────────────
 type SubGrupo = {
-  key: string                   // `${descricao}||${subdescricao ?? NULL_MARKER}`
+  key: string
   subdescricao: string | null
   items: DreF360Registro[]
 }
@@ -41,7 +41,7 @@ type SubGrupo = {
 type GrupoDescricao = {
   descricao: string
   subgrupos: SubGrupo[]
-  allItems: DreF360Registro[]   // todos os itens deste grupo (facilita somas)
+  allItems: DreF360Registro[]
 }
 
 const NULL_MARKER = "\x00"
@@ -51,8 +51,6 @@ const somarCampo = (
   items: DreF360Registro[],
   campo: "realizado" | "orcado",
 ): number | null => {
-  // Converte cada valor para número antes de somar — o PostgreSQL retorna
-  // colunas numeric como string, e (0 + "100" + "200") resultaria em "0100200".
   const nums = items
     .map((r) => {
       const v = r[campo]
@@ -65,7 +63,7 @@ const somarCampo = (
 }
 
 // ── Componente principal ──────────────────────────────────────────────────
-const DreF360: React.FC = () => {
+const DreF360Durafix: React.FC = () => {
   const formatadorMoeda = new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -82,8 +80,6 @@ const DreF360: React.FC = () => {
   const [filtroAplicado, setFiltroAplicado] = useState(false)
   const [valoresEditando, setValoresEditando] = useState<Record<string, string>>({})
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-
-  // Estado de expansão
   const [expandedDescricoes, setExpandedDescricoes] = useState<Set<string>>(new Set())
   const [expandedSubDescricoes, setExpandedSubDescricoes] = useState<Set<string>>(new Set())
 
@@ -91,12 +87,10 @@ const DreF360: React.FC = () => {
   const podeEditar = temPermissaoModulo("dre", "editar")
   const menuAberto = Boolean(menuAnchorEl)
 
-  // ── Carrega lojas ao montar ──────────────────────────────────────────────
   useEffect(() => {
-    getLojasF360().then(setLojas).catch(() => setLojas([]))
+    getLojasF360Durafix().then(setLojas).catch(() => setLojas([]))
   }, [])
 
-  // ── Helpers de chave e formatação ────────────────────────────────────────
   const getRegistroKey = (registro: DreF360Registro, campo: "realizado" | "orcado") =>
     `${registro.sequencial}-${registro.codloja}-${registro.ano}-${registro.mes}-${campo}`
 
@@ -108,11 +102,7 @@ const DreF360: React.FC = () => {
   }
 
   const normalizarCabecalho = (cabecalho: string) =>
-    cabecalho
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .replace(/\s+/g, "")
+    cabecalho.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, "")
 
   const formatarParaEdicao = (valor: number | string | null) => {
     const numero = converterParaNumero(valor)
@@ -134,7 +124,6 @@ const DreF360: React.FC = () => {
     return formatadorMoeda.format(numero)
   }
 
-  // ── Árvore de agrupamento (memoizada) ────────────────────────────────────
   const arvore = useMemo((): GrupoDescricao[] => {
     const map = new Map<string, Map<string, DreF360Registro[]>>()
     for (const r of registros) {
@@ -155,7 +144,6 @@ const DreF360: React.FC = () => {
     })
   }, [registros])
 
-  // ── Expand / collapse ─────────────────────────────────────────────────────
   const toggleDescricao = (desc: string) => {
     setExpandedDescricoes((prev) => {
       const next = new Set(prev)
@@ -174,9 +162,7 @@ const DreF360: React.FC = () => {
 
   const expandirTudo = () => {
     setExpandedDescricoes(new Set(registros.map((r) => r.descricao)))
-    setExpandedSubDescricoes(
-      new Set(registros.map((r) => `${r.descricao}||${r.subdescricao ?? NULL_MARKER}`)),
-    )
+    setExpandedSubDescricoes(new Set(registros.map((r) => `${r.descricao}||${r.subdescricao ?? NULL_MARKER}`)))
   }
 
   const recolherTudo = () => {
@@ -184,7 +170,6 @@ const DreF360: React.FC = () => {
     setExpandedSubDescricoes(new Set())
   }
 
-  // ── Filtro + carregamento ─────────────────────────────────────────────────
   const aplicarFiltroDescricao = useCallback((dados: DreF360Registro[], descricao: string) => {
     if (!descricao) return dados
     return dados.filter((r) => r.descricao === descricao)
@@ -192,13 +177,11 @@ const DreF360: React.FC = () => {
 
   const carregar = useCallback(async () => {
     if (!filtros.ano || !filtros.mes || !filtros.codloja) {
-      setFiltroAplicado(false)
-      setRegistros([])
-      return
+      setFiltroAplicado(false); setRegistros([]); return
     }
     setCarregando(true)
     try {
-      const data = await getDreF360({ ano: filtros.ano, mes: filtros.mes, codloja: filtros.codloja })
+      const data = await getDreF360Durafix({ ano: filtros.ano, mes: filtros.mes, codloja: filtros.codloja })
       const descricoes = [...new Set(data.map((r) => r.descricao))].sort((a, b) => a.localeCompare(b))
       setRegistrosBase(data)
       setOpcoesDescricao(descricoes)
@@ -209,11 +192,9 @@ const DreF360: React.FC = () => {
       setMensagem(null)
       setFiltroAplicado(true)
     } catch (error) {
-      console.error("Erro ao carregar DRE F360", error)
+      console.error("Erro ao carregar DRE F360 Durafix", error)
       setMensagem({ tipo: "error", texto: "Erro ao carregar dados." })
-    } finally {
-      setCarregando(false)
-    }
+    } finally { setCarregando(false) }
   }, [aplicarFiltroDescricao, filtros.ano, filtros.codloja, filtros.descricao, filtros.mes])
 
   const alterarDescricao = (descricao: string) => {
@@ -221,41 +202,29 @@ const DreF360: React.FC = () => {
     if (filtroAplicado) setRegistros(aplicarFiltroDescricao(registrosBase, descricao))
   }
 
-  // ── Edição de valores ─────────────────────────────────────────────────────
   const alterarValor = (registro: DreF360Registro, campo: "realizado" | "orcado", valor: string) => {
     const valorNormalizado = normalizarEntradaMoeda(valor)
     const valorSemMascara = valorNormalizado.replace(",", ".")
     const valorConvertido = valorSemMascara === "" ? null : Number(valorSemMascara)
     if (valorSemMascara !== "" && Number.isNaN(valorConvertido)) return
-
-    setValoresEditando((prev) => ({
-      ...prev,
-      [getRegistroKey(registro, campo)]: valorNormalizado,
-    }))
-
+    setValoresEditando((prev) => ({ ...prev, [getRegistroKey(registro, campo)]: valorNormalizado }))
     setRegistros((prev) =>
       prev.map((r) =>
         r.sequencial === registro.sequencial && r.codloja === registro.codloja
-          ? { ...r, [campo]: valorConvertido }
-          : r,
+          ? { ...r, [campo]: valorConvertido } : r,
       ),
     )
   }
 
   const iniciarEdicaoValor = (registro: DreF360Registro, campo: "realizado" | "orcado") => {
-    setValoresEditando((prev) => ({
-      ...prev,
-      [getRegistroKey(registro, campo)]: formatarParaEdicao(registro[campo]),
-    }))
+    setValoresEditando((prev) => ({ ...prev, [getRegistroKey(registro, campo)]: formatarParaEdicao(registro[campo]) }))
   }
 
   const finalizarEdicaoValor = (registro: DreF360Registro, campo: "realizado" | "orcado") => {
     const chave = getRegistroKey(registro, campo)
     setValoresEditando((prev) => {
       if (!(chave in prev)) return prev
-      const next = { ...prev }
-      delete next[chave]
-      return next
+      const next = { ...prev }; delete next[chave]; return next
     })
   }
 
@@ -264,20 +233,17 @@ const DreF360: React.FC = () => {
 
   const salvarLinha = async (registro: DreF360Registro) => {
     try {
-      await atualizarDreF360(registro.sequencial, registro.codloja, {
-        ano: registro.ano,
-        mes: registro.mes,
-        realizado: registro.realizado,
-        orcado: registro.orcado,
+      await atualizarDreF360Durafix(registro.sequencial, registro.codloja, {
+        ano: registro.ano, mes: registro.mes,
+        realizado: registro.realizado, orcado: registro.orcado,
       })
       setMensagem({ tipo: "success", texto: "Registro salvo com sucesso." })
     } catch (error) {
-      console.error("Erro ao salvar linha DRE F360", error)
+      console.error("Erro ao salvar linha DRE F360 Durafix", error)
       setMensagem({ tipo: "error", texto: "Erro ao salvar registro." })
     }
   }
 
-  // ── Exportação / importação ───────────────────────────────────────────────
   const exportarFiltrado = () => {
     if (!registros.length) { setMensagem({ tipo: "error", texto: "Não há registros para exportar." }); return }
     const dados = registros.map((r) => ({
@@ -286,8 +252,8 @@ const DreF360: React.FC = () => {
       realizado: r.realizado, orcado: r.orcado, rlr: r.rlr, rlo: r.rlo,
     }))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), "DRE_F360")
-    XLSX.writeFile(wb, `dre_f360_${filtros.codloja}_${filtros.ano}_${filtros.mes}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), "DRE_F360_DURAFIX")
+    XLSX.writeFile(wb, `dre_f360_durafix_${filtros.codloja}_${filtros.ano}_${filtros.mes}.xlsx`)
     setMensagem({ tipo: "success", texto: "Exportação concluída com sucesso." })
   }
 
@@ -295,8 +261,8 @@ const DreF360: React.FC = () => {
     if (!registros.length) { setMensagem({ tipo: "error", texto: "Filtre os dados antes de baixar o layout." }); return }
     const dados = registros.map((r) => ({ sequencial: r.sequencial, codloja: r.codloja, ano: r.ano, mes: r.mes, valor: "" }))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), "Layout_DRE_F360")
-    XLSX.writeFile(wb, `layout_dre_f360_${filtros.codloja}_${filtros.ano}_${filtros.mes}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), "Layout_DRE_F360_DURAFIX")
+    XLSX.writeFile(wb, `layout_dre_f360_durafix_${filtros.codloja}_${filtros.ano}_${filtros.mes}.xlsx`)
     setMensagem({ tipo: "success", texto: "Layout baixado com sucesso." })
   }
 
@@ -310,18 +276,16 @@ const DreF360: React.FC = () => {
       if (!wsName) throw new Error("Planilha sem abas válidas.")
       const linhas = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wsName], { raw: false, defval: "" })
       if (!linhas.length) throw new Error("A planilha está vazia.")
-
       const idx = new Map(registros.map((r) => [`${String(r.sequencial).trim()}-${r.codloja}-${r.ano}-${r.mes}`, r]))
       let atualizados = 0
-
       for (const linha of linhas) {
         const norm = Object.entries(linha).reduce<Record<string, unknown>>((acc, [k, v]) => {
           acc[normalizarCabecalho(k)] = v; return acc
         }, {})
-        const seq = String(norm.sequencial ?? "").trim()
+        const seq  = String(norm.sequencial ?? "").trim()
         const loja = String(norm.codloja ?? "").trim()
-        const ano = Number(norm.ano)
-        const mes = Number(norm.mes)
+        const ano  = Number(norm.ano)
+        const mes  = Number(norm.mes)
         const rawVal = norm.valor ?? norm[campo] ?? (campo === "orcado" ? norm.orcado : norm.realizado)
         const valor = (() => {
           const s = String(rawVal ?? "").trim().replace(/\./g, "").replace(",", ".")
@@ -330,10 +294,10 @@ const DreF360: React.FC = () => {
         if (!seq || !loja || Number.isNaN(ano) || Number.isNaN(mes) || (valor !== null && Number.isNaN(valor))) continue
         const reg = idx.get(`${seq}-${loja}-${ano}-${mes}`)
         if (!reg) continue
-        await atualizarDreF360(seq, loja, {
+        await atualizarDreF360Durafix(seq, loja, {
           ano, mes,
           realizado: campo === "realizado" ? valor : reg.realizado,
-          orcado: campo === "orcado" ? valor : reg.orcado,
+          orcado:    campo === "orcado"    ? valor : reg.orcado,
         })
         atualizados++
       }
@@ -345,7 +309,7 @@ const DreF360: React.FC = () => {
           : "Nenhum registro correspondente encontrado.",
       })
     } catch (error) {
-      console.error("Erro ao importar DRE F360", error)
+      console.error("Erro ao importar DRE F360 Durafix", error)
       setMensagem({ tipo: "error", texto: "Erro ao importar. Verifique o formato (sequencial, codloja, ano, mes, valor)." })
     } finally { setImportando(false) }
   }
@@ -364,7 +328,6 @@ const DreF360: React.FC = () => {
   const fecharMenuOpcoes = () => setMenuAnchorEl(null)
   const acaoMenuOpcoes = (fn: () => void) => { fecharMenuOpcoes(); fn() }
 
-  // ── Helper: células de soma para linhas de resumo ────────────────────────
   const renderSomas = (items: DreF360Registro[], bold = false) => {
     const sx = bold ? { fontWeight: 700 } : { color: "text.secondary" }
     return (
@@ -376,13 +339,11 @@ const DreF360: React.FC = () => {
     )
   }
 
-  // ── Número de colunas (para colspan em mensagem vazia) ────────────────────
   const numCols = podeEditar ? 7 : 6
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Box p={3} sx={{ background: TEMA.bg, minHeight: "100vh", borderTop: TEMA.borda }}>
-      <Typography variant="h4" gutterBottom sx={{ color: TEMA.cor }}>DRE F360 JMonte</Typography>
+      <Typography variant="h4" gutterBottom sx={{ color: TEMA.cor }}>DRE F360 Durafix</Typography>
 
       {/* ── Filtros ── */}
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -396,61 +357,48 @@ const DreF360: React.FC = () => {
             onChange={(e) => setFiltros((p) => ({ ...p, mes: e.target.value.replace(/\D/g, "").slice(0, 2) }))}
           />
           <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel id="f360-loja-label">Loja</InputLabel>
-            <Select labelId="f360-loja-label" value={filtros.codloja} label="Loja"
+            <InputLabel id="f360d-loja-label">Loja</InputLabel>
+            <Select labelId="f360d-loja-label" value={filtros.codloja} label="Loja"
               onChange={(e) => setFiltros((p) => ({ ...p, codloja: e.target.value }))}>
               <MenuItem value="">Selecione</MenuItem>
               {lojas.map((l) => <MenuItem key={l} value={l}>{l}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel id="f360-desc-label">Descrição</InputLabel>
-            <Select labelId="f360-desc-label" value={filtros.descricao} label="Descrição"
+            <InputLabel id="f360d-desc-label">Descrição</InputLabel>
+            <Select labelId="f360d-desc-label" value={filtros.descricao} label="Descrição"
               onChange={(e) => alterarDescricao(e.target.value)}>
               <MenuItem value="">Todos</MenuItem>
               {opcoesDescricao.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
             </Select>
           </FormControl>
           <Button variant="contained" onClick={carregar}
-            disabled={carregando || !filtros.ano || !filtros.mes || !filtros.codloja}>
+            disabled={carregando || !filtros.ano || !filtros.mes || !filtros.codloja}
+            sx={{ bgcolor: TEMA.cor, "&:hover": { bgcolor: "#1a8fd1" } }}>
             Filtrar
           </Button>
 
-          {/* Expandir / Recolher tudo */}
           {filtroAplicado && registros.length > 0 && (
             <>
               <Tooltip title="Expandir todos os níveis">
-                <Button variant="outlined" size="small" onClick={expandirTudo}>Expandir tudo</Button>
+                <Button variant="outlined" size="small" onClick={expandirTudo} sx={{ color: TEMA.cor, borderColor: TEMA.cor }}>Expandir tudo</Button>
               </Tooltip>
               <Tooltip title="Recolher todos os níveis">
-                <Button variant="outlined" size="small" onClick={recolherTudo}>Recolher tudo</Button>
+                <Button variant="outlined" size="small" onClick={recolherTudo} sx={{ color: TEMA.cor, borderColor: TEMA.cor }}>Recolher tudo</Button>
               </Tooltip>
             </>
           )}
 
           <Button variant="outlined" startIcon={<MoreVertIcon />} onClick={abrirMenuOpcoes}
-            disabled={!filtroAplicado || carregando || importando} sx={{ minWidth: 120 }}>
+            disabled={!filtroAplicado || carregando || importando}
+            sx={{ minWidth: 120, color: TEMA.cor, borderColor: TEMA.cor }}>
             Opções
           </Button>
           <Menu anchorEl={menuAnchorEl} open={menuAberto} onClose={fecharMenuOpcoes}>
-            <MenuItem onClick={() => acaoMenuOpcoes(exportarFiltrado)} disabled={!registros.length || importando}>
-              Exportar filtrado
-            </MenuItem>
-            {podeEditar && (
-              <MenuItem onClick={() => acaoMenuOpcoes(exportarLayoutImportacao)} disabled={!registros.length || importando}>
-                Baixar layout de importação
-              </MenuItem>
-            )}
-            {podeEditar && (
-              <MenuItem onClick={() => acaoMenuOpcoes(() => abrirImportacao("realizado"))} disabled={importando || carregando}>
-                Importar Realizado
-              </MenuItem>
-            )}
-            {podeEditar && (
-              <MenuItem onClick={() => acaoMenuOpcoes(() => abrirImportacao("orcado"))} disabled={importando || carregando}>
-                Importar Orçado
-              </MenuItem>
-            )}
+            <MenuItem onClick={() => acaoMenuOpcoes(exportarFiltrado)} disabled={!registros.length || importando}>Exportar filtrado</MenuItem>
+            {podeEditar && <MenuItem onClick={() => acaoMenuOpcoes(exportarLayoutImportacao)} disabled={!registros.length || importando}>Baixar layout de importação</MenuItem>}
+            {podeEditar && <MenuItem onClick={() => acaoMenuOpcoes(() => abrirImportacao("realizado"))} disabled={importando || carregando}>Importar Realizado</MenuItem>}
+            {podeEditar && <MenuItem onClick={() => acaoMenuOpcoes(() => abrirImportacao("orcado"))} disabled={importando || carregando}>Importar Orçado</MenuItem>}
           </Menu>
         </Box>
         {mensagem && <Box mt={2}><Alert severity={mensagem.tipo}>{mensagem.texto}</Alert></Box>}
@@ -490,57 +438,33 @@ const DreF360: React.FC = () => {
             {arvore.map((grupo) => {
               const desc1Expandida = expandedDescricoes.has(grupo.descricao)
               const primeiroItem = grupo.allItems[0]
-
               return (
                 <React.Fragment key={grupo.descricao}>
-
-                  {/* ── Nível 1: Descrição ── */}
                   <TableRow
-                    sx={{
-                      bgcolor: "action.selected",
-                      "& td": { borderBottom: "1px solid", borderColor: "divider" },
-                      cursor: "pointer",
-                      "&:hover": { filter: "brightness(0.95)" },
-                    }}
+                    sx={{ bgcolor: "action.selected", "& td": { borderBottom: "1px solid", borderColor: "divider" }, cursor: "pointer", "&:hover": { filter: "brightness(0.95)" } }}
                     onClick={() => toggleDescricao(grupo.descricao)}
                   >
                     <TableCell sx={{ fontWeight: 700, fontSize: "0.875rem" }}>
                       <Box display="flex" alignItems="center" gap={0.5}>
                         <IconButton size="small" sx={{ p: 0.25 }} tabIndex={-1}>
-                          {desc1Expandida
-                            ? <KeyboardArrowDownIcon fontSize="small" />
-                            : <ChevronRightIcon fontSize="small" />}
+                          {desc1Expandida ? <KeyboardArrowDownIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
                         </IconButton>
                         {grupo.descricao}
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                      {primeiroItem?.codloja ?? "—"}
-                    </TableCell>
-                    <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                      {primeiroItem?.ano ?? "—"}
-                    </TableCell>
-                    <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                      {primeiroItem?.mes ?? "—"}
-                    </TableCell>
+                    <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{primeiroItem?.codloja ?? "—"}</TableCell>
+                    <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{primeiroItem?.ano ?? "—"}</TableCell>
+                    <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{primeiroItem?.mes ?? "—"}</TableCell>
                     {renderSomas(grupo.allItems, true)}
                   </TableRow>
 
-                  {/* ── Nível 2: Subdescrição (quando nível 1 expandido) ── */}
                   {desc1Expandida && grupo.subgrupos.map((sub) => {
                     const sub2Expandida = expandedSubDescricoes.has(sub.key)
                     const primeiroSubItem = sub.items[0]
-
                     return (
                       <React.Fragment key={sub.key}>
-
                         <TableRow
-                          sx={{
-                            bgcolor: "action.hover",
-                            "& td": { borderBottom: "1px solid", borderColor: "divider" },
-                            cursor: "pointer",
-                            "&:hover": { filter: "brightness(0.97)" },
-                          }}
+                          sx={{ bgcolor: "action.hover", "& td": { borderBottom: "1px solid", borderColor: "divider" }, cursor: "pointer", "&:hover": { filter: "brightness(0.97)" } }}
                           onClick={() => toggleSubDescricao(sub.key)}
                         >
                           <TableCell sx={{ fontWeight: 600, fontSize: "0.8125rem", pl: 4 }}>
@@ -553,45 +477,28 @@ const DreF360: React.FC = () => {
                               {sub.subdescricao ?? <em style={{ opacity: 0.6 }}>(sem subdescrição)</em>}
                             </Box>
                           </TableCell>
-                          <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                            {primeiroSubItem?.codloja ?? "—"}
-                          </TableCell>
-                          <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                            {primeiroSubItem?.ano ?? "—"}
-                          </TableCell>
-                          <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                            {primeiroSubItem?.mes ?? "—"}
-                          </TableCell>
+                          <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{primeiroSubItem?.codloja ?? "—"}</TableCell>
+                          <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{primeiroSubItem?.ano ?? "—"}</TableCell>
+                          <TableCell sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{primeiroSubItem?.mes ?? "—"}</TableCell>
                           {renderSomas(sub.items)}
                         </TableRow>
 
-                        {/* ── Nível 3: Detalhamento / linhas editáveis ── */}
                         {sub2Expandida && sub.items.map((registro) => (
                           <TableRow
                             key={`${registro.sequencial}-${registro.codloja}-${registro.ano}-${registro.mes}`}
-                            sx={{
-                              "&:hover": { bgcolor: "action.hover" },
-                              "& td": { borderBottom: "1px solid", borderColor: "divider" },
-                            }}
+                            sx={{ "&:hover": { bgcolor: "action.hover" }, "& td": { borderBottom: "1px solid", borderColor: "divider" } }}
                           >
                             <TableCell sx={{ pl: 8 }}>
                               <Box>
-                                <Typography variant="caption" color="text.disabled" sx={{ mr: 0.5 }}>
-                                  {registro.sequencial}
-                                </Typography>
-                                <Typography variant="body2" component="span" sx={{ fontSize: "0.8125rem" }}>
-                                  {registro.detalhamento ?? ""}
-                                </Typography>
+                                <Typography variant="caption" color="text.disabled" sx={{ mr: 0.5 }}>{registro.sequencial}</Typography>
+                                <Typography variant="body2" component="span" sx={{ fontSize: "0.8125rem" }}>{registro.detalhamento ?? ""}</Typography>
                               </Box>
                             </TableCell>
                             <TableCell sx={{ fontSize: "0.8125rem" }}>{registro.codloja}</TableCell>
                             <TableCell sx={{ fontSize: "0.8125rem" }}>{registro.ano}</TableCell>
                             <TableCell sx={{ fontSize: "0.8125rem" }}>{registro.mes}</TableCell>
-
-                            {/* Realizado — editável */}
                             <TableCell align="right">
-                              <TextField
-                                size="small" type="text"
+                              <TextField size="small" type="text"
                                 inputProps={{ style: { textAlign: "right", width: 110 } }}
                                 value={getValorCampo(registro, "realizado")}
                                 onChange={(e) => alterarValor(registro, "realizado", e.target.value)}
@@ -600,11 +507,8 @@ const DreF360: React.FC = () => {
                                 disabled={!podeEditar}
                               />
                             </TableCell>
-
-                            {/* Orçado — editável */}
                             <TableCell align="right">
-                              <TextField
-                                size="small" type="text"
+                              <TextField size="small" type="text"
                                 inputProps={{ style: { textAlign: "right", width: 110 } }}
                                 value={getValorCampo(registro, "orcado")}
                                 onChange={(e) => alterarValor(registro, "orcado", e.target.value)}
@@ -613,21 +517,19 @@ const DreF360: React.FC = () => {
                                 disabled={!podeEditar}
                               />
                             </TableCell>
-
                             {podeEditar && (
                               <TableCell>
-                                <Button variant="outlined" size="small" onClick={() => salvarLinha(registro)}>
+                                <Button variant="outlined" size="small" onClick={() => salvarLinha(registro)}
+                                  sx={{ color: TEMA.cor, borderColor: TEMA.cor }}>
                                   Salvar
                                 </Button>
                               </TableCell>
                             )}
                           </TableRow>
                         ))}
-
                       </React.Fragment>
                     )
                   })}
-
                 </React.Fragment>
               )
             })}
@@ -638,4 +540,4 @@ const DreF360: React.FC = () => {
   )
 }
 
-export default DreF360
+export default DreF360Durafix
